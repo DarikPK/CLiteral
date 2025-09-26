@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Extractor de Imágenes</title>
+    <style>
+        body, html { font-family: sans-serif; margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        #main-container { display: flex; flex-direction: column; height: 100%; }
+        #webview-container { flex: 1; border: 1px solid #ccc; }
+        webview { width: 100%; height: 100%; }
+        #controls { padding: 10px; background: #f0f0f0; border-top: 1px solid #ccc; }
+        #gallery { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; overflow-y: auto; flex-grow: 1; }
+        #gallery img { max-width: 150px; border: 1px solid #ddd; }
+        #status-bar { padding: 5px 10px; background: #e0e0e0; font-size: 0.9em; height: 1.2em; }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+        <div id="webview-container">
+            <!-- El login se hará aquí. La URL de inicio es la de Sunarp. -->
+            <webview id="login-webview" src="https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio" autosize="on"></webview>
+        </div>
+        <div id="controls">
+            <h2>Controles de Imagen</h2>
+            <label for="brightness">Brillo:</label>
+            <input type="range" id="brightness" name="brightness" min="0" max="200" value="100">
+            <label for="contrast">Contraste:</label>
+            <input type="range" id="contrast" name="contrast" min="0" max="200" value="100">
+            <button id="extract-images" style="margin-right: 20px;" disabled>Extraer Imágenes</button>
+            <button id="generate-pdf">Generar PDF</button>
+        </div>
+        <div id="status-bar">Listo.</div>
+        <div id="gallery">
+            <!-- Las imágenes extraídas aparecerán aquí -->
+        </div>
+    </div>
+    <script src="renderer.js"></script>
+</body>
+</html>
