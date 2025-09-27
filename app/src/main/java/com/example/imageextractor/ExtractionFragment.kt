@@ -143,9 +143,14 @@ class ExtractionFragment : Fragment() {
                     try {
                         const dropdown = await waitForElement(dropdownSelector);
                         dropdown.click();
-                        // Add a small delay for options to appear
-                        await new Promise(resolve => setTimeout(resolve, 300));
+                        await new Promise(resolve => setTimeout(resolve, 300)); // Wait for dropdown animation
+
                         const optionContainer = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
+
+                        // Scroll the item into the center of the view to handle virtual scrolling
+                        optionContainer.scrollIntoView({ block: 'center', inline: 'nearest' });
+                        await new Promise(resolve => setTimeout(resolve, 300)); // Wait for scroll to finish
+
                         const clickableContent = optionContainer.querySelector('.ant-select-item-option-content');
                         if (clickableContent) {
                              clickableContent.click();
