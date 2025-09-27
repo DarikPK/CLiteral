@@ -77,6 +77,7 @@ class ExtractionFragment : Fragment() {
 
     private fun setupButtons() {
         binding.autofillButton.setOnClickListener {
+            updateButtonStates(binding.webView.url)
             autofillCurrentPage()
         }
         binding.extractButton.setOnClickListener {
@@ -88,12 +89,13 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun showCurrentUrlDialog() {
+        val currentUrl = binding.webView.url
         AlertDialog.Builder(requireContext())
             .setTitle("URL Actual")
-            .setMessage(currentPageUrl ?: "No hay URL disponible")
+            .setMessage(currentUrl ?: "No hay URL disponible")
             .setPositiveButton("Copiar") { dialog, _ ->
                 val clipboard = context?.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("URL", currentPageUrl)
+                val clip = android.content.ClipData.newPlainText("URL", currentUrl)
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(context, "URL copiada al portapapeles", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
@@ -105,20 +107,21 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun autofillCurrentPage() {
+        val currentUrl = binding.webView.url
         when {
-            currentPageUrl == loginUrl -> {
+            currentUrl == loginUrl -> {
                 val newLoginData = sharedViewModel.getRandomLoginData()
                 sharedViewModel.config.value?.let {
                     sharedViewModel.setExtractionConfig(it.copy(loginData = newLoginData))
                 }
                 autofillLoginForm(newLoginData)
             }
-            currentPageUrl?.startsWith(searchUrl) == true -> {
+            currentUrl?.startsWith(searchUrl) == true -> {
                 sharedViewModel.config.value?.let {
                     autofillSearchForm(it)
                 } ?: Toast.makeText(context, "No hay configuración de búsqueda guardada.", Toast.LENGTH_SHORT).show()
             }
-            else -> Toast.makeText(context, "No hay formulario para autocompletar.", Toast.LENGTH_SHORT).show()
+            else -> Toast.makeText(context, "No hay formulario para autocompletar en esta página.", Toast.LENGTH_SHORT).show()
         }
     }
 
