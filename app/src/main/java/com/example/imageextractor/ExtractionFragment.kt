@@ -1,7 +1,6 @@
 package com.example.imageextractor
 
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,7 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.json.JSONArray
 
 class ExtractionFragment : Fragment() {
@@ -57,21 +55,18 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         val autofillButton = binding.autofillButton
-        val extractButton = binding.extractButton
-
-        extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
+        binding.extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
 
         when {
             url == loginUrl -> {
                 autofillButton.visibility = View.VISIBLE
-                // Restaura el color por defecto (usando el color del tema)
-                val color = ContextCompat.getColor(requireContext(), com.google.android.material.R.color.design_default_color_secondary)
-                autofillButton.backgroundTintList = ColorStateList.valueOf(color)
+                val defaultColor = ContextCompat.getColor(requireContext(), com.google.android.material.R.color.design_default_color_secondary)
+                autofillButton.backgroundTintList = ColorStateList.valueOf(defaultColor)
             }
             url?.startsWith(searchUrl) == true -> {
                 autofillButton.visibility = View.VISIBLE
-                // Cambia el color a verde para indicar que se detectó la página de búsqueda
-                autofillButton.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
+                val feedbackColor = ContextCompat.getColor(requireContext(), R.color.feedback_green)
+                autofillButton.backgroundTintList = ColorStateList.valueOf(feedbackColor)
             }
             else -> {
                 autofillButton.visibility = View.GONE
@@ -89,11 +84,21 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun autofillCurrentPage() {
-        val config = sharedViewModel.config.value ?: return
         when {
-            currentPageUrl == loginUrl -> autofillLoginForm(config.loginData)
-            currentPageUrl?.startsWith(searchUrl) == true -> autofillSearchForm(config)
-            else -> Toast.makeText(context, "No hay formulario para autocompletar en esta página.", Toast.LENGTH_SHORT).show()
+            currentPageUrl == loginUrl -> {
+                val newLoginData = sharedViewModel.getRandomLoginData()
+                // Actualizamos la configuración en el ViewModel por si el usuario la necesita después.
+                sharedViewModel.config.value?.let {
+                    sharedViewModel.setExtractionConfig(it.copy(loginData = newLoginData))
+                }
+                autofillLoginForm(newLoginData)
+            }
+            currentPageUrl?.startsWith(searchUrl) == true -> {
+                sharedViewModel.config.value?.let {
+                    autofillSearchForm(it)
+                } ?: Toast.makeText(context, "No hay configuración de búsqueda guardada.", Toast.LENGTH_SHORT).show()
+            }
+            else -> Toast.makeText(context, "No hay formulario para autocompletar.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -106,7 +111,8 @@ class ExtractionFragment : Fragment() {
                 ['input', 'blur'].forEach(eventName => {
                     document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
                 });
-                document.querySelector('button[type="submit"]').click();
+                // Hacemos clic en el botón de validar después de rellenar.
+                document.querySelector('button[class*="btn-sunarp-green"]').click();
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
