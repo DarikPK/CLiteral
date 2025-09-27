@@ -82,7 +82,6 @@ class ExtractionFragment : Fragment() {
         binding.extractButton.setOnClickListener {
             extractImagesFromWebView()
         }
-        }
     }
 
     private fun autofillCurrentPage() {
