@@ -35,7 +35,7 @@ android {
 }
 
 dependencies {
-    def nav_version = "2.7.7"
+    val nav_version = "2.7.7"
 
     // Core Android libraries
     implementation("androidx.core:core-ktx:1.12.0")
