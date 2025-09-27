@@ -4,16 +4,30 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
+// Modelo de datos para almacenar toda la configuración de la extracción.
+data class ExtractionConfig(
+    val dni: String,
+    val digito: String,
+    val fechaEmision: String,
+    val oficina: String,
+    val areaRegistral: String,
+    val numeroPartida: String
+)
+
 class SharedViewModel : ViewModel() {
 
-    // LiveData que contendrá la lista de URLs de imágenes extraídas.
-    // Es privado para que solo pueda ser modificado desde este ViewModel.
-    private val _imageUrls = MutableLiveData<List<String>>()
+    // Contiene la configuración completa para una sesión de extracción.
+    private val _config = MutableLiveData<ExtractionConfig>()
+    val config: LiveData<ExtractionConfig> = _config
 
-    // Versión pública y de solo lectura de los datos para que los Fragments la observen.
+    // Contiene las URLs de las imágenes una vez extraídas.
+    private val _imageUrls = MutableLiveData<List<String>>()
     val imageUrls: LiveData<List<String>> = _imageUrls
 
-    // Función para actualizar la lista de imágenes desde el ExtractionFragment.
+    fun setExtractionConfig(config: ExtractionConfig) {
+        _config.value = config
+    }
+
     fun setImageUrls(urls: List<String>) {
         _imageUrls.value = urls
     }

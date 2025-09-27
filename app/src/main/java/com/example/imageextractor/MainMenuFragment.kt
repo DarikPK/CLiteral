@@ -26,8 +26,8 @@ class MainMenuFragment : Fragment() {
 
         // Configurar el listener para el botón de extracción.
         binding.buttonToExtraction.setOnClickListener {
-            // Navegar al ExtractionFragment usando la acción definida en nav_graph.xml.
-            findNavController().navigate(R.id.action_mainMenuFragment_to_extractionFragment)
+            // Navegar al ExtractionConfigFragment usando la acción definida en nav_graph.xml.
+            findNavController().navigate(R.id.action_mainMenuFragment_to_extractionConfigFragment)
         }
 
         // Configurar el listener para el botón de edición.

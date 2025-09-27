@@ -8,26 +8,32 @@
     <fragment
         android:id="@+id/mainMenuFragment"
         android:name="com.example.imageextractor.MainMenuFragment"
-        android:label="Menú Principal"
-        tools:layout="@layout/fragment_main_menu">
+        android:label="Menú Principal">
         <action
-            android:id="@+id/action_mainMenuFragment_to_extractionFragment"
-            app:destination="@id/extractionFragment" />
+            android:id="@+id/action_mainMenuFragment_to_extractionConfigFragment"
+            app:destination="@id/extractionConfigFragment" />
         <action
             android:id="@+id/action_mainMenuFragment_to_editingFragment"
             app:destination="@id/editingFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/extractionFragment"
-        android:name="com.example.imageextractor.ExtractionFragment"
-        android:label="Módulo de Extracción"
-        tools:layout="@layout/fragment_extraction" />
+        android:id="@+id/extractionConfigFragment"
+        android:name="com.example.imageextractor.ExtractionConfigFragment"
+        android:label="Configurar Extracción">
+        <action
+            android:id="@+id/action_extractionConfigFragment_to_extractionWebViewFragment"
+            app:destination="@id/extractionWebViewFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/extractionWebViewFragment"
+        android:name="com.example.imageextractor.ExtractionWebViewFragment"
+        android:label="Proceso de Extracción" />
 
     <fragment
         android:id="@+id/editingFragment"
         android:name="com.example.imageextractor.EditingFragment"
-        android:label="Módulo de Edición"
-        tools:layout="@layout/fragment_editing" />
+        android:label="Módulo de Edición" />
 
 </navigation>
