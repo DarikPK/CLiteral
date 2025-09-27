@@ -87,7 +87,6 @@ class ExtractionFragment : Fragment() {
         when {
             currentPageUrl == loginUrl -> {
                 val newLoginData = sharedViewModel.getRandomLoginData()
-                // Actualizamos la configuración en el ViewModel por si el usuario la necesita después.
                 sharedViewModel.config.value?.let {
                     sharedViewModel.setExtractionConfig(it.copy(loginData = newLoginData))
                 }
@@ -111,7 +110,6 @@ class ExtractionFragment : Fragment() {
                 ['input', 'blur'].forEach(eventName => {
                     document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
                 });
-                // Hacemos clic en el botón de validar después de rellenar.
                 document.querySelector('button[class*="btn-sunarp-green"]').click();
             })();
         """.trimIndent()
@@ -119,29 +117,42 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
+        // Script mejorado con async/await para esperar que los elementos existan.
         val jsScript = """
-            (function() {
-                function selectDropdown(formControlName, value) {
-                    const dropdown = document.querySelector(`nz-select[formcontrolname='${'$'}{formControlName}']`);
-                    if (dropdown) {
-                        dropdown.click();
-                        setTimeout(() => {
-                            const options = document.querySelectorAll('.ant-select-item-option-content');
-                            const option = Array.from(options).find(opt => opt.textContent.trim() === value);
-                            if (option) option.click();
-                        }, 500);
-                    }
+            (async function() {
+                // Función para esperar a que un elemento aparezca en el DOM.
+                function waitForElement(selector) {
+                    return new Promise(resolve => {
+                        const interval = setInterval(() => {
+                            const element = document.querySelector(selector);
+                            if (element) {
+                                clearInterval(interval);
+                                resolve(element);
+                            }
+                        }, 100); // Revisa cada 100ms
+                    });
                 }
-                selectDropdown('oficina', '${config.oficina}');
-                setTimeout(() => {
-                    selectDropdown('areaRegistral', '${config.areaRegistral}');
-                    setTimeout(() => {
-                        document.querySelector('input[formcontrolname="numero"]').value = '${config.numeroPartida}';
-                        document.querySelector('input[formcontrolname="numero"]').dispatchEvent(new Event('input', { bubbles: true }));
-                        document.querySelector('.ant-radio-input').click();
-                        document.querySelector('button[type="submit"]').click();
-                    }, 1000);
-                }, 1000);
+
+                // Función para simular un clic y seleccionar una opción de un menú desplegable.
+                async function selectDropdown(formControlName, value) {
+                    const dropdown = await waitForElement(`nz-select[formcontrolname='${'$'}{formControlName}']`);
+                    dropdown.click();
+                    const option = await waitForElement(`.ant-select-item-option-content[title="${'$'}{value}"]`);
+                    option.click();
+                }
+
+                await selectDropdown('oficina', '${config.oficina}');
+                await selectDropdown('areaRegistral', '${config.areaRegistral}');
+
+                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
+                numeroInput.value = '${config.numeroPartida}';
+                numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+                const radio = await waitForElement('.ant-radio-input');
+                radio.click();
+
+                const submitButton = await waitForElement('button[type="submit"]');
+                submitButton.click();
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
