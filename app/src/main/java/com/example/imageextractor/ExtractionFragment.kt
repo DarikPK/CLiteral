@@ -121,7 +121,6 @@ class ExtractionFragment : Fragment() {
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
             (async function() {
-                // Helper function to wait for an element to appear in the DOM
                 function waitForElement(selector, timeout = 5000) {
                     return new Promise((resolve, reject) => {
                         const interval = setInterval(() => {
@@ -138,41 +137,40 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
-                // Helper function to click a dropdown and select an option by its title
                 async function selectDropdownOption(dropdownSelector, optionTitle) {
                     try {
                         const dropdown = await waitForElement(dropdownSelector);
                         dropdown.click();
                         await new Promise(resolve => setTimeout(resolve, 300));
 
-                        // Find the virtual scroll container
-                        const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
-                        if (!scrollViewport) {
-                            // Fallback for non-virtual scroll
-                            const option = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
-                            option.scrollIntoView({ block: 'center' });
-                            await new Promise(resolve => setTimeout(resolve, 200));
-                            option.click();
-                            return;
+                        const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
+                        const areaList = ["REGISTRO DE PREDIOS", "REGISTRO DE PERSONAS JURIDICAS", "REGISTRO DE PERSONAS NATURALES", "REGISTRO DE BIENES MUEBLES"];
+
+                        let listToUse;
+                        if (dropdownSelector.includes('oficinaRegistral')) {
+                            listToUse = officeList;
+                        } else if (dropdownSelector.includes('areaRegistral')) {
+                            listToUse = areaList;
                         }
 
-                        // For virtual scroll, find the index and calculate the scroll position
-                        const allOptions = Array.from(document.querySelectorAll('nz-option-item'));
-                        const targetIndex = allOptions.findIndex(opt => opt.getAttribute('title') === optionTitle);
+                        if (listToUse) {
+                            const targetIndex = listToUse.indexOf(optionTitle);
+                            if (targetIndex === -1) {
+                                console.error(`Option "${'$'}{optionTitle}" not found in predefined list.`);
+                                return false;
+                            }
 
-                        if (targetIndex !== -1) {
-                            // Assuming a fixed item height, which is common for virtual scrolls.
-                            // 32px is a standard height for Ng-Zorro dropdown items.
-                            const itemHeight = 32;
-                            scrollViewport.scrollTop = itemHeight * targetIndex;
-                            await new Promise(resolve => setTimeout(resolve, 300)); // Wait for scroll to render the element
-
-                            // Click the element now that it's rendered
-                            const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
-                            optionToClick.click();
-                        } else {
-                            console.error("Option not found: " + optionTitle);
+                            const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                            if (scrollViewport) {
+                                const itemHeight = 32;
+                                scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                                await new Promise(resolve => setTimeout(resolve, 300));
+                            }
                         }
+
+                        const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
+                        optionToClick.click();
+
                         return true;
                     } catch (error) {
                         console.error(error.message);
@@ -180,50 +178,23 @@ class ExtractionFragment : Fragment() {
                     }
                 }
 
-                // 1. Select "Oficina Registral"
+                // Execution sequence
                 await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}');
-
-                // Give some time for the next dropdown to be enabled
                 await new Promise(resolve => setTimeout(resolve, 500));
-
-                // 2. Select "Área Registral"
                 await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}');
-
-                // Give some time for the radio buttons to be enabled
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // 3. Select "Partida" radio button
-                try {
-                    const partidaRadio = await waitForElement('label[nzvalue="2"]');
-                    if (!partidaRadio.querySelector('input').disabled) {
-                       partidaRadio.click();
-                    }
-                } catch (error) {
-                    console.error(error.message);
-                }
+                const partidaRadio = await waitForElement('label[nzvalue="2"]');
+                if (!partidaRadio.querySelector('input').disabled) partidaRadio.click();
 
-                // 4. Fill in "Número de Partida"
-                try {
-                    const numeroInput = await waitForElement('input[formcontrolname="numero"]');
-                    numeroInput.value = '${config.numeroPartida}';
-                    numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
-                } catch (error) {
-                    console.error(error.message);
-                }
+                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
+                numeroInput.value = '${config.numeroPartida}';
+                numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
+                numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
-                // 5. Click the search button
-                try {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    const submitButton = await waitForElement('button.btn-buscar-partida');
-                    if (!submitButton.disabled) {
-                        submitButton.click();
-                    } else {
-                        console.error("Search button is disabled.");
-                    }
-                } catch (error) {
-                    console.error(error.message);
-                }
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const submitButton = await waitForElement('button.btn-buscar-partida');
+                if (!submitButton.disabled) submitButton.click();
 
             })();
         """.trimIndent()
