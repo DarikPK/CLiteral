@@ -143,8 +143,15 @@ class ExtractionFragment : Fragment() {
                     try {
                         const dropdown = await waitForElement(dropdownSelector);
                         dropdown.click();
-                        const option = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
-                        option.click();
+                        // Add a small delay for options to appear
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        const optionContainer = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
+                        const clickableContent = optionContainer.querySelector('.ant-select-item-option-content');
+                        if (clickableContent) {
+                             clickableContent.click();
+                        } else {
+                             optionContainer.click(); // Fallback
+                        }
                         return true;
                     } catch (error) {
                         console.error(error.message);
