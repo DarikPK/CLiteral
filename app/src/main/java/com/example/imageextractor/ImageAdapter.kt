@@ -47,9 +47,4 @@ class ImageAdapter(private var imageUrls: List<String>) : RecyclerView.Adapter<I
         this.colorFilter = ColorMatrixColorFilter(matrix)
         notifyDataSetChanged()
     }
-
-    // Devuelve la lista actual de URLs.
-    fun getCurrentImageUrls(): List<String> {
-        return imageUrls
-    }
 }

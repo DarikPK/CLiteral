@@ -26,11 +26,9 @@ class EditingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inicializamos el adaptador para el ViewPager.
         editingTabsAdapter = EditingTabsAdapter(this)
         binding.viewPager.adapter = editingTabsAdapter
 
-        // Conectamos el TabLayout con el ViewPager2 y establecemos los títulos de las pestañas.
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "Ver Galería"

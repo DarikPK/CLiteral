@@ -8,7 +8,6 @@ class EditingTabsAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
     override fun getItemCount(): Int = 2
 
     override fun createFragment(position: Int): Fragment {
-        // Devuelve el fragment correspondiente a la posición de la pestaña.
         return when (position) {
             0 -> ViewGalleryFragment()
             1 -> EditGalleryFragment()

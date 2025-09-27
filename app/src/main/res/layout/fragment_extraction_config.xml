@@ -16,44 +16,67 @@
             style="@style/TextAppearance.Material3.TitleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1. Datos de Acceso"
-            android:layout_marginBottom="8dp"/>
+            android:text="1. Datos de Acceso" />
 
-        <com.google.android.material.textfield.TextInputLayout
+        <RadioGroup
+            android:id="@+id/login_mode_radio_group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="DNI">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/dni_edit_text"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+            <RadioButton
+                android:id="@+id/radio_manual"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manual"
+                android:checked="true"/>
+            <RadioButton
+                android:id="@+id/radio_random"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aleatorio"
+                android:layout_marginStart="16dp"/>
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/manual_login_fields"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLength="8" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="Dígito de Verificación">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/digito_edit_text"
+                android:hint="DNI">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/dni_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="8" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLength="1" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="Fecha Emisión (dd/mm/aaaa)">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/fecha_emision_edit_text"
+                android:layout_marginTop="8dp"
+                android:hint="Dígito de Verificación">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/digito_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="Fecha Emisión (dd/mm/aaaa)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/fecha_emision_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
 
         <TextView
             style="@style/TextAppearance.Material3.TitleLarge"
@@ -97,14 +120,21 @@
                 android:id="@+id/partida_edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAllCaps="true"/>
+                android:inputType="number"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <CheckBox
+            android:id="@+id/prefix_p_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Iniciar con 'P'"
+            android:layout_marginTop="8dp"/>
 
         <Button
             android:id="@+id/continue_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Continuar a la Extracción"
+            android:text="Continuar"
             android:layout_marginTop="24dp"/>
 
     </LinearLayout>

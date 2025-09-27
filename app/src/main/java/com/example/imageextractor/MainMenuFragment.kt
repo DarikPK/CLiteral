@@ -24,15 +24,11 @@ class MainMenuFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Configurar el listener para el botón de extracción.
         binding.buttonToExtraction.setOnClickListener {
-            // Navegar al ExtractionConfigFragment usando la acción definida en nav_graph.xml.
             findNavController().navigate(R.id.action_mainMenuFragment_to_extractionConfigFragment)
         }
 
-        // Configurar el listener para el botón de edición.
         binding.buttonToEditing.setOnClickListener {
-            // Navegar al EditingFragment usando la acción definida en nav_graph.xml.
             findNavController().navigate(R.id.action_mainMenuFragment_to_editingFragment)
         }
     }

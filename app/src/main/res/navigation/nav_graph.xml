@@ -8,7 +8,8 @@
     <fragment
         android:id="@+id/mainMenuFragment"
         android:name="com.example.imageextractor.MainMenuFragment"
-        android:label="Menú Principal">
+        android:label="Menú Principal"
+        tools:layout="@layout/fragment_main_menu">
         <action
             android:id="@+id/action_mainMenuFragment_to_extractionConfigFragment"
             app:destination="@id/extractionConfigFragment" />
@@ -20,20 +21,23 @@
     <fragment
         android:id="@+id/extractionConfigFragment"
         android:name="com.example.imageextractor.ExtractionConfigFragment"
-        android:label="Configurar Extracción">
+        android:label="Configurar Extracción"
+        tools:layout="@layout/fragment_extraction_config">
         <action
-            android:id="@+id/action_extractionConfigFragment_to_extractionWebViewFragment"
-            app:destination="@id/extractionWebViewFragment" />
+            android:id="@+id/action_extractionConfigFragment_to_extractionFragment"
+            app:destination="@id/extractionFragment" />
     </fragment>
 
     <fragment
-        android:id="@+id/extractionWebViewFragment"
-        android:name="com.example.imageextractor.ExtractionWebViewFragment"
-        android:label="Proceso de Extracción" />
+        android:id="@+id/extractionFragment"
+        android:name="com.example.imageextractor.ExtractionFragment"
+        android:label="Proceso de Extracción"
+        tools:layout="@layout/fragment_extraction" />
 
     <fragment
         android:id="@+id/editingFragment"
         android:name="com.example.imageextractor.EditingFragment"
-        android:label="Módulo de Edición" />
+        android:label="Módulo de Edición"
+        tools:layout="@layout/fragment_editing" />
 
 </navigation>

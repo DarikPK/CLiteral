@@ -14,7 +14,6 @@ class ViewGalleryFragment : Fragment() {
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
-    // Obtenemos el ViewModel compartido.
     private val sharedViewModel: SharedViewModel by activityViewModels()
     private lateinit var imageAdapter: ImageAdapter
 
@@ -35,17 +34,14 @@ class ViewGalleryFragment : Fragment() {
     private fun setupRecyclerView() {
         imageAdapter = ImageAdapter(emptyList())
         binding.galleryRecyclerView.apply {
-            // Usamos un GridLayoutManager para mostrar las imágenes en una cuadrícula.
             layoutManager = GridLayoutManager(context, 3) // 3 columnas
             adapter = imageAdapter
         }
     }
 
     private fun observeViewModel() {
-        // Observamos el LiveData del ViewModel.
-        // Cuando las URLs cambian, actualizamos el adaptador de la galería.
         sharedViewModel.imageUrls.observe(viewLifecycleOwner) { urls ->
-            imageAdapter.updateImages(urls ?: emptyList())
+            urls?.let { imageAdapter.updateImages(it) }
         }
     }
 

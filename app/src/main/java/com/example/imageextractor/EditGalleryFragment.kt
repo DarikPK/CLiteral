@@ -51,7 +51,7 @@ class EditGalleryFragment : Fragment() {
 
     private fun observeViewModel() {
         sharedViewModel.imageUrls.observe(viewLifecycleOwner) { urls ->
-            imageAdapter.updateImages(urls ?: emptyList())
+            urls?.let { imageAdapter.updateImages(it) }
         }
     }
 
