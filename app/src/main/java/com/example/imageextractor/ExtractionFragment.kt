@@ -20,7 +20,7 @@ class ExtractionFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
-    private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
+    private val loginUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/inicio"
     private val targetUrlSubstring = "/servicio/busqueda/visualizar-partida"
 
     override fun onCreateView(
@@ -43,8 +43,8 @@ class ExtractionFragment : Fragment() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 binding.extractButton.isEnabled = url?.contains(targetUrlSubstring) == true
-                // El botón de autocompletar solo debe estar activo en la página de inicio.
-                binding.autofillButton.isEnabled = url == loginUrl
+                // El botón de autocompletar solo debe ser VISIBLE en la página de inicio.
+                binding.autofillButton.visibility = if (url == loginUrl) View.VISIBLE else View.GONE
             }
         }
         binding.webView.loadUrl(loginUrl)
@@ -66,7 +66,6 @@ class ExtractionFragment : Fragment() {
                     let element = document.querySelector(selector);
                     if (element) {
                         element.value = value;
-                        // Disparamos eventos para que el framework de la página reconozca el cambio.
                         element.dispatchEvent(new Event('input', { bubbles: true }));
                         element.dispatchEvent(new Event('blur', { bubbles: true }));
                     }
