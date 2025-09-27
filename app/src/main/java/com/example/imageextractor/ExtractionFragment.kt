@@ -1,18 +1,20 @@
 package com.example.imageextractor
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.json.JSONArray
 
 class ExtractionFragment : Fragment() {
@@ -47,12 +49,34 @@ class ExtractionFragment : Fragment() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
-                // La visibilidad de los botones se gestiona aquí.
-                binding.extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
-                binding.autofillButton.visibility = if (url == loginUrl || url?.startsWith(searchUrl) == true) View.VISIBLE else View.GONE
+                updateButtonStates(url)
             }
         }
         binding.webView.loadUrl(loginUrl)
+    }
+
+    private fun updateButtonStates(url: String?) {
+        val autofillButton = binding.autofillButton
+        val extractButton = binding.extractButton
+
+        extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
+
+        when {
+            url == loginUrl -> {
+                autofillButton.visibility = View.VISIBLE
+                // Restaura el color por defecto (usando el color del tema)
+                val color = ContextCompat.getColor(requireContext(), com.google.android.material.R.color.design_default_color_secondary)
+                autofillButton.backgroundTintList = ColorStateList.valueOf(color)
+            }
+            url?.startsWith(searchUrl) == true -> {
+                autofillButton.visibility = View.VISIBLE
+                // Cambia el color a verde para indicar que se detectó la página de búsqueda
+                autofillButton.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
+            }
+            else -> {
+                autofillButton.visibility = View.GONE
+            }
+        }
     }
 
     private fun setupButtons() {
@@ -82,7 +106,6 @@ class ExtractionFragment : Fragment() {
                 ['input', 'blur'].forEach(eventName => {
                     document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
                 });
-                // Hacemos clic en el botón de ingresar después de rellenar.
                 document.querySelector('button[type="submit"]').click();
             })();
         """.trimIndent()
@@ -110,7 +133,6 @@ class ExtractionFragment : Fragment() {
                         document.querySelector('input[formcontrolname="numero"]').value = '${config.numeroPartida}';
                         document.querySelector('input[formcontrolname="numero"]').dispatchEvent(new Event('input', { bubbles: true }));
                         document.querySelector('.ant-radio-input').click();
-                        // Hacemos clic en el botón de buscar después de rellenar.
                         document.querySelector('button[type="submit"]').click();
                     }, 1000);
                 }, 1000);
