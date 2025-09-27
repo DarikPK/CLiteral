@@ -18,7 +18,6 @@ class ExtractionFragment : Fragment() {
     private var _binding: FragmentExtractionBinding? = null
     private val binding get() = _binding!!
 
-    // Obtenemos una instancia del ViewModel compartido, cuyo ciclo de vida está ligado a la Activity.
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
     private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
@@ -35,7 +34,7 @@ class ExtractionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupWebView()
-        setupExtractButton()
+        setupButtons()
     }
 
     private fun setupWebView() {
@@ -43,16 +42,48 @@ class ExtractionFragment : Fragment() {
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Habilitamos el botón de extracción si la URL es la correcta.
                 binding.extractButton.isEnabled = url?.contains(targetUrlSubstring) == true
+                // El botón de autocompletar solo debe estar activo en la página de inicio.
+                binding.autofillButton.isEnabled = url == loginUrl
             }
         }
         binding.webView.loadUrl(loginUrl)
     }
 
-    private fun setupExtractButton() {
+    private fun setupButtons() {
         binding.extractButton.setOnClickListener {
             extractImagesFromWebView()
+        }
+        binding.autofillButton.setOnClickListener {
+            autofillLoginForm()
+        }
+    }
+
+    private fun autofillLoginForm() {
+        val jsScript = """
+            (function() {
+                function fillInput(selector, value) {
+                    let element = document.querySelector(selector);
+                    if (element) {
+                        element.value = value;
+                        // Disparamos eventos para que el framework de la página reconozca el cambio.
+                        element.dispatchEvent(new Event('input', { bubbles: true }));
+                        element.dispatchEvent(new Event('blur', { bubbles: true }));
+                    }
+                }
+
+                fillInput('input[formcontrolname="numeroDocumento"]', '46736604');
+                fillInput('input[formcontrolname="digito"]', '7');
+                fillInput('input[formcontrolname="fechaEmision"]', '16/04/2025');
+
+                return "Datos autocompletados.";
+            })();
+        """.trimIndent()
+
+        binding.webView.evaluateJavascript(jsScript) { result ->
+            activity?.runOnUiThread {
+                Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -73,14 +104,10 @@ class ExtractionFragment : Fragment() {
             try {
                 val jsonArray = JSONArray(result)
                 val imageUrls = List(jsonArray.length()) { i -> jsonArray.getString(i) }
-
-                // Guardamos la lista de URLs en el ViewModel compartido.
                 sharedViewModel.setImageUrls(imageUrls)
-
-                // Notificamos al usuario y lo enviamos de vuelta al menú principal.
                 activity?.runOnUiThread {
                     Toast.makeText(context, "${imageUrls.size} imágenes extraídas y guardadas.", Toast.LENGTH_SHORT).show()
-                    findNavController().popBackStack() // Volver al menú
+                    findNavController().popBackStack()
                 }
             } catch (e: Exception) {
                 activity?.runOnUiThread {
