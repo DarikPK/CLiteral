@@ -4,7 +4,6 @@
 
     <!-- Permission to access the internet is required for the WebView -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Permission to write to external storage, required for saving the PDF on older Android versions -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/mainMenuFragment">
+
+    <fragment
+        android:id="@+id/mainMenuFragment"
+        android:name="com.example.imageextractor.MainMenuFragment"
+        android:label="Menú Principal"
+        tools:layout="@layout/fragment_main_menu">
+        <action
+            android:id="@+id/action_mainMenuFragment_to_extractionFragment"
+            app:destination="@id/extractionFragment" />
+        <action
+            android:id="@+id/action_mainMenuFragment_to_editingFragment"
+            app:destination="@id/editingFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/extractionFragment"
+        android:name="com.example.imageextractor.ExtractionFragment"
+        android:label="Módulo de Extracción"
+        tools:layout="@layout/fragment_extraction" />
+
+    <fragment
+        android:id="@+id/editingFragment"
+        android:name="com.example.imageextractor.EditingFragment"
+        android:label="Módulo de Edición"
+        tools:layout="@layout/fragment_editing" />
+
+</navigation>

@@ -1,93 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- WebView para el login y la navegación -->
-    <WebView
-        android:id="@+id/webView"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host_fragment"
+        android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/controls_container" />
-
-    <!-- Contenedor para los controles -->
-    <LinearLayout
-        android:id="@+id/controls_container"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="8dp"
-        android:background="#F0F0F0"
-        app:layout_constraintBottom_toTopOf="@id/image_gallery"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <!-- Controles de Brillo -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Brillo" />
-        <SeekBar
-            android:id="@+id/brightness_seekbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="200"
-            android:progress="100" />
-
-        <!-- Controles de Contraste -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Contraste" />
-        <SeekBar
-            android:id="@+id/contrast_seekbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:max="200"
-            android:progress="100" />
-
-        <!-- Botones de Acción -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
-
-            <Button
-                android:id="@+id/extract_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Extraer Imágenes"
-                android:enabled="false"
-                android:layout_marginEnd="4dp"/>
-
-            <Button
-                android:id="@+id/pdf_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Generar PDF"
-                android:layout_marginStart="4dp"/>
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- Galería de imágenes extraídas -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/image_gallery"
-        android:layout_width="0dp"
-        android:layout_height="120dp"
-        android:orientation="horizontal"
-        android:background="#E0E0E0"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:defaultNavHost="true"
+        app:navGraph="@navigation/nav_graph" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
