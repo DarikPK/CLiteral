@@ -57,20 +57,12 @@ class ExtractionFragment : Fragment() {
         val autofillButton = binding.autofillButton
         binding.extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
 
-        when {
-            url == loginUrl -> {
-                autofillButton.visibility = View.VISIBLE
-                val defaultColor = ContextCompat.getColor(requireContext(), com.google.android.material.R.color.design_default_color_secondary)
-                autofillButton.backgroundTintList = ColorStateList.valueOf(defaultColor)
-            }
-            url?.startsWith(searchUrl) == true -> {
-                autofillButton.visibility = View.VISIBLE
-                val feedbackColor = ContextCompat.getColor(requireContext(), R.color.feedback_green)
-                autofillButton.backgroundTintList = ColorStateList.valueOf(feedbackColor)
-            }
-            else -> {
-                autofillButton.visibility = View.GONE
-            }
+        val isVisible = url == loginUrl || url?.startsWith(searchUrl) == true
+        autofillButton.visibility = if (isVisible) View.VISIBLE else View.GONE
+
+        if (isVisible) {
+            val redColor = ContextCompat.getColor(requireContext(), R.color.button_red)
+            autofillButton.backgroundTintList = ColorStateList.valueOf(redColor)
         }
     }
 
