@@ -141,45 +141,41 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
-        // Script mejorado con async/await para esperar que los elementos existan.
         val jsScript = """
-            (async function() {
-                // Función para esperar a que un elemento aparezca en el DOM.
-                function waitForElement(selector) {
-                    return new Promise(resolve => {
-                        const interval = setInterval(() => {
-                            const element = document.querySelector(selector);
-                            if (element) {
-                                clearInterval(interval);
-                                resolve(element);
-                            }
-                        }, 100); // Revisa cada 100ms
-                    });
+            (function() {
+                let report = '--- Informe de Depuración de Selectores ---\\n\\n';
+                const selectors = {
+                    'Dropdown Oficina': 'nz-select[formcontrolname=\"oficina\"]',
+                    'Dropdown Área Registral': 'nz-select[formcontrolname=\"areaRegistral\"]',
+                    'Input Número de Partida': 'input[formcontrolname=\"numero\"]',
+                    'Botón de Radio': '.ant-radio-input',
+                    'Botón de Envío': 'button[type=\"submit\"]'
+                };
+
+                for (const [name, selector] of Object.entries(selectors)) {
+                    const element = document.querySelector(selector);
+                    report += `Buscando '${'$'}{name}'...\\n`;
+                    report += `Selector: ${'$'}{selector}\\n`;
+                    report += `Encontrado: ${'$'}{element ? 'SÍ' : 'NO'}\\n\\n`;
                 }
 
-                // Función para simular un clic y seleccionar una opción de un menú desplegable.
-                async function selectDropdown(formControlName, value) {
-                    const dropdown = await waitForElement(`nz-select[formcontrolname='${'$'}{formControlName}']`);
-                    dropdown.click();
-                    const option = await waitForElement(`.ant-select-item-option-content[title="${'$'}{value}"]`);
-                    option.click();
-                }
+                report += '--- Nota ---\\n';
+                report += 'Si los dropdowns son encontrados pero el autocompletado falla, el problema puede estar en los selectores de las *opciones* que aparecen después de hacer clic.';
 
-                await selectDropdown('oficina', '${config.oficina}');
-                await selectDropdown('areaRegistral', '${config.areaRegistral}');
-
-                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
-                numeroInput.value = '${config.numeroPartida}';
-                numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-                const radio = await waitForElement('.ant-radio-input');
-                radio.click();
-
-                const submitButton = await waitForElement('button[type="submit"]');
-                submitButton.click();
+                return report;
             })();
         """.trimIndent()
-        binding.webView.evaluateJavascript(jsScript, null)
+
+        binding.webView.evaluateJavascript(jsScript) { result ->
+            activity?.runOnUiThread {
+                val cleanResult = result?.removeSurrounding("\"")?.replace("\\n", "\n")
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Informe de Depuración del Script")
+                    .setMessage(cleanResult ?: "No se recibió respuesta del script.")
+                    .setPositiveButton("Cerrar") { dialog, _ -> dialog.dismiss() }
+                    .show()
+            }
+        }
     }
 
     private fun extractImagesFromWebView() {
