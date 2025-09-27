@@ -20,7 +20,7 @@ class ExtractionFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
-    private val loginUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/inicio"
+    private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
     private val targetUrlSubstring = "/servicio/busqueda/visualizar-partida"
 
     override fun onCreateView(
