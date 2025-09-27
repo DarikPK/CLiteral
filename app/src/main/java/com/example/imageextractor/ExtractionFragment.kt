@@ -47,6 +47,7 @@ class ExtractionFragment : Fragment() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
+                Toast.makeText(context, "URL: $url", Toast.LENGTH_LONG).show()
                 updateButtonStates(url)
             }
         }
