@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
 import org.json.JSONArray
@@ -83,27 +82,7 @@ class ExtractionFragment : Fragment() {
         binding.extractButton.setOnClickListener {
             extractImagesFromWebView()
         }
-        binding.debugButton.setOnClickListener {
-            showCurrentUrlDialog()
         }
-    }
-
-    private fun showCurrentUrlDialog() {
-        val currentUrl = binding.webView.url
-        AlertDialog.Builder(requireContext())
-            .setTitle("URL Actual")
-            .setMessage(currentUrl ?: "No hay URL disponible")
-            .setPositiveButton("Copiar") { dialog, _ ->
-                val clipboard = context?.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("URL", currentUrl)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "URL copiada al portapapeles", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cerrar") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
     }
 
     private fun autofillCurrentPage() {
@@ -142,40 +121,86 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
-            (function() {
-                let report = '--- Informe de Depuración de Selectores ---\\n\\n';
-                const selectors = {
-                    'Dropdown Oficina': 'nz-select[formcontrolname=\"oficina\"]',
-                    'Dropdown Área Registral': 'nz-select[formcontrolname=\"areaRegistral\"]',
-                    'Input Número de Partida': 'input[formcontrolname=\"numero\"]',
-                    'Botón de Radio': '.ant-radio-input',
-                    'Botón de Envío': 'button[type=\"submit\"]'
-                };
-
-                for (const [name, selector] of Object.entries(selectors)) {
-                    const element = document.querySelector(selector);
-                    report += `Buscando '${'$'}{name}'...\\n`;
-                    report += `Selector: ${'$'}{selector}\\n`;
-                    report += `Encontrado: ${'$'}{element ? 'SÍ' : 'NO'}\\n\\n`;
+            (async function() {
+                // Helper function to wait for an element to appear in the DOM
+                function waitForElement(selector, timeout = 5000) {
+                    return new Promise((resolve, reject) => {
+                        const interval = setInterval(() => {
+                            const element = document.querySelector(selector);
+                            if (element) {
+                                clearInterval(interval);
+                                resolve(element);
+                            }
+                        }, 100);
+                        setTimeout(() => {
+                            clearInterval(interval);
+                            reject(new Error(`Element with selector "${'$'}{selector}" not found within ${'$'}{timeout}ms`));
+                        }, timeout);
+                    });
                 }
 
-                report += '--- Nota ---\\n';
-                report += 'Si los dropdowns son encontrados pero el autocompletado falla, el problema puede estar en los selectores de las *opciones* que aparecen después de hacer clic.';
+                // Helper function to click a dropdown and select an option by its title
+                async function selectDropdownOption(dropdownSelector, optionTitle) {
+                    try {
+                        const dropdown = await waitForElement(dropdownSelector);
+                        dropdown.click();
+                        const option = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
+                        option.click();
+                        return true;
+                    } catch (error) {
+                        console.error(error.message);
+                        return false;
+                    }
+                }
 
-                return report;
+                // 1. Select "Oficina Registral"
+                await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}');
+
+                // Give some time for the next dropdown to be enabled
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 2. Select "Área Registral"
+                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}');
+
+                // Give some time for the radio buttons to be enabled
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 3. Select "Partida" radio button
+                try {
+                    const partidaRadio = await waitForElement('label[nzvalue="2"]');
+                    if (!partidaRadio.querySelector('input').disabled) {
+                       partidaRadio.click();
+                    }
+                } catch (error) {
+                    console.error(error.message);
+                }
+
+                // 4. Fill in "Número de Partida"
+                try {
+                    const numeroInput = await waitForElement('input[formcontrolname="numero"]');
+                    numeroInput.value = '${config.numeroPartida}';
+                    numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
+                } catch (error) {
+                    console.error(error.message);
+                }
+
+                // 5. Click the search button
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const submitButton = await waitForElement('button.btn-buscar-partida');
+                    if (!submitButton.disabled) {
+                        submitButton.click();
+                    } else {
+                        console.error("Search button is disabled.");
+                    }
+                } catch (error) {
+                    console.error(error.message);
+                }
+
             })();
         """.trimIndent()
-
-        binding.webView.evaluateJavascript(jsScript) { result ->
-            activity?.runOnUiThread {
-                val cleanResult = result?.removeSurrounding("\"")?.replace("\\n", "\n")
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Informe de Depuración del Script")
-                    .setMessage(cleanResult ?: "No se recibió respuesta del script.")
-                    .setPositiveButton("Cerrar") { dialog, _ -> dialog.dismiss() }
-                    .show()
-            }
-        }
+        binding.webView.evaluateJavascript(jsScript, null)
     }
 
     private fun extractImagesFromWebView() {
