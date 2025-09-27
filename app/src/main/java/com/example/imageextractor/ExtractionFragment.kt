@@ -22,14 +22,10 @@ class ExtractionFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
-    // Máquina de estados para controlar el proceso de automatización.
-    private enum class AutomationState { IDLE, LOGIN_PAGE, SEARCH_PAGE, RESULTS_PAGE }
-    private var currentState = AutomationState.IDLE
-
-    // URLs para la navegación y detección de estado.
     private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
     private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
+    private var currentPageUrl: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -42,7 +38,7 @@ class ExtractionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupWebView()
-        setupExtractButton()
+        setupButtons()
     }
 
     private fun setupWebView() {
@@ -50,39 +46,30 @@ class ExtractionFragment : Fragment() {
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                handleAutomationStep(url) // Orquesta la automatización.
+                currentPageUrl = url
+                // La visibilidad de los botones se gestiona aquí.
+                binding.extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
+                binding.autofillButton.visibility = if (url == loginUrl || url?.startsWith(searchUrl) == true) View.VISIBLE else View.GONE
             }
         }
-        // Inicia el proceso cargando la página de login.
-        currentState = AutomationState.LOGIN_PAGE
         binding.webView.loadUrl(loginUrl)
     }
 
-    private fun handleAutomationStep(url: String?) {
-        val config = sharedViewModel.config.value ?: return
+    private fun setupButtons() {
+        binding.autofillButton.setOnClickListener {
+            autofillCurrentPage()
+        }
+        binding.extractButton.setOnClickListener {
+            extractImagesFromWebView()
+        }
+    }
 
-        when (currentState) {
-            AutomationState.LOGIN_PAGE -> {
-                if (url == loginUrl) {
-                    autofillLoginForm(config.loginData)
-                    currentState = AutomationState.SEARCH_PAGE
-                }
-            }
-            AutomationState.SEARCH_PAGE -> {
-                if (url?.startsWith(searchUrl) == true) {
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        autofillSearchForm(config)
-                        currentState = AutomationState.RESULTS_PAGE
-                    }, 2500) // Espera para asegurar que los scripts de la página carguen.
-                }
-            }
-            AutomationState.RESULTS_PAGE -> {
-                if (url?.contains(resultsUrlSubstring) == true) {
-                    binding.extractButton.visibility = View.VISIBLE
-                    Toast.makeText(context, "Automatización completada. Listo para extraer.", Toast.LENGTH_SHORT).show()
-                }
-            }
-            else -> { /* No hacer nada en estado IDLE */ }
+    private fun autofillCurrentPage() {
+        val config = sharedViewModel.config.value ?: return
+        when {
+            currentPageUrl == loginUrl -> autofillLoginForm(config.loginData)
+            currentPageUrl?.startsWith(searchUrl) == true -> autofillSearchForm(config)
+            else -> Toast.makeText(context, "No hay formulario para autocompletar en esta página.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -95,6 +82,7 @@ class ExtractionFragment : Fragment() {
                 ['input', 'blur'].forEach(eventName => {
                     document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
                 });
+                // Hacemos clic en el botón de ingresar después de rellenar.
                 document.querySelector('button[type="submit"]').click();
             })();
         """.trimIndent()
@@ -122,18 +110,13 @@ class ExtractionFragment : Fragment() {
                         document.querySelector('input[formcontrolname="numero"]').value = '${config.numeroPartida}';
                         document.querySelector('input[formcontrolname="numero"]').dispatchEvent(new Event('input', { bubbles: true }));
                         document.querySelector('.ant-radio-input').click();
+                        // Hacemos clic en el botón de buscar después de rellenar.
                         document.querySelector('button[type="submit"]').click();
                     }, 1000);
                 }, 1000);
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
-    }
-
-    private fun setupExtractButton() {
-        binding.extractButton.setOnClickListener {
-            extractImagesFromWebView()
-        }
     }
 
     private fun extractImagesFromWebView() {
