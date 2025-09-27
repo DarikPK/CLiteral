@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
 import org.json.JSONArray
@@ -47,7 +48,6 @@ class ExtractionFragment : Fragment() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
-                Toast.makeText(context, "URL: $url", Toast.LENGTH_LONG).show()
                 updateButtonStates(url)
             }
         }
@@ -82,6 +82,26 @@ class ExtractionFragment : Fragment() {
         binding.extractButton.setOnClickListener {
             extractImagesFromWebView()
         }
+        binding.debugButton.setOnClickListener {
+            showCurrentUrlDialog()
+        }
+    }
+
+    private fun showCurrentUrlDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("URL Actual")
+            .setMessage(currentPageUrl ?: "No hay URL disponible")
+            .setPositiveButton("Copiar") { dialog, _ ->
+                val clipboard = context?.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("URL", currentPageUrl)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "URL copiada al portapapeles", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cerrar") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun autofillCurrentPage() {
