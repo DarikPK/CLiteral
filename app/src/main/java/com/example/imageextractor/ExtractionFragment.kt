@@ -143,19 +143,35 @@ class ExtractionFragment : Fragment() {
                     try {
                         const dropdown = await waitForElement(dropdownSelector);
                         dropdown.click();
-                        await new Promise(resolve => setTimeout(resolve, 300)); // Wait for dropdown animation
+                        await new Promise(resolve => setTimeout(resolve, 300));
 
-                        const optionContainer = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
+                        // Find the virtual scroll container
+                        const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                        if (!scrollViewport) {
+                            // Fallback for non-virtual scroll
+                            const option = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"]`);
+                            option.scrollIntoView({ block: 'center' });
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            option.click();
+                            return;
+                        }
 
-                        // Scroll the item into the center of the view to handle virtual scrolling
-                        optionContainer.scrollIntoView({ block: 'center', inline: 'nearest' });
-                        await new Promise(resolve => setTimeout(resolve, 300)); // Wait for scroll to finish
+                        // For virtual scroll, find the index and calculate the scroll position
+                        const allOptions = Array.from(document.querySelectorAll('nz-option-item'));
+                        const targetIndex = allOptions.findIndex(opt => opt.getAttribute('title') === optionTitle);
 
-                        const clickableContent = optionContainer.querySelector('.ant-select-item-option-content');
-                        if (clickableContent) {
-                             clickableContent.click();
+                        if (targetIndex !== -1) {
+                            // Assuming a fixed item height, which is common for virtual scrolls.
+                            // 32px is a standard height for Ng-Zorro dropdown items.
+                            const itemHeight = 32;
+                            scrollViewport.scrollTop = itemHeight * targetIndex;
+                            await new Promise(resolve => setTimeout(resolve, 300)); // Wait for scroll to render the element
+
+                            // Click the element now that it's rendered
+                            const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
+                            optionToClick.click();
                         } else {
-                             optionContainer.click(); // Fallback
+                            console.error("Option not found: " + optionTitle);
                         }
                         return true;
                     } catch (error) {
