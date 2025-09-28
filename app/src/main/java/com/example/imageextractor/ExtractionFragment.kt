@@ -121,7 +121,6 @@ class ExtractionFragment : Fragment() {
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
             (async function() {
-                // Waits for an element to exist in the DOM.
                 function waitForElement(selector, timeout = 5000) {
                     return new Promise((resolve, reject) => {
                         const interval = setInterval(() => {
@@ -138,7 +137,6 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
-                // Waits for an element to be enabled (not disabled).
                 async function waitForElementEnabled(selector, timeout = 5000) {
                     const element = await waitForElement(selector, timeout);
                     return new Promise((resolve, reject) => {
@@ -157,12 +155,11 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
-                // Clicks a dropdown, scrolls to the option, and selects it.
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
                     try {
                         const dropdown = await waitForElementEnabled(dropdownSelector);
                         dropdown.click();
-                        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
+                        await new Promise(resolve => setTimeout(resolve, 500));
 
                         const targetIndex = predefinedList.indexOf(optionTitle);
                         if (targetIndex === -1) {
@@ -174,10 +171,9 @@ class ExtractionFragment : Fragment() {
                         if (scrollViewport) {
                             const itemHeight = 32;
                             scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for scroll
+                            await new Promise(resolve => setTimeout(resolve, 500));
                         }
 
-                        // Find option by visible text, not just title
                         const optionToClick = Array.from(document.querySelectorAll('nz-option-item .ant-select-item-option-content'))
                             .find(el => el.textContent.trim() === optionTitle);
 
@@ -194,28 +190,29 @@ class ExtractionFragment : Fragment() {
                     }
                 }
 
-                // --- Main Execution ---
                 const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
-                const areaList = ["REGISTRO DE PREDIOS", "REGISTRO DE PERSONAS JURIDICAS", "REGISTRO DE PERSONAS NATURALES", "REGISTRO DE BIENES MUEBLES"];
 
-                // 1. Select "Oficina Registral"
+                const newAreaList = ["PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES", "REGISTRO MOBILIARIO DE CONTRATOS", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE NAVES)"];
+                const areaMapping = {
+                    "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
+                    "REGISTRO DE PERSONAS JURIDICAS": "PERSONAS JURIDICAS",
+                    "REGISTRO DE PERSONAS NATURALES": "PERSONAS NATURALES",
+                    "REGISTRO DE BIENES MUEBLES": "REGISTRO MOBILIARIO DE CONTRATOS"
+                };
+                const mappedAreaTitle = areaMapping['${config.areaRegistral}'] || '${config.areaRegistral}';
+
                 await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}', officeList);
-
-                // 2. Wait for "Área Registral" to be enabled, then select it
                 await waitForElementEnabled('nz-select[formcontrolname="areaRegistral"]');
-                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}', areaList);
+                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', mappedAreaTitle, newAreaList);
 
-                // 3. Wait for the "Partida" radio button to be enabled, then click it
                 const partidaRadio = await waitForElementEnabled('label[nzvalue="2"] input');
                 partidaRadio.click();
 
-                // 4. Wait for the number input to be enabled, then fill it
                 const numeroInput = await waitForElementEnabled('input[formcontrolname="numero"]');
                 numeroInput.value = '${config.numeroPartida}';
                 numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
                 numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
-                // 5. Wait for the search button to be enabled, then click it
                 const submitButton = await waitForElementEnabled('button.btn-buscar-partida');
                 submitButton.click();
 
