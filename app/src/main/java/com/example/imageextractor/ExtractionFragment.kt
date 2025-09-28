@@ -121,6 +121,7 @@ class ExtractionFragment : Fragment() {
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
             (async function() {
+                // Waits for an element to exist in the DOM.
                 function waitForElement(selector, timeout = 5000) {
                     return new Promise((resolve, reject) => {
                         const interval = setInterval(() => {
@@ -137,64 +138,66 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
-                async function selectDropdownOption(dropdownSelector, optionTitle) {
-                    try {
-                        const dropdown = await waitForElement(dropdownSelector);
-                        dropdown.click();
-                        await new Promise(resolve => setTimeout(resolve, 300));
-
-                        const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
-                        const areaList = ["REGISTRO DE PREDIOS", "REGISTRO DE PERSONAS JURIDICAS", "REGISTRO DE PERSONAS NATURALES", "REGISTRO DE BIENES MUEBLES"];
-
-                        let listToUse;
-                        if (dropdownSelector.includes('oficinaRegistral')) {
-                            listToUse = officeList;
-                        } else if (dropdownSelector.includes('areaRegistral')) {
-                            listToUse = areaList;
-                        }
-
-                        if (listToUse) {
-                            const targetIndex = listToUse.indexOf(optionTitle);
-                            if (targetIndex === -1) {
-                                console.error(`Option "${'$'}{optionTitle}" not found in predefined list.`);
-                                return false;
+                // Waits for an element to be enabled (not disabled).
+                async function waitForElementEnabled(selector, timeout = 5000) {
+                    const element = await waitForElement(selector, timeout);
+                    return new Promise((resolve, reject) => {
+                        const interval = setInterval(() => {
+                            const isNzSelectDisabled = element.classList.contains('ant-select-disabled');
+                            const isInputDisabled = element.disabled;
+                            if (!isNzSelectDisabled && !isInputDisabled) {
+                                clearInterval(interval);
+                                resolve(element);
                             }
-
-                            const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
-                            if (scrollViewport) {
-                                const itemHeight = 32;
-                                scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                                await new Promise(resolve => setTimeout(resolve, 300));
-                            }
-                        }
-
-                        const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
-                        optionToClick.click();
-
-                        return true;
-                    } catch (error) {
-                        console.error(error.message);
-                        return false;
-                    }
+                        }, 100);
+                        setTimeout(() => {
+                            clearInterval(interval);
+                            reject(new Error(`Element "${'$'}{selector}" did not become enabled within ${'$'}{timeout}ms`));
+                        }, timeout);
+                    });
                 }
 
-                // Execution sequence
-                await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}');
-                await new Promise(resolve => setTimeout(resolve, 500));
-                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}');
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Clicks a dropdown, scrolls to the option, and selects it.
+                async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
+                    const dropdown = await waitForElementEnabled(dropdownSelector);
+                    dropdown.click();
+                    await new Promise(resolve => setTimeout(resolve, 300));
 
-                const partidaRadio = await waitForElement('label[nzvalue="2"]');
-                if (!partidaRadio.querySelector('input').disabled) partidaRadio.click();
+                    const targetIndex = predefinedList.indexOf(optionTitle);
+                    if (targetIndex === -1) {
+                        console.error(`Option "${'$'}{optionTitle}" not found in list.`);
+                        return false;
+                    }
 
-                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
+                    const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                    if (scrollViewport) {
+                        const itemHeight = 32;
+                        scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+
+                    const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
+                    optionToClick.click();
+                    return true;
+                }
+
+                // --- Main Execution ---
+                const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
+                const areaList = ["REGISTRO DE PREDIOS", "REGISTRO DE PERSONAS JURIDICAS", "REGISTRO DE PERSONAS NATURALES", "REGISTRO DE BIENES MUEBLES"];
+
+                await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}', officeList);
+                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}', areaList);
+
+                const partidaRadio = await waitForElementEnabled('label[nzvalue="2"] input');
+                partidaRadio.click();
+
+                const numeroInput = await waitForElementEnabled('input[formcontrolname="numero"]');
                 numeroInput.value = '${config.numeroPartida}';
                 numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
                 numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const submitButton = await waitForElement('button.btn-buscar-partida');
-                if (!submitButton.disabled) submitButton.click();
+                const submitButton = await waitForElementEnabled('button.btn-buscar-partida');
+                submitButton.click();
 
             })();
         """.trimIndent()
