@@ -28,14 +28,14 @@
                 android:id="@+id/radio_manual"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Manual"/>
+                android:text="Manual"
+                android:checked="true"/>
             <RadioButton
                 android:id="@+id/radio_random"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Aleatorio"
-                android:layout_marginStart="16dp"
-                android:checked="true"/>
+                android:layout_marginStart="16dp"/>
         </RadioGroup>
 
         <LinearLayout
@@ -120,8 +120,7 @@
                 android:id="@+id/partida_edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:text="40701206"/>
+                android:inputType="number"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <CheckBox
@@ -136,7 +135,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Continuar"
-            android:backgroundTint="@color/button_blue"
             android:layout_marginTop="24dp"/>
 
     </LinearLayout>
