@@ -13,7 +13,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
+import android.util.Base64
 import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 
 class ExtractionFragment : Fragment() {
 
@@ -54,30 +58,39 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun updateButtonStates(url: String?) {
-        val autofillButton = binding.autofillButton
-        binding.extractButton.visibility = if (url?.contains(resultsUrlSubstring) == true) View.VISIBLE else View.GONE
+        val actionButton = binding.actionButton
+        binding.extractButton.visibility = View.GONE // This button is no longer used
 
         when {
-            url == loginUrl -> {
-                autofillButton.visibility = View.VISIBLE
+            url?.contains(resultsUrlSubstring) == true -> {
+                actionButton.visibility = View.VISIBLE
+                actionButton.setImageResource(android.R.drawable.ic_media_play)
+                actionButton.contentDescription = "Iniciar extracción de imágenes"
             }
-            url?.startsWith(searchUrl) == true -> {
-                autofillButton.visibility = View.VISIBLE
+            url == loginUrl || url?.startsWith(searchUrl) == true -> {
+                actionButton.visibility = View.VISIBLE
+                actionButton.setImageResource(android.R.drawable.ic_menu_edit)
+                actionButton.contentDescription = "Autocompletar Datos"
             }
             else -> {
-                autofillButton.visibility = View.GONE
+                actionButton.visibility = View.GONE
             }
         }
     }
 
     private fun setupButtons() {
-        binding.autofillButton.setOnClickListener {
-            updateButtonStates(binding.webView.url)
-            autofillCurrentPage()
+        binding.actionButton.setOnClickListener {
+            when {
+                currentPageUrl?.contains(resultsUrlSubstring) == true -> {
+                    extractImagesFromPartida()
+                }
+                else -> {
+                    autofillCurrentPage()
+                }
+            }
         }
-        binding.extractButton.setOnClickListener {
-            extractImagesFromWebView()
-        }
+        // The old extract button logic is removed, its functionality is now in actionButton.
+        binding.extractButton.setOnClickListener(null)
     }
 
     private fun autofillCurrentPage() {
@@ -219,31 +232,180 @@ class ExtractionFragment : Fragment() {
         binding.webView.evaluateJavascript(jsScript, null)
     }
 
-    private fun extractImagesFromWebView() {
+    private fun extractImagesFromPartida() {
+        Toast.makeText(context, "Iniciando extracción detallada...", Toast.LENGTH_SHORT).show()
         val jsScript = """
-            (function() {
-                const pageUrl = window.location.href;
-                const urls = Array.from(document.querySelectorAll('img')).map(img => {
-                    let src = img.getAttribute('src') || img.getAttribute('data-src');
-                    if (!src) return null;
-                    try { return new URL(src, pageUrl).href; } catch (e) { return null; }
-                }).filter(Boolean);
-                return JSON.stringify(urls);
+            (async function() {
+              // --- Configuración ---
+              const MAX_WAIT_MS = 10000;
+              const STABLE_CHECK_MS = 600;
+              const POLL_INTERVAL_MS = 200;
+
+              // --- Helpers ---
+              function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+              async function waitForCanvasStable(timeout = MAX_WAIT_MS) {
+                const start = Date.now();
+                let lastCount = 0;
+                let stableSince = Date.now();
+
+                while (Date.now() - start < timeout) {
+                  const canvases = document.querySelectorAll('canvas');
+                  const count = canvases.length;
+
+                  if (count > 0) {
+                    if (count !== lastCount) {
+                      stableSince = Date.now();
+                      lastCount = count;
+                    } else {
+                      if (Date.now() - stableSince >= STABLE_CHECK_MS) {
+                        return Array.from(canvases);
+                      }
+                    }
+                  }
+                  await sleep(POLL_INTERVAL_MS);
+                }
+                return Array.from(document.querySelectorAll('canvas'));
+              }
+
+              async function captureCanvasesAndGetData(asientoNum, paginaNum) {
+                const canvases = Array.from(document.querySelectorAll('canvas'));
+                const capturedImages = [];
+                for (let i = 0; i < canvases.length; i++) {
+                  try {
+                    const canvas = canvases[i];
+                    const dataUrl = canvas.toDataURL("image/png");
+                    const filename = `asiento_${"$"}{asientoNum}_pagina_${"$"}{paginaNum}_canvas_${"$"}{i+1}.png`;
+                    capturedImages.push({ filename: filename, dataUrl: dataUrl });
+                    console.log(`Asiento ${"$"}{asientoNum} - Página ${"$"}{paginaNum} - Canvas ${"$"}{i+1} capturado.`);
+                  } catch (err) {
+                    console.error(`Error capturando canvas ${"$"}{i+1} de asiento ${"$"}{asientoNum} página ${"$"}{paginaNum}:`, err);
+                  }
+                }
+                return capturedImages;
+              }
+
+              // --- Lógica Principal ---
+              console.log("Inicio recorrido asientos/páginas...");
+              const allImageData = [];
+              let X = 1;
+
+              while (true) {
+                const asientoElem = Array.from(document.querySelectorAll('.columna-lista'))
+                  .find(el => (el.innerText || "").includes(`N° Asiento: ${"$"}{X}`));
+
+                if (!asientoElem) {
+                  console.log(`No se encontró Asiento ${"$"}{X}. Fin del recorrido.`);
+                  break;
+                }
+
+                console.log(`Procesando Asiento ${"$"}{X}...`);
+                let Y = 1;
+
+                while (true) {
+                  const asientoElemCurrent = Array.from(document.querySelectorAll('.columna-lista'))
+                    .find(el => (el.innerText || "").includes(`N° Asiento: ${"$"}{X}`));
+
+                  if (!asientoElemCurrent) {
+                    console.warn(`El Asiento ${"$"}{X} desapareció; salir de sus páginas.`);
+                    break;
+                  }
+
+                  const botonY = Array.from(asientoElemCurrent.querySelectorAll('.pagina .boton-pagina'))
+                    .find(span => (span.textContent || span.innerText || "").trim() === `${"$"}{Y}`);
+
+                  if (!botonY) {
+                    console.log(`No se encontró página ${"$"}{Y} en Asiento ${"$"}{X} — pasar a Asiento ${"$"}{X+1}.`);
+                    break;
+                  }
+
+                  try {
+                    console.log(`Asiento ${"$"}{X} -> Página ${"$"}{Y}: clic...`);
+                    botonY.click();
+                  } catch (err) {
+                    try {
+                      botonY.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                    } catch (innerErr) {
+                      console.error(`No se pudo hacer click en Asiento ${"$"}{X} Página ${"$"}{Y}:`, innerErr);
+                    }
+                  }
+
+                  const canvases = await waitForCanvasStable(MAX_WAIT_MS);
+                  if (!canvases || canvases.length === 0) {
+                    console.warn(`En Asiento ${"$"}{X} Página ${"$"}{Y} no se detectaron <canvas>. Continuando.`);
+                  } else {
+                    const imagesData = await captureCanvasesAndGetData(X, Y);
+                    allImageData.push(...imagesData);
+                    console.log(`Asiento ${"$"}{X} Página ${"$"}{Y}: ${"$"}{imagesData.length} canvas capturados.`);
+                  }
+
+                  Y++;
+                  await sleep(300);
+                }
+
+                X++;
+                await sleep(400);
+              }
+
+              console.log("✅ Recorrido completo de todos los asientos y páginas.");
+              return JSON.stringify(allImageData);
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript) { result ->
-            try {
-                val jsonArray = JSONArray(result)
-                val imageUrls = List(jsonArray.length()) { i -> jsonArray.getString(i) }
-                sharedViewModel.setImageUrls(imageUrls)
-                activity?.runOnUiThread {
-                    Toast.makeText(context, "${imageUrls.size} imágenes extraídas y guardadas.", Toast.LENGTH_SHORT).show()
+            activity?.runOnUiThread {
+                try {
+                    if (result == null || result == "null" || result == "[]") {
+                        Toast.makeText(context, "No se extrajeron imágenes o hubo un error.", Toast.LENGTH_LONG).show()
+                        return@runOnUiThread
+                    }
+
+                    val imagesArray = JSONArray(result)
+                    if (imagesArray.length() == 0) {
+                        Toast.makeText(context, "No se encontraron imágenes para guardar.", Toast.LENGTH_LONG).show()
+                        return@runOnUiThread
+                    }
+
+                    val savedImagePaths = mutableListOf<String>()
+                    for (i in 0 until imagesArray.length()) {
+                        val imageObject = imagesArray.getJSONObject(i)
+                        val filename = imageObject.getString("filename")
+                        val dataUrl = imageObject.getString("dataUrl")
+                        saveImageFromDataUrl(dataUrl, filename)?.let { path ->
+                            savedImagePaths.add(path)
+                        }
+                    }
+
+                    sharedViewModel.setImageUrls(savedImagePaths)
+                    Toast.makeText(context, "${savedImagePaths.size} imágenes guardadas exitosamente.", Toast.LENGTH_SHORT).show()
                     findNavController().popBackStack(R.id.mainMenuFragment, false)
+
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error al procesar o guardar las imágenes: ${e.message}", Toast.LENGTH_LONG).show()
+                    e.printStackTrace()
                 }
-            } catch (e: Exception) {
-                activity?.runOnUiThread { Toast.makeText(context, "Error al procesar las imágenes.", Toast.LENGTH_LONG).show() }
-                e.printStackTrace()
             }
+        }
+    }
+
+    private fun saveImageFromDataUrl(dataUrl: String, filename: String): String? {
+        return try {
+            val imageDir = File(context?.getExternalFilesDir(null), "extacciones")
+            if (!imageDir.exists()) {
+                imageDir.mkdirs()
+            }
+            val imageFile = File(imageDir, filename)
+
+            // data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
+            val base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1)
+            val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
+
+            FileOutputStream(imageFile).use { out ->
+                out.write(decodedBytes)
+            }
+            imageFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 

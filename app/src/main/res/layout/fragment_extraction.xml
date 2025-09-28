@@ -16,12 +16,12 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/autofill_button"
+        android:id="@+id/action_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_menu_edit"
-        android:contentDescription="Autocompletar Datos"
+        android:contentDescription="Acción"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -33,7 +33,7 @@
         android:layout_marginBottom="16dp"
         android:src="@android:drawable/ic_menu_search"
         android:contentDescription="Extraer Imágenes"
-        app:layout_constraintBottom_toTopOf="@id/autofill_button"
+        app:layout_constraintBottom_toTopOf="@id/action_button"
         app:layout_constraintEnd_toEndOf="parent"
         android:visibility="gone"
         tools:visibility="visible"/>
