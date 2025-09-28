@@ -212,6 +212,8 @@ class ExtractionFragment : Fragment() {
                 const submitButton = await waitForElementEnabled('button.btn-buscar-partida');
                 submitButton.click();
 
+                const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
+                previewButton.click();
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
