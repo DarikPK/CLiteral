@@ -1,6 +1,9 @@
 package com.example.imageextractor
 
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,9 +32,23 @@ class ExtractionConfigFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupAutofillHighlight()
         setupDropdowns()
         setupLoginModeSelector()
         setupContinueButton()
+    }
+
+    private fun setupAutofillHighlight() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val color = ContextCompat.getColor(requireContext(), R.color.button_blue)
+            val highlightDrawable = ColorDrawable(color)
+            binding.dniEditText.autofillHighlight = highlightDrawable
+            binding.digitoEditText.autofillHighlight = highlightDrawable
+            binding.fechaEmisionEditText.autofillHighlight = highlightDrawable
+            binding.oficinaDropdown.autofillHighlight = highlightDrawable
+            binding.areaDropdown.autofillHighlight = highlightDrawable
+            binding.partidaEditText.autofillHighlight = highlightDrawable
+        }
     }
 
     private fun setupDropdowns() {
