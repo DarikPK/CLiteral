@@ -3,12 +3,12 @@ package com.example.imageextractor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
-import androidx.core.content.ContextCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -40,14 +40,26 @@ class ExtractionConfigFragment : Fragment() {
 
     private fun setupAutofillHighlight() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val color = ContextCompat.getColor(requireContext(), R.color.button_blue)
-            val highlightDrawable = ColorDrawable(color)
-            binding.dniEditText.autofillHighlight = highlightDrawable
-            binding.digitoEditText.autofillHighlight = highlightDrawable
-            binding.fechaEmisionEditText.autofillHighlight = highlightDrawable
-            binding.oficinaDropdown.autofillHighlight = highlightDrawable
-            binding.areaDropdown.autofillHighlight = highlightDrawable
-            binding.partidaEditText.autofillHighlight = highlightDrawable
+            try {
+                val color = ContextCompat.getColor(requireContext(), R.color.button_blue)
+                val highlightDrawable = ColorDrawable(color)
+                val method = View::class.java.getMethod("setAutofillHighlight", android.graphics.drawable.Drawable::class.java)
+
+                val viewsToHighlight = listOf(
+                    binding.dniEditText,
+                    binding.digitoEditText,
+                    binding.fechaEmisionEditText,
+                    binding.oficinaDropdown,
+                    binding.areaDropdown,
+                    binding.partidaEditText
+                )
+
+                viewsToHighlight.forEach { view ->
+                    method.invoke(view, highlightDrawable)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
