@@ -77,6 +77,10 @@ class ExtractionConfigFragment : Fragment() {
     }
 
     private fun setupLoginModeSelector() {
+        // Set initial visibility based on the default selection
+        binding.manualLoginFields.isVisible = binding.loginModeRadioGroup.checkedRadioButtonId == R.id.radio_manual
+
+        // Set listener for subsequent changes
         binding.loginModeRadioGroup.setOnCheckedChangeListener { _, checkedId ->
             binding.manualLoginFields.isVisible = checkedId == R.id.radio_manual
         }

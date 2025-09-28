@@ -120,7 +120,8 @@
                 android:id="@+id/partida_edit_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"/>
+                android:inputType="number"
+                android:text="40701206"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <CheckBox
