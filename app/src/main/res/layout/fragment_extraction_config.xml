@@ -28,14 +28,14 @@
                 android:id="@+id/radio_manual"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Manual"
-                android:checked="true"/>
+                android:text="Manual"/>
             <RadioButton
                 android:id="@+id/radio_random"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Aleatorio"
-                android:layout_marginStart="16dp"/>
+                android:layout_marginStart="16dp"
+                android:checked="true"/>
         </RadioGroup>
 
         <LinearLayout
