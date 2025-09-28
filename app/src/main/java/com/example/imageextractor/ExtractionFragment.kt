@@ -159,26 +159,39 @@ class ExtractionFragment : Fragment() {
 
                 // Clicks a dropdown, scrolls to the option, and selects it.
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
-                    const dropdown = await waitForElementEnabled(dropdownSelector);
-                    dropdown.click();
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    try {
+                        const dropdown = await waitForElementEnabled(dropdownSelector);
+                        dropdown.click();
+                        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
 
-                    const targetIndex = predefinedList.indexOf(optionTitle);
-                    if (targetIndex === -1) {
-                        console.error(`Option "${'$'}{optionTitle}" not found in list.`);
+                        const targetIndex = predefinedList.indexOf(optionTitle);
+                        if (targetIndex === -1) {
+                            console.error(`Option "${'$'}{optionTitle}" not found in list.`);
+                            return false;
+                        }
+
+                        const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                        if (scrollViewport) {
+                            const itemHeight = 32;
+                            scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for scroll
+                        }
+
+                        // Find option by visible text, not just title
+                        const optionToClick = Array.from(document.querySelectorAll('nz-option-item .ant-select-item-option-content'))
+                            .find(el => el.textContent.trim() === optionTitle);
+
+                        if (optionToClick) {
+                            optionToClick.click();
+                            return true;
+                        } else {
+                            console.error(`Option "${'$'}{optionTitle}" not found after scrolling.`);
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error(error.message);
                         return false;
                     }
-
-                    const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
-                    if (scrollViewport) {
-                        const itemHeight = 32;
-                        scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                    }
-
-                    const optionToClick = await waitForElement(`nz-option-item[title="${'$'}{optionTitle}"] .ant-select-item-option-content`);
-                    optionToClick.click();
-                    return true;
                 }
 
                 // --- Main Execution ---
