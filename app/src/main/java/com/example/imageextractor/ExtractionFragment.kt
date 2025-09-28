@@ -60,13 +60,9 @@ class ExtractionFragment : Fragment() {
         when {
             url == loginUrl -> {
                 autofillButton.visibility = View.VISIBLE
-                val redColor = ContextCompat.getColor(requireContext(), R.color.button_red)
-                autofillButton.backgroundTintList = ColorStateList.valueOf(redColor)
             }
             url?.startsWith(searchUrl) == true -> {
                 autofillButton.visibility = View.VISIBLE
-                val blueColor = ContextCompat.getColor(requireContext(), R.color.button_blue)
-                autofillButton.backgroundTintList = ColorStateList.valueOf(blueColor)
             }
             else -> {
                 autofillButton.visibility = View.GONE

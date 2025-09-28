@@ -22,7 +22,7 @@
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_menu_edit"
         android:contentDescription="Autocompletar Datos"
-        app:backgroundTint="@color/button_red"
+        app:backgroundTint="@color/button_blue"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
