@@ -185,17 +185,24 @@ class ExtractionFragment : Fragment() {
                 const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
                 const areaList = ["REGISTRO DE PREDIOS", "REGISTRO DE PERSONAS JURIDICAS", "REGISTRO DE PERSONAS NATURALES", "REGISTRO DE BIENES MUEBLES"];
 
+                // 1. Select "Oficina Registral"
                 await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}', officeList);
+
+                // 2. Wait for "Área Registral" to be enabled, then select it
+                await waitForElementEnabled('nz-select[formcontrolname="areaRegistral"]');
                 await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', '${config.areaRegistral}', areaList);
 
+                // 3. Wait for the "Partida" radio button to be enabled, then click it
                 const partidaRadio = await waitForElementEnabled('label[nzvalue="2"] input');
                 partidaRadio.click();
 
+                // 4. Wait for the number input to be enabled, then fill it
                 const numeroInput = await waitForElementEnabled('input[formcontrolname="numero"]');
                 numeroInput.value = '${config.numeroPartida}';
                 numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
                 numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
+                // 5. Wait for the search button to be enabled, then click it
                 const submitButton = await waitForElementEnabled('button.btn-buscar-partida');
                 submitButton.click();
 
