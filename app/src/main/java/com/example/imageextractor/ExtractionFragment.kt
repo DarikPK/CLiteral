@@ -18,8 +18,18 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import android.webkit.JavascriptInterface
 
 class ExtractionFragment : Fragment() {
+
+    private inner class JsBridge {
+        @JavascriptInterface
+        fun notifyUrlChanged() {
+            activity?.runOnUiThread {
+                updateButtonStates(binding.webView.url)
+            }
+        }
+    }
 
     private var _binding: FragmentExtractionBinding? = null
     private val binding get() = _binding!!
@@ -47,6 +57,7 @@ class ExtractionFragment : Fragment() {
 
     private fun setupWebView() {
         binding.webView.settings.javaScriptEnabled = true
+        binding.webView.addJavascriptInterface(JsBridge(), "AndroidBridge")
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -227,6 +238,12 @@ class ExtractionFragment : Fragment() {
 
                 const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
                 previewButton.click();
+
+                // Wait for the next page to load and notify Android to update the button state
+                await waitForElement('.columna-lista', 10000);
+                if (typeof AndroidBridge !== 'undefined') {
+                    AndroidBridge.notifyUrlChanged();
+                }
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
