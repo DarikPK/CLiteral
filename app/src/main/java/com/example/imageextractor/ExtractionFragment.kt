@@ -177,35 +177,42 @@ class ExtractionFragment : Fragment() {
 
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
                     try {
-                        const dropdown = await waitForElementEnabled(dropdownSelector);
-                        dropdown.click();
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        const dropdownHost = await waitForElementEnabled(dropdownSelector);
 
-                        const targetIndex = predefinedList.indexOf(optionTitle);
-                        if (targetIndex === -1) {
-                            console.error(`Option "${'$'}{optionTitle}" not found in list.`);
-                            return false;
-                        }
+                        // More robust click simulation to open the dropdown overlay
+                        dropdownHost.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        await sleep(50);
+                        dropdownHost.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                        await sleep(50);
+                        dropdownHost.click();
+                        await sleep(500); // Wait for overlay animation
 
-                        const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                        // Use a more robust selector for the virtual scroll viewport
+                        const scrollViewport = document.querySelector('body .cdk-virtual-scroll-viewport');
                         if (scrollViewport) {
-                            const itemHeight = 32;
-                            scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                            await new Promise(resolve => setTimeout(resolve, 500));
+                            const targetIndex = predefinedList.indexOf(optionTitle);
+                            if (targetIndex > -1) {
+                                const itemHeight = 32; // Common height for dropdown items
+                                scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                                await sleep(500); // Wait for scroll to finish
+                            }
                         }
 
-                        const optionToClick = Array.from(document.querySelectorAll('nz-option-item .ant-select-item-option-content'))
-                            .find(el => el.textContent.trim() === optionTitle);
+                        // Wait for the desired option to be present in the DOM and click it.
+                        // Using the title attribute is more reliable than textContent.
+                        const optionSelector = `nz-option-item[title="${optionTitle}"]`;
+                        const optionToClick = await waitForElement(optionSelector, 5000);
 
                         if (optionToClick) {
                             optionToClick.click();
+                            await sleep(300); // Wait for selection to be processed
                             return true;
                         } else {
-                            console.error(`Option "${'$'}{optionTitle}" not found after scrolling.`);
+                            console.error(`Dropdown option "${optionTitle}" not found after scroll and wait.`);
                             return false;
                         }
                     } catch (error) {
-                        console.error(error.message);
+                        console.error(`Error selecting dropdown option "${optionTitle}":`, error);
                         return false;
                     }
                 }
