@@ -1,24 +1,21 @@
 package com.example.imageextractor
 
-import android.content.res.ColorStateList
 import android.os.Bundle
+import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
-import android.util.Base64
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
-import android.webkit.JavascriptInterface
 
 class ExtractionFragment : Fragment() {
 
@@ -26,7 +23,9 @@ class ExtractionFragment : Fragment() {
         @JavascriptInterface
         fun notifyUrlChanged() {
             activity?.runOnUiThread {
-                updateButtonStates(binding.webView.url)
+                binding.webView?.url?.let {
+                    updateButtonStates(it)
+                }
             }
         }
     }
@@ -100,7 +99,6 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
-        // The old extract button logic is removed, its functionality is now in actionButton.
         binding.extractButton.setOnClickListener(null)
     }
 
@@ -141,6 +139,8 @@ class ExtractionFragment : Fragment() {
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
             (async function() {
+                function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
                 function waitForElement(selector, timeout = 5000) {
                     return new Promise((resolve, reject) => {
                         const interval = setInterval(() => {
@@ -152,7 +152,7 @@ class ExtractionFragment : Fragment() {
                         }, 100);
                         setTimeout(() => {
                             clearInterval(interval);
-                            reject(new Error(`Element with selector "${'$'}{selector}" not found within ${'$'}{timeout}ms`));
+                            reject(new Error(`Element with selector "\${'$'}{selector}" not found within \${'$'}{timeout}ms`));
                         }, timeout);
                     });
                 }
@@ -170,7 +170,7 @@ class ExtractionFragment : Fragment() {
                         }, 100);
                         setTimeout(() => {
                             clearInterval(interval);
-                            reject(new Error(`Element "${'$'}{selector}" did not become enabled within ${'$'}{timeout}ms`));
+                            reject(new Error(`Element "\${'$'}{selector}" did not become enabled within \${'$'}{timeout}ms`));
                         }, timeout);
                     });
                 }
@@ -179,46 +179,41 @@ class ExtractionFragment : Fragment() {
                     try {
                         const dropdownHost = await waitForElementEnabled(dropdownSelector);
 
-                        // More robust click simulation to open the dropdown overlay
                         dropdownHost.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                         await sleep(50);
                         dropdownHost.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
                         await sleep(50);
                         dropdownHost.click();
-                        await sleep(500); // Wait for overlay animation
+                        await sleep(500);
 
-                        // Use a more robust selector for the virtual scroll viewport
                         const scrollViewport = document.querySelector('body .cdk-virtual-scroll-viewport');
                         if (scrollViewport) {
                             const targetIndex = predefinedList.indexOf(optionTitle);
                             if (targetIndex > -1) {
-                                const itemHeight = 32; // Common height for dropdown items
+                                const itemHeight = 32;
                                 scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                                await sleep(500); // Wait for scroll to finish
+                                await sleep(500);
                             }
                         }
 
-                        // Wait for the desired option to be present in the DOM and click it.
-                        // Using the title attribute is more reliable than textContent.
-                        const optionSelector = `nz-option-item[title="${optionTitle}"]`;
+                        const optionSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
                         const optionToClick = await waitForElement(optionSelector, 5000);
 
                         if (optionToClick) {
                             optionToClick.click();
-                            await sleep(300); // Wait for selection to be processed
+                            await sleep(300);
                             return true;
                         } else {
-                            console.error(`Dropdown option "${optionTitle}" not found after scroll and wait.`);
+                            console.error(`Dropdown option "\${'$'}{optionTitle}" not found after scroll and wait.`);
                             return false;
                         }
                     } catch (error) {
-                        console.error(`Error selecting dropdown option "${optionTitle}":`, error);
+                        console.error(`Error selecting dropdown option "\${'$'}{optionTitle}":`, error);
                         return false;
                     }
                 }
 
                 const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
-
                 const newAreaList = ["PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES", "REGISTRO MOBILIARIO DE CONTRATOS", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE NAVES)"];
                 const areaMapping = {
                     "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
@@ -246,7 +241,6 @@ class ExtractionFragment : Fragment() {
                 const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
                 previewButton.click();
 
-                // Wait for the next page to load and notify Android to update the button state
                 await waitForElement('.columna-lista', 10000);
                 if (typeof AndroidBridge !== 'undefined') {
                     AndroidBridge.notifyUrlChanged();
@@ -260,15 +254,9 @@ class ExtractionFragment : Fragment() {
         Toast.makeText(context, "Iniciando extracción detallada...", Toast.LENGTH_SHORT).show()
         val jsScript = """
             (async function() {
-              // --- Configuración ---
-              const MAX_WAIT_MS = 10000;
-              const STABLE_CHECK_MS = 600;
-              const POLL_INTERVAL_MS = 200;
-
-              // --- Helpers ---
               function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-              async function waitForCanvasStable(timeout = MAX_WAIT_MS) {
+              async function waitForCanvasStable(timeout = 10000) {
                 const start = Date.now();
                 let lastCount = 0;
                 let stableSince = Date.now();
@@ -282,12 +270,12 @@ class ExtractionFragment : Fragment() {
                       stableSince = Date.now();
                       lastCount = count;
                     } else {
-                      if (Date.now() - stableSince >= STABLE_CHECK_MS) {
+                      if (Date.now() - stableSince >= 600) {
                         return Array.from(canvases);
                       }
                     }
                   }
-                  await sleep(POLL_INTERVAL_MS);
+                  await sleep(200);
                 }
                 return Array.from(document.querySelectorAll('canvas'));
               }
@@ -299,68 +287,67 @@ class ExtractionFragment : Fragment() {
                   try {
                     const canvas = canvases[i];
                     const dataUrl = canvas.toDataURL("image/png");
-                    const filename = `asiento_${"$"}{asientoNum}_pagina_${"$"}{paginaNum}_canvas_${"$"}{i+1}.png`;
+                    const filename = `asiento_\${'$'}{asientoNum}_pagina_\${'$'}{paginaNum}_canvas_\${'$'}{i+1}.png`;
                     capturedImages.push({ filename: filename, dataUrl: dataUrl });
-                    console.log(`Asiento ${"$"}{asientoNum} - Página ${"$"}{paginaNum} - Canvas ${"$"}{i+1} capturado.`);
+                    console.log(`Asiento \${'$'}{asientoNum} - Página \${'$'}{paginaNum} - Canvas \${'$'}{i+1} capturado.`);
                   } catch (err) {
-                    console.error(`Error capturando canvas ${"$"}{i+1} de asiento ${"$"}{asientoNum} página ${"$"}{paginaNum}:`, err);
+                    console.error(`Error capturando canvas \${'$'}{i+1} de asiento \${'$'}{asientoNum} página \${'$'}{paginaNum}:`, err);
                   }
                 }
                 return capturedImages;
               }
 
-              // --- Lógica Principal ---
               console.log("Inicio recorrido asientos/páginas...");
               const allImageData = [];
               let X = 1;
 
               while (true) {
                 const asientoElem = Array.from(document.querySelectorAll('.columna-lista'))
-                  .find(el => (el.innerText || "").includes(`N° Asiento: ${"$"}{X}`));
+                  .find(el => (el.innerText || "").includes(`N° Asiento: \${'$'}{X}`));
 
                 if (!asientoElem) {
-                  console.log(`No se encontró Asiento ${"$"}{X}. Fin del recorrido.`);
+                  console.log(`No se encontró Asiento \${'$'}{X}. Fin del recorrido.`);
                   break;
                 }
 
-                console.log(`Procesando Asiento ${"$"}{X}...`);
+                console.log(`Procesando Asiento \${'$'}{X}...`);
                 let Y = 1;
 
                 while (true) {
                   const asientoElemCurrent = Array.from(document.querySelectorAll('.columna-lista'))
-                    .find(el => (el.innerText || "").includes(`N° Asiento: ${"$"}{X}`));
+                    .find(el => (el.innerText || "").includes(`N° Asiento: \${'$'}{X}`));
 
                   if (!asientoElemCurrent) {
-                    console.warn(`El Asiento ${"$"}{X} desapareció; salir de sus páginas.`);
+                    console.warn(`El Asiento \${'$'}{X} desapareció; salir de sus páginas.`);
                     break;
                   }
 
                   const botonY = Array.from(asientoElemCurrent.querySelectorAll('.pagina .boton-pagina'))
-                    .find(span => (span.textContent || span.innerText || "").trim() === `${"$"}{Y}`);
+                    .find(span => (span.textContent || span.innerText || "").trim() === `\${'$'}{Y}`);
 
                   if (!botonY) {
-                    console.log(`No se encontró página ${"$"}{Y} en Asiento ${"$"}{X} — pasar a Asiento ${"$"}{X+1}.`);
+                    console.log(`No se encontró página \${'$'}{Y} en Asiento \${'$'}{X} — pasar a Asiento \${'$'}{X+1}.`);
                     break;
                   }
 
                   try {
-                    console.log(`Asiento ${"$"}{X} -> Página ${"$"}{Y}: clic...`);
+                    console.log(`Asiento \${'$'}{X} -> Página \${'$'}{Y}: clic...`);
                     botonY.click();
                   } catch (err) {
                     try {
                       botonY.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                     } catch (innerErr) {
-                      console.error(`No se pudo hacer click en Asiento ${"$"}{X} Página ${"$"}{Y}:`, innerErr);
+                      console.error(`No se pudo hacer click en Asiento \${'$'}{X} Página \${'$'}{Y}:`, innerErr);
                     }
                   }
 
-                  const canvases = await waitForCanvasStable(MAX_WAIT_MS);
+                  const canvases = await waitForCanvasStable();
                   if (!canvases || canvases.length === 0) {
-                    console.warn(`En Asiento ${"$"}{X} Página ${"$"}{Y} no se detectaron <canvas>. Continuando.`);
+                    console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectaron <canvas>. Continuando.`);
                   } else {
                     const imagesData = await captureCanvasesAndGetData(X, Y);
                     allImageData.push(...imagesData);
-                    console.log(`Asiento ${"$"}{X} Página ${"$"}{Y}: ${"$"}{imagesData.length} canvas capturados.`);
+                    console.log(`Asiento \${'$'}{X} Página \${'$'}{Y}: \${'$'}{imagesData.length} canvas capturados.`);
                   }
 
                   Y++;
@@ -400,11 +387,11 @@ class ExtractionFragment : Fragment() {
                     }
 
                     sharedViewModel.setImageUrls(savedImagePaths)
-                    Toast.makeText(context, "${savedImagePaths.size} imágenes guardadas exitosamente.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "\${savedImagePaths.size} imágenes guardadas exitosamente.", Toast.LENGTH_SHORT).show()
                     findNavController().popBackStack(R.id.mainMenuFragment, false)
 
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Error al procesar o guardar las imágenes: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Error al procesar o guardar las imágenes: \${e.message}", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
                 }
             }
@@ -419,7 +406,6 @@ class ExtractionFragment : Fragment() {
             }
             val imageFile = File(imageDir, filename)
 
-            // data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
             val base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1)
             val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
 
