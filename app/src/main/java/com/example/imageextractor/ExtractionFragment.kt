@@ -200,8 +200,13 @@ class ExtractionFragment : Fragment() {
                         const optionToClick = await waitForElement(optionSelector, 5000);
 
                         if (optionToClick) {
+                            // More robust click simulation for the option itself
+                            optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                            await sleep(50);
+                            optionToClick.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                            await sleep(50);
                             optionToClick.click();
-                            await sleep(300);
+                            await sleep(500); // Allow time for the UI to process the selection
                             return true;
                         } else {
                             console.error(`Dropdown option "\${'$'}{optionTitle}" not found after scroll and wait.`);
