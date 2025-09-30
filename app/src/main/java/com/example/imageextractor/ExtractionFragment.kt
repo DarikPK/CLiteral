@@ -196,17 +196,23 @@ class ExtractionFragment : Fragment() {
                             }
                         }
 
-                        const optionSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
-                        const optionToClick = await waitForElement(optionSelector, 5000);
+                        const optionContainerSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
+                        const optionContainer = await waitForElement(optionContainerSelector, 5000);
 
-                        if (optionToClick) {
-                            // More robust click simulation for the option itself
+                        if (optionContainer) {
+                            const optionToClick = optionContainer.querySelector('.ant-select-item-option-content');
+                            if (!optionToClick) {
+                                console.error(`Could not find the inner content element for option "\${'$'}{optionTitle}"`);
+                                return false;
+                            }
+
+                            // Apply the robust click simulation to the actual content element
                             optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                             await sleep(50);
                             optionToClick.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
                             await sleep(50);
                             optionToClick.click();
-                            await sleep(500); // Allow time for the UI to process the selection
+                            await sleep(500);
 
                             // Manually dispatch events on the host to notify Angular of the change
                             dropdownHost.dispatchEvent(new Event('input', { bubbles: true }));
