@@ -207,6 +207,13 @@ class ExtractionFragment : Fragment() {
                             await sleep(50);
                             optionToClick.click();
                             await sleep(500); // Allow time for the UI to process the selection
+
+                            // Manually dispatch events on the host to notify Angular of the change
+                            dropdownHost.dispatchEvent(new Event('input', { bubbles: true }));
+                            dropdownHost.dispatchEvent(new Event('change', { bubbles: true }));
+                            dropdownHost.dispatchEvent(new Event('blur', { bubbles: true }));
+                            await sleep(200);
+
                             return true;
                         } else {
                             console.error(`Dropdown option "\${'$'}{optionTitle}" not found after scroll and wait.`);
