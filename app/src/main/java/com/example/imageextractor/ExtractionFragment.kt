@@ -176,59 +176,32 @@ class ExtractionFragment : Fragment() {
                 }
 
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
-                    try {
-                        const dropdownHost = await waitForElementEnabled(dropdownSelector);
+                    const dropdown = await waitForElementEnabled(dropdownSelector);
+                    const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
 
-                        dropdownHost.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                        await sleep(50);
-                        dropdownHost.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                        await sleep(50);
-                        dropdownHost.click();
-                        await sleep(500);
+                    // Abrir el menú desplegable
+                    clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    await new Promise(resolve => setTimeout(resolve, 500));
 
-                        const scrollViewport = document.querySelector('body .cdk-virtual-scroll-viewport');
-                        if (scrollViewport) {
-                            const targetIndex = predefinedList.indexOf(optionTitle);
-                            if (targetIndex > -1) {
-                                const itemHeight = 32;
-                                scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                                await sleep(500);
-                            }
-                        }
-
-                        const optionContainerSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
-                        const optionContainer = await waitForElement(optionContainerSelector, 5000);
-
-                        if (optionContainer) {
-                            const optionToClick = optionContainer.querySelector('.ant-select-item-option-content');
-                            if (!optionToClick) {
-                                console.error(`Could not find the inner content element for option "\${'$'}{optionTitle}"`);
-                                return false;
-                            }
-
-                            // Apply the robust click simulation to the actual content element
-                            optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                            await sleep(50);
-                            optionToClick.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                            await sleep(50);
-                            optionToClick.click();
-                            await sleep(500);
-
-                            // Manually dispatch events on the host to notify Angular of the change
-                            dropdownHost.dispatchEvent(new Event('input', { bubbles: true }));
-                            dropdownHost.dispatchEvent(new Event('change', { bubbles: true }));
-                            dropdownHost.dispatchEvent(new Event('blur', { bubbles: true }));
-                            await sleep(200);
-
-                            return true;
-                        } else {
-                            console.error(`Dropdown option "\${'$'}{optionTitle}" not found after scroll and wait.`);
-                            return false;
-                        }
-                    } catch (error) {
-                        console.error(`Error selecting dropdown option "\${'$'}{optionTitle}":`, error);
+                    const targetIndex = predefinedList.indexOf(optionTitle);
+                    if (targetIndex === -1) {
+                        console.error(`Option "\${'$'}{optionTitle}" not found in list.`);
                         return false;
                     }
+
+                    // Desplazar el scroll virtual
+                    const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
+                    if (scrollViewport) {
+                        const itemHeight = 32;
+                        scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+
+                    // Seleccionar la opción
+                    const optionToClick = await waitForElement(`nz-option-item[title="\${'$'}{optionTitle}"] .ant-select-item-option-content`);
+                    optionToClick.click();
+                    return true;
                 }
 
                 const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
