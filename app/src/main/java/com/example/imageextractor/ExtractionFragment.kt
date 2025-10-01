@@ -276,6 +276,18 @@ class ExtractionFragment : Fragment() {
                 return Array.from(document.querySelectorAll('canvas'));
               }
 
+              async function waitForVisibleCanvas(timeout = 10000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                      const canvas = document.querySelector('canvas');
+                      if (canvas && canvas.height > 0 && canvas.width > 0) {
+                          return canvas;
+                      }
+                      await sleep(200);
+                  }
+                  throw new Error('Visible canvas not found within timeout');
+              }
+
               async function captureCanvasesAndGetData(asientoNum, paginaNum) {
                 const canvases = Array.from(document.querySelectorAll('canvas'));
                 const capturedImages = [];
@@ -337,13 +349,26 @@ class ExtractionFragment : Fragment() {
                     }
                   }
 
-                  const canvases = await waitForCanvasStable();
-                  if (!canvases || canvases.length === 0) {
-                    console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectaron <canvas>. Continuando.`);
-                  } else {
-                    const imagesData = await captureCanvasesAndGetData(X, Y);
-                    allImageData.push(...imagesData);
-                    console.log(`Asiento \${'$'}{X} Página \${'$'}{Y}: \${'$'}{imagesData.length} canvas capturados.`);
+                  // Force viewer container to be visible and wait for a visible canvas
+                  try {
+                      const pdfViewerContainer = document.querySelector('.pdfViewer, .ng2-pdf-viewer-container');
+                      if (pdfViewerContainer) {
+                          pdfViewerContainer.style.height = "1000px";
+                          pdfViewerContainer.style.display = "block";
+                      }
+
+                      await waitForVisibleCanvas(10000);
+                      const canvases = await waitForCanvasStable();
+
+                      if (!canvases || canvases.length === 0) {
+                           console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectaron <canvas> estables. Continuando.`);
+                      } else {
+                          const imagesData = await captureCanvasesAndGetData(X, Y);
+                          allImageData.push(...imagesData);
+                          console.log(`Asiento \${'$'}{X} Página \${'$'}{Y}: \${'$'}{imagesData.length} canvas capturados.`);
+                      }
+                  } catch (e) {
+                       console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectó canvas visible (timeout): `, e.message);
                   }
 
                   Y++;
