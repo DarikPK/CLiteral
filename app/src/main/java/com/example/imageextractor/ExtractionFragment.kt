@@ -141,10 +141,10 @@ class ExtractionFragment : Fragment() {
             (async function() {
                 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-                function waitForElement(selector, timeout = 5000) {
+                function waitForElement(selector, timeout = 5000, scope = document) {
                     return new Promise((resolve, reject) => {
                         const interval = setInterval(() => {
-                            const element = document.querySelector(selector);
+                            const element = scope.querySelector(selector);
                             if (element) {
                                 clearInterval(interval);
                                 resolve(element);
@@ -176,36 +176,52 @@ class ExtractionFragment : Fragment() {
                 }
 
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
-                    const dropdown = await waitForElementEnabled(dropdownSelector);
-                    const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
+                    try {
+                        const dropdown = await waitForElementEnabled(dropdownSelector);
+                        const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
 
-                    // Abrir el menú desplegable correctamente
-                    clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                        // Abrir el menú desplegable
+                        clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-                    const targetIndex = predefinedList.indexOf(optionTitle);
-                    if (targetIndex === -1) {
-                        console.error(`Option "\${'$'}{optionTitle}" not found in list.`);
+                        // Esperar a que el contenedor de superposición aparezca
+                        const overlayContainer = await waitForElement('.cdk-overlay-container', 2000);
+                        if (!overlayContainer) {
+                            console.error('CDK overlay container not found.');
+                            return false;
+                        }
+
+                        const targetIndex = predefinedList.indexOf(optionTitle);
+                        if (targetIndex === -1) {
+                            console.error(`Option "\${'$'}{optionTitle}" not found in predefined list.`);
+                            return false;
+                        }
+
+                        // Buscar el viewport y hacer scroll DENTRO del overlay
+                        const scrollViewport = overlayContainer.querySelector('.cdk-virtual-scroll-viewport');
+                        if (scrollViewport) {
+                            const itemHeight = 32;
+                            scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                            await sleep(300); // Pausa para el scroll
+                        }
+
+                        // Buscar la opción y hacer clic DENTRO del overlay
+                        const optionSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
+                        const optionToClick = await waitForElement(optionSelector, 5000, overlayContainer); // Busca dentro del container
+
+                        if (optionToClick) {
+                            optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                            optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                            await sleep(300); // Pausa para que se registre el valor
+                            return true;
+                        } else {
+                            console.error(`Option "\${'$'}{optionTitle}" not found within overlay.`);
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error(`Error in selectDropdownOption for "\${'$'}{optionTitle}":`, error);
                         return false;
                     }
-
-                    // Desplazar el scroll virtual hasta el índice de la opción
-                    const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
-                    if (scrollViewport) {
-                        const itemHeight = 32;
-                        scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                    }
-
-                    // Seleccionar la opción
-                    const optionToClick = await waitForElement(
-                        `nz-option-item[title="\${'$'}{optionTitle}"] .ant-select-item-option-content`
-                    );
-                    optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                    optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-
-                    return true;
                 }
 
                 const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
