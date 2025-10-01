@@ -157,69 +157,47 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
-                async function waitForElementEnabled(selector, timeout = 5000) {
-                    const element = await waitForElement(selector, timeout);
-                    return new Promise((resolve, reject) => {
-                        const interval = setInterval(() => {
-                            const isNzSelectDisabled = element.classList.contains('ant-select-disabled');
-                            const isInputDisabled = element.disabled;
-                            if (!isNzSelectDisabled && !isInputDisabled) {
-                                clearInterval(interval);
-                                resolve(element);
-                            }
-                        }, 100);
-                        setTimeout(() => {
-                            clearInterval(interval);
-                            reject(new Error(`Element "\${'$'}{selector}" did not become enabled within \${'$'}{timeout}ms`));
-                        }, timeout);
-                    });
-                }
-
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
                     try {
-                        const dropdown = await waitForElementEnabled(dropdownSelector);
+                        const dropdown = await waitForElement(dropdownSelector);
                         const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
 
-                        // Abrir el menú desplegable
+                        // Hacer clic para abrir el menú
                         clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                         clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-                        // Esperar a que el contenedor de superposición aparezca
-                        const overlayContainer = await waitForElement('.cdk-overlay-container', 2000);
-                        if (!overlayContainer) {
-                            console.error('CDK overlay container not found.');
-                            return false;
-                        }
+                        // Esperar a que el panel de superposición (overlay) esté visible
+                        const overlayContainer = await waitForElement('.cdk-overlay-container .ant-select-dropdown', 5000);
 
                         const targetIndex = predefinedList.indexOf(optionTitle);
                         if (targetIndex === -1) {
-                            console.error(`Option "\${'$'}{optionTitle}" not found in predefined list.`);
+                            console.error(`Option "\${'$'}{optionTitle}" not found in list.`);
                             return false;
                         }
 
-                        // Buscar el viewport y hacer scroll DENTRO del overlay
+                        // Hacer scroll dentro del viewport del overlay
                         const scrollViewport = overlayContainer.querySelector('.cdk-virtual-scroll-viewport');
                         if (scrollViewport) {
                             const itemHeight = 32;
                             scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
-                            await sleep(300); // Pausa para el scroll
+                            await sleep(300); // Dar tiempo para que el scroll termine
                         }
 
-                        // Buscar la opción y hacer clic DENTRO del overlay
+                        // Seleccionar la opción dentro del overlay
                         const optionSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
-                        const optionToClick = await waitForElement(optionSelector, 5000, overlayContainer); // Busca dentro del container
+                        const optionToClick = await waitForElement(optionSelector, 5000, overlayContainer);
 
                         if (optionToClick) {
                             optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                             optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                            await sleep(300); // Pausa para que se registre el valor
+                            await sleep(300); // Pausa para que se registre la selección
                             return true;
                         } else {
-                            console.error(`Option "\${'$'}{optionTitle}" not found within overlay.`);
+                             console.error(`Option "\${'$'}{optionTitle}" not found in overlay container.`);
                             return false;
                         }
-                    } catch (error) {
-                        console.error(`Error in selectDropdownOption for "\${'$'}{optionTitle}":`, error);
+                    } catch(e) {
+                        console.error(`Failed to select dropdown option "\${'$'}{optionTitle}":`, e);
                         return false;
                     }
                 }
