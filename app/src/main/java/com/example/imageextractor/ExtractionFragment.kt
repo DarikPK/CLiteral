@@ -474,6 +474,22 @@ class ExtractionFragment : Fragment() {
             (async function() {
               function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+              function waitForElement(selector, timeout = 5000, scope = document) {
+                  return new Promise((resolve, reject) => {
+                      const interval = setInterval(() => {
+                          const element = scope.querySelector(selector);
+                          if (element) {
+                              clearInterval(interval);
+                              resolve(element);
+                          }
+                      }, 100);
+                      setTimeout(() => {
+                          clearInterval(interval);
+                          reject(new Error(`Element with selector "\${'$'}{selector}" not found within \${'$'}{timeout}ms`));
+                      }, timeout);
+                  });
+              }
+
               async function waitForCanvasStable(timeout = 10000) {
                 const start = Date.now();
                 let lastCount = 0;
@@ -536,6 +552,25 @@ class ExtractionFragment : Fragment() {
               }
 
               console.log("Inicio recorrido asientos/páginas...");
+
+              try {
+                console.log("Intentando expandir el menú de asientos...");
+                let collapseButton = document.querySelector('button.ant-btn.collapse-button');
+                if (!collapseButton) {
+                    collapseButton = document.querySelector('button.ant-btn.collapse-button .anticon-menu');
+                }
+
+                if (collapseButton) {
+                    collapseButton.click();
+                    await waitForElement('.ant-collapse-item', 5000); // Esperar a que el menú se expanda
+                    console.log("Menú de asientos expandido.");
+                } else {
+                    console.warn("No se encontró el botón para expandir el menú de asientos.");
+                }
+              } catch (e) {
+                  console.error("Error al intentar expandir el menú de asientos:", e);
+              }
+
               const allImageData = [];
               let X = 1;
 
