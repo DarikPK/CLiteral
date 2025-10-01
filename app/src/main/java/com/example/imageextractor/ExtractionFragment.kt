@@ -2,6 +2,7 @@ package com.example.imageextractor
 
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +28,11 @@ class ExtractionFragment : Fragment() {
                     updateButtonStates(it)
                 }
             }
+        }
+
+        @JavascriptInterface
+        fun notifyHeaderSelected(text: String) {
+            Log.d("JsBridge", "Header seleccionado: $text")
         }
     }
 
@@ -99,7 +105,45 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
+        binding.debugButton.setOnClickListener {
+            activateDebugMode()
+        }
         binding.extractButton.setOnClickListener(null)
+    }
+
+    private fun activateDebugMode() {
+        val jsScript = """
+            (function() {
+                document.querySelectorAll('.debug-highlight').forEach(el => {
+                    el.style.outline = '';
+                    el.classList.remove('debug-highlight');
+                    el.onclick = null;
+                });
+
+                const headers = document.querySelectorAll('.ant-collapse-header');
+                headers.forEach(header => {
+                    header.style.outline = '2px solid red';
+                    header.classList.add('debug-highlight');
+
+                    header.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        const text = header.innerText.trim();
+                        alert(`Seleccionaste: "\${'$'}{text}"`);
+
+                        navigator.clipboard.writeText(text).then(() => {
+                            console.log(`Copiado al portapapeles: \${'$'}{text}`);
+                        }).catch(err => console.error("No se pudo copiar:", err));
+
+                        if (typeof AndroidBridge !== 'undefined') {
+                            AndroidBridge.notifyHeaderSelected(text);
+                        }
+                    }, { once: true });
+                });
+
+                console.log("✅ Modo debug activado: haz clic en un header para capturar su nombre.");
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsScript, null)
     }
 
     private fun autofillCurrentPage() {
