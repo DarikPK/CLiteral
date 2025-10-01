@@ -288,6 +288,14 @@ class ExtractionFragment : Fragment() {
                   throw new Error('Visible canvas not found within timeout');
               }
 
+              async function openAsientoIfCollapsed(asientoElem) {
+                const header = asientoElem.querySelector('.ant-collapse-header');
+                if (header && !asientoElem.classList.contains('ant-collapse-item-active')) {
+                  header.click();
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+
               async function captureCanvasesAndGetData(asientoNum, paginaNum) {
                 const canvases = Array.from(document.querySelectorAll('canvas'));
                 const capturedImages = [];
@@ -317,6 +325,8 @@ class ExtractionFragment : Fragment() {
                   console.log(`No se encontró Asiento \${'$'}{X}. Fin del recorrido.`);
                   break;
                 }
+
+                await openAsientoIfCollapsed(asientoElem);
 
                 console.log(`Procesando Asiento \${'$'}{X}...`);
                 let Y = 1;
