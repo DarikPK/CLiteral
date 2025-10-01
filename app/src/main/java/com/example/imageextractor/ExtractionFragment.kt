@@ -157,6 +157,20 @@ class ExtractionFragment : Fragment() {
                     });
                 }
 
+                async function waitForOptionByText(optionText, timeout = 5000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                    const options = document.querySelectorAll('.ant-select-item-option-content');
+                    for (const opt of options) {
+                      if ((opt.textContent || "").trim().toUpperCase() === optionText.toUpperCase()) {
+                        return opt;
+                      }
+                    }
+                    await new Promise(r => setTimeout(r, 100));
+                  }
+                  throw new Error(`Opción "\${'$'}{optionText}" no encontrada en el menú desplegable dentro de \${'$'}{timeout}ms`);
+                }
+
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
                     try {
                         const dropdown = await waitForElement(dropdownSelector);
@@ -183,19 +197,13 @@ class ExtractionFragment : Fragment() {
                             await sleep(300); // Dar tiempo para que el scroll termine
                         }
 
-                        // Seleccionar la opción dentro del overlay
-                        const optionSelector = `nz-option-item[title="\${'$'}{optionTitle}"]`;
-                        const optionToClick = await waitForElement(optionSelector, 5000, overlayContainer);
+                        // Seleccionar la opción usando el texto visible
+                        const optionToClick = await waitForOptionByText(optionTitle);
+                        optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                        await sleep(300); // Pausa para que se registre la selección
+                        return true;
 
-                        if (optionToClick) {
-                            optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                            optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                            await sleep(300); // Pausa para que se registre la selección
-                            return true;
-                        } else {
-                             console.error(`Option "\${'$'}{optionTitle}" not found in overlay container.`);
-                            return false;
-                        }
                     } catch(e) {
                         console.error(`Failed to select dropdown option "\${'$'}{optionTitle}":`, e);
                         return false;
