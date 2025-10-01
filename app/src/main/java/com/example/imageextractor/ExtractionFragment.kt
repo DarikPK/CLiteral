@@ -179,9 +179,9 @@ class ExtractionFragment : Fragment() {
                     const dropdown = await waitForElementEnabled(dropdownSelector);
                     const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
 
-                    // Abrir el menú desplegable
-                    clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    // Abrir el menú desplegable correctamente
+                    clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                     await new Promise(resolve => setTimeout(resolve, 500));
 
                     const targetIndex = predefinedList.indexOf(optionTitle);
@@ -190,7 +190,7 @@ class ExtractionFragment : Fragment() {
                         return false;
                     }
 
-                    // Desplazar el scroll virtual
+                    // Desplazar el scroll virtual hasta el índice de la opción
                     const scrollViewport = document.querySelector('.cdk-virtual-scroll-viewport');
                     if (scrollViewport) {
                         const itemHeight = 32;
@@ -199,8 +199,12 @@ class ExtractionFragment : Fragment() {
                     }
 
                     // Seleccionar la opción
-                    const optionToClick = await waitForElement(`nz-option-item[title="\${'$'}{optionTitle}"] .ant-select-item-option-content`);
-                    optionToClick.click();
+                    const optionToClick = await waitForElement(
+                        `nz-option-item[title="\${'$'}{optionTitle}"] .ant-select-item-option-content`
+                    );
+                    optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                    optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
                     return true;
                 }
 
