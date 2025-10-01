@@ -161,7 +161,7 @@ class ExtractionFragment : Fragment() {
 
               function getRobustSelector(el) {
                 if (!el || el.nodeType !== 1) return '';
-                if (el.id) return `#\${el.id}`;
+                if (el.id) return `#\${'$'}{el.id}`;
                 const parts = [];
                 while (el && el.nodeType === 1 && el.tagName.toLowerCase() !== 'html') {
                   let part = el.tagName.toLowerCase();
@@ -172,7 +172,7 @@ class ExtractionFragment : Fragment() {
                   const parent = el.parentNode;
                   if (parent) {
                     const index = Array.prototype.indexOf.call(parent.children, el) + 1;
-                    part += `:nth-child(\${index})`;
+                    part += `:nth-child(\${'$'}{index})`;
                   }
                   parts.unshift(part);
                   el = el.parentNode;
@@ -184,7 +184,7 @@ class ExtractionFragment : Fragment() {
               function highlightOnce(el, color = 'rgba(255,0,0,0.85)', time = 1800) {
                 if (!el || !el.style) return;
                 const orig = { outline: el.style.outline, boxShadow: el.style.boxShadow };
-                el.style.outline = `3px solid \${color}`;
+                el.style.outline = `3px solid \${'$'}{color}`;
                 el.style.boxShadow = '0 0 12px rgba(255,0,0,0.25)';
                 setTimeout(()=> {
                   el.style.outline = orig.outline || '';
