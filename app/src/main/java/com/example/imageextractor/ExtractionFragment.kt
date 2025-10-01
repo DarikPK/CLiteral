@@ -221,18 +221,17 @@ class ExtractionFragment : Fragment() {
                 const mappedAreaTitle = areaMapping['${config.areaRegistral}'] || '${config.areaRegistral}';
 
                 await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}', officeList);
-                await waitForElementEnabled('nz-select[formcontrolname="areaRegistral"]');
                 await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', mappedAreaTitle, newAreaList);
 
-                const partidaRadio = await waitForElementEnabled('label[nzvalue="2"] input');
+                const partidaRadio = await waitForElement('label[nzvalue="2"] input');
                 partidaRadio.click();
 
-                const numeroInput = await waitForElementEnabled('input[formcontrolname="numero"]');
+                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
                 numeroInput.value = '${config.numeroPartida}';
                 numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
                 numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
 
-                const submitButton = await waitForElementEnabled('button.btn-buscar-partida');
+                const submitButton = await waitForElement('button.btn-buscar-partida');
                 submitButton.click();
 
                 const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
