@@ -75,31 +75,35 @@ class ExtractionFragment : Fragment() {
                 updateButtonStates(url)
 
                 if (url?.contains("servicio/busqueda/visualizar-partida") == true) {
-                    val script = """
-                        (function waitForButtonAndClick() {
-                            let interval;
-                            let timeout;
-                            function tryClick() {
-                                const btn = document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]');
-                                if (btn) {
-                                    btn.click();
-                                    console.log("✅ Botón encontrado y clickeado");
+                    val jsCode = """
+                        (function waitForCollapseButton() {
+                            console.log("⏳ Buscando botón collapse en visor-partida...");
+
+                            const timeout = setTimeout(() => {
+                                clearInterval(interval);
+                                console.warn("❌ No se encontró el botón collapse tras 15 segundos.");
+                            }, 15000);
+
+                            const interval = setInterval(() => {
+                                try {
+                                    const button = document.querySelector("app-visor-partida button.ant-btn.collapse-button");
+
+                                    if (button) {
+                                        console.log("✅ Botón encontrado:", button);
+                                        button.click();
+                                        clearInterval(interval);
+                                        clearTimeout(timeout);
+                                    }
+                                } catch (err) {
+                                    console.error("⚠️ Error al intentar acceder al botón:", err);
                                     clearInterval(interval);
                                     clearTimeout(timeout);
                                 }
-                            }
-                            document.addEventListener('DOMContentLoaded', () => {
-                                interval = setInterval(tryClick, 1000);
-                                timeout = setTimeout(() => {
-                                    clearInterval(interval);
-                                    if (!document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]')) {
-                                      console.log("❌ No se encontró el botón tras 10s");
-                                    }
-                                }, 10000);
-                            });
+                            }, 1000);
                         })();
                     """.trimIndent()
-                    view?.evaluateJavascript(script, null)
+
+                    view?.evaluateJavascript(jsCode, null)
                 }
             }
         }
