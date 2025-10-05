@@ -73,6 +73,29 @@ class ExtractionFragment : Fragment() {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
                 updateButtonStates(url)
+
+                // Inyectar script para hacer clic en el botón del menú automáticamente
+                val clickMenuScript = """
+                    (function clickMenuButtonWhenReady() {
+                      if (window.location.href.includes("servicio/busqueda/visualizar-partida")) {
+                        const interval = setInterval(() => {
+                          const btn = document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]');
+                          if (btn) {
+                            btn.click();
+                            console.log("✅ Botón encontrado y clickeado");
+                            clearInterval(interval);
+                          }
+                        }, 500);
+                        setTimeout(() => {
+                          clearInterval(interval);
+                          console.log("❌ No se encontró el botón tras 10s");
+                        }, 10000);
+                      } else {
+                        console.log("ℹ️ Esperando a que se cargue la URL correcta...");
+                      }
+                    })();
+                """.trimIndent()
+                view?.evaluateJavascript(clickMenuScript, null)
             }
         }
         binding.webView.loadUrl(loginUrl)
@@ -554,17 +577,61 @@ class ExtractionFragment : Fragment() {
               console.log("Inicio recorrido asientos/páginas...");
 
               try {
-                const btn = await waitForElement('button.collapse-button, span.anticon-menu, [data-icon="menu"]', 10000);
-                btn.click();
-                console.log("✅ Botón encontrado y clickeado");
-                await sleep(500); // Dar tiempo a que la animación del menú termine
-              } catch (e) {
-                console.log("❌ No se encontró el botón");
-                if (e instanceof Error) {
-                  console.error("⚠️ Error al buscar botón:", e.message);
-                } else {
-                  console.error("⚠️ Error al buscar botón:", e);
+                console.log("Intentando expandir el menú de asientos (robusto)...");
+
+                // 1) Intentar encontrar el SVG del ícono de menú y subir al botón contenedor.
+                let collapseButton = null;
+                const svgMenu = document.querySelector('svg[data-icon="menu"], svg.anticon-menu');
+                if (svgMenu) {
+                  collapseButton = svgMenu.closest('button, a, div, span');
                 }
+
+                // 2) Si no hubo SVG, intentar selector directo clásico
+                if (!collapseButton) {
+                  collapseButton = document.querySelector('button.ant-btn.collapse-button');
+                }
+
+                // 3) Fallback: buscar por clases del span/icon
+                if (!collapseButton) {
+                  const spanIcon = document.querySelector('span.anticon.anticon-menu, span[nz-icon]');
+                  if (spanIcon) collapseButton = spanIcon.closest('button, a, div, span');
+                }
+
+                // 4) Si aún no hay botón, log y continuar (no bloquear)
+                if (!collapseButton) {
+                  console.warn("No se encontró el botón para expandir el menú de asientos (fallbacks). Continuando sin expandir.");
+                } else {
+                  // Función robusta de click (simula eventos pointer + mouse si click simple falla)
+                  function robustClick(el) {
+                    try {
+                      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                      return true;
+                    } catch (err) {
+                      try { el.click(); return true; } catch (_) { return false; }
+                    }
+                  }
+
+                  const didClick = robustClick(collapseButton);
+                  // Dar un poco más de tiempo a la apertura (algunas páginas Angular tardan)
+                  try {
+                    await waitForElement('.ant-collapse-item', 8000);
+                    console.log("Menú de asientos expandido (detected .ant-collapse-item).");
+                  } catch (waitErr) {
+                    // Si no aparece .ant-collapse-item, pero hicimos click, intentamos detectar presencia de lista
+                    const fallbackDetected = document.querySelector('.columna-lista, .menu-asientos, .ant-collapse-item');
+                    if (fallbackDetected) {
+                      console.log("Menú de asientos expandido (fallback detectado).");
+                    } else {
+                      console.warn("No se detectó apertura del menú tras el click. didClick=", didClick);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error("Error al intentar expandir el menú de asientos (robusto):", e);
               }
 
               const allImageData = [];
