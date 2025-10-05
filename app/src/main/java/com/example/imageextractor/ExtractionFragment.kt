@@ -74,28 +74,33 @@ class ExtractionFragment : Fragment() {
                 currentPageUrl = url
                 updateButtonStates(url)
 
-                // Inyectar script para hacer clic en el botón del menú automáticamente
-                val clickMenuScript = """
-                    (function clickMenuButtonWhenReady() {
-                      if (window.location.href.includes("servicio/busqueda/visualizar-partida")) {
-                        const interval = setInterval(() => {
-                          const btn = document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]');
-                          if (btn) {
-                            btn.click();
-                            console.log("✅ Botón encontrado y clickeado");
-                            clearInterval(interval);
-                          }
-                        }, 500);
-                        setTimeout(() => {
-                          clearInterval(interval);
-                          console.log("❌ No se encontró el botón tras 10s");
-                        }, 10000);
-                      } else {
-                        console.log("ℹ️ Esperando a que se cargue la URL correcta...");
-                      }
-                    })();
-                """.trimIndent()
-                view?.evaluateJavascript(clickMenuScript, null)
+                if (url?.contains("servicio/busqueda/visualizar-partida") == true) {
+                    val script = """
+                        (function waitForButtonAndClick() {
+                            let interval;
+                            let timeout;
+                            function tryClick() {
+                                const btn = document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]');
+                                if (btn) {
+                                    btn.click();
+                                    console.log("✅ Botón encontrado y clickeado");
+                                    clearInterval(interval);
+                                    clearTimeout(timeout);
+                                }
+                            }
+                            document.addEventListener('DOMContentLoaded', () => {
+                                interval = setInterval(tryClick, 1000);
+                                timeout = setTimeout(() => {
+                                    clearInterval(interval);
+                                    if (!document.querySelector('button.collapse-button, span.anticon-menu, [data-icon="menu"]')) {
+                                      console.log("❌ No se encontró el botón tras 10s");
+                                    }
+                                }, 10000);
+                            });
+                        })();
+                    """.trimIndent()
+                    view?.evaluateJavascript(script, null)
+                }
             }
         }
         binding.webView.loadUrl(loginUrl)
