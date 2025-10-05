@@ -1,5 +1,6 @@
 package com.example.imageextractor
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
@@ -80,24 +81,24 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         val actionButton = binding.actionButton
-        binding.extractButton.visibility = View.GONE // This button is no longer used
+        binding.extractButton.visibility = View.GONE
 
         when {
             url?.contains(resultsUrlSubstring) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_media_play)
                 actionButton.contentDescription = "Iniciar extracción de imágenes"
-                binding.resolutionButton.visibility = View.VISIBLE
+                binding.debugButton.visibility = View.VISIBLE // Reutilizamos el debug button como botón de zoom
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_menu_edit)
                 actionButton.contentDescription = "Autocompletar Datos"
-                binding.resolutionButton.visibility = View.GONE
+                binding.debugButton.visibility = View.GONE
             }
             else -> {
                 actionButton.visibility = View.GONE
-                binding.resolutionButton.visibility = View.GONE
+                binding.debugButton.visibility = View.GONE
             }
         }
     }
@@ -113,229 +114,39 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
+        binding.debugButton.setImageResource(android.R.drawable.ic_menu_zoom) // Cambiamos el ícono a una lupa
         binding.debugButton.setOnClickListener {
-            activateDebugMode()
-        }
-        binding.resolutionButton.setOnClickListener {
-            adjustResolution()
+            showZoomSelectionDialog()
         }
         binding.extractButton.setOnClickListener(null)
     }
 
-    private fun adjustResolution() {
-        binding.webView.evaluateJavascript("document.body.style.zoom='1.5'") {
+    private fun showZoomSelectionDialog() {
+        val zoomLevels = (3..10).map { "${it * 10}%" }.toTypedArray()
+        val defaultSelectionIndex = zoomLevels.indexOf("100%")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Seleccionar Zoom")
+            .setSingleChoiceItems(zoomLevels, defaultSelectionIndex) { dialog, which ->
+                val selectedZoom = zoomLevels[which].replace("%", "").toDouble() / 100.0
+                applyZoom(selectedZoom)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun applyZoom(zoomLevel: Double) {
+        val script = "document.body.style.zoom='${zoomLevel}'"
+        binding.webView.evaluateJavascript(script) {
             activity?.runOnUiThread {
-                Toast.makeText(context, "Resolución ajustada para mantener el acordeón visible.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Zoom ajustado al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun activateDebugMode() {
-        val jsScript = """
-            (function() {
-              console.log("🔧 Modo captura (alternativo) cargado.");
-
-              function tinyToast(msg, time = 2500) {
-                let t = document.getElementById('__capture_toast');
-                if (!t) {
-                  t = document.createElement('div');
-                  t.id = '__capture_toast';
-                  Object.assign(t.style, {
-                    position: 'fixed', right: '12px', bottom: '12px',
-                    background: 'rgba(0,0,0,0.7)', color:'#fff', padding:'8px 12px',
-                    borderRadius:'8px', zIndex: 2147483646, fontSize:'13px'
-                  });
-                  document.body.appendChild(t);
-                }
-                t.textContent = msg;
-                t.style.opacity = '1';
-                clearTimeout(t._to);
-                t._to = setTimeout(()=> t.style.opacity = '0', time);
-              }
-
-              function copyToClipboard(text) {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                  return navigator.clipboard.writeText(text).catch(()=> fallbackCopy(text));
-                } else {
-                  return fallbackCopy(text);
-                }
-              }
-              function fallbackCopy(text) {
-                try {
-                  const ta = document.createElement('textarea');
-                  ta.value = text;
-                  ta.style.position = 'fixed'; ta.style.left = '-9999px';
-                  document.body.appendChild(ta);
-                  ta.select();
-                  document.execCommand('copy');
-                  document.body.removeChild(ta);
-                  return Promise.resolve();
-                } catch (e) { return Promise.reject(e); }
-              }
-
-              function getRobustSelector(el) {
-                if (!el || el.nodeType !== 1) return '';
-                if (el.id) return `#\${'$'}{el.id}`;
-                const parts = [];
-                while (el && el.nodeType === 1 && el.tagName.toLowerCase() !== 'html') {
-                  let part = el.tagName.toLowerCase();
-                  if (el.className && typeof el.className === 'string') {
-                    const cls = Array.from(new Set(el.className.trim().split(/\s+/).filter(Boolean)));
-                    if (cls.length) part += '.' + cls.join('.');
-                  }
-                  const parent = el.parentNode;
-                  if (parent) {
-                    const index = Array.prototype.indexOf.call(parent.children, el) + 1;
-                    part += `:nth-child(\${'$'}{index})`;
-                  }
-                  parts.unshift(part);
-                  el = el.parentNode;
-                  if (parts.length > 10) break;
-                }
-                return parts.join(' > ');
-              }
-
-              function highlightOnce(el, color = 'rgba(255,0,0,0.85)', time = 1800) {
-                if (!el || !el.style) return;
-                const orig = { outline: el.style.outline, boxShadow: el.style.boxShadow };
-                el.style.outline = `3px solid \${'$'}{color}`;
-                el.style.boxShadow = '0 0 12px rgba(255,0,0,0.25)';
-                setTimeout(()=> {
-                  el.style.outline = orig.outline || '';
-                  el.style.boxShadow = orig.boxShadow || '';
-                }, time);
-              }
-
-              function dispatchTap(el, clientX, clientY) {
-                try {
-                  const opts = { bubbles: true, cancelable: true, composed: true, clientX, clientY };
-                  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-                  el.dispatchEvent(new PointerEvent('pointerup', opts));
-                  el.dispatchEvent(new MouseEvent('mousedown', opts));
-                  el.dispatchEvent(new MouseEvent('mouseup', opts));
-                  el.dispatchEvent(new MouseEvent('click', opts));
-                  return true;
-                } catch (e) {
-                  console.warn('dispatchTap error', e);
-                  try { el.click(); return true; } catch(_) { return false; }
-                }
-              }
-
-              if (document.getElementById('__capture_button')) {
-                tinyToast('Ya hay un modo captura activo.');
-                return;
-              }
-
-              const btn = document.createElement('button');
-              btn.id = '__capture_button';
-              btn.textContent = 'CAPTURAR BOTÓN';
-              Object.assign(btn.style, {
-                position: 'fixed', right: '12px', top: '12px',
-                zIndex: 2147483647, padding: '8px 12px', background: '#ff6b00',
-                color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700',
-                boxShadow: '0 6px 18px rgba(0,0,0,0.25)', cursor: 'pointer'
-              });
-              document.body.appendChild(btn);
-
-              let captureMode = false;
-              let pointerHandler = null;
-
-              function enableCaptureMode() {
-                if (captureMode) return;
-                captureMode = true;
-                btn.textContent = 'Toca el botón objetivo';
-                btn.style.background = '#ff0000';
-                tinyToast('Modo captura: toca el botón que abre el menú de asientos');
-
-                pointerHandler = function(e) {
-                  try {
-                    const cx = Math.floor(e.clientX);
-                    const cy = Math.floor(e.clientY);
-                    const el = document.elementFromPoint(cx, cy);
-                    if (!el) {
-                      tinyToast('No se detectó elemento bajo el toque.');
-                      return;
-                    }
-                    const selector = getRobustSelector(el);
-                    const text = (el.innerText || el.textContent || '').trim().slice(0, 120);
-                    console.log('🎯 Elemento tocado:', el, 'selector:', selector, 'texto:', text);
-                    highlightOnce(el);
-                    copyToClipboard(selector).then(()=> {
-                      tinyToast('Selector copiado al portapapeles: ' + selector.slice(0,40));
-                    }).catch(()=> {
-                      tinyToast('No se pudo copiar al portapapeles. Selector: '+selector.slice(0,80));
-                    });
-
-                    const opened = (function tryOpen() {
-                      if (dispatchTap(el, cx, cy)) return true;
-                      let p = el;
-                      for (let i=0;i<6;i++) {
-                        if (!p) break;
-                        if (p.tagName && /button|a|label|div/i.test(p.tagName) && (p.onclick || p.getAttribute('role')==='button' || p.className)) {
-                          if (dispatchTap(p, cx, cy)) return true;
-                        }
-                        p = p.parentElement;
-                      }
-                      return false;
-                    })();
-
-                    (async function waitAndCheck() {
-                      const menuSelectors = ['.cdk-virtual-scroll-viewport','nz-option-item','.ant-select-dropdown','.columna-lista','.ant-collapse-item','.menu-asientos'];
-                      const max = 3000;
-                      const start = Date.now();
-                      while (Date.now() - start < max) {
-                        for (const s of menuSelectors) {
-                          if (document.querySelector(s)) {
-                            console.log('✅ Menú detectado con selector:', s);
-                            tinyToast('Menú abierto (detected: '+s+')');
-                            try { if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onSelectorCaptured) AndroidBridge.onSelectorCaptured(selector); } catch(e){}
-                            cleanup();
-                            return;
-                          }
-                        }
-                        await new Promise(r=>setTimeout(r,200));
-                      }
-                      console.warn('⏱️ Menú no detectado tras el toque. openedFlag:', opened);
-                      tinyToast('No detecté apertura automática del menú. Selector capturado.');
-                      try { if (typeof AndroidBridge !== 'undefined' && AndroidBridge.onSelectorCaptured) AndroidBridge.onSelectorCaptured(selector); } catch(e){}
-                      cleanup();
-                    })();
-
-                  } catch (err) {
-                    console.error('Error en pointerHandler:', err);
-                    cleanup();
-                  }
-                };
-                document.addEventListener('pointerdown', pointerHandler, { capture: true, passive: true });
-              }
-
-              function disableCaptureMode() {
-                captureMode = false;
-                btn.textContent = 'CAPTURAR BOTÓN';
-                btn.style.background = '#ff6b00';
-                if (pointerHandler) {
-                  document.removeEventListener('pointerdown', pointerHandler, { capture: true });
-                  pointerHandler = null;
-                }
-                tinyToast('Modo captura desactivado');
-              }
-
-              function cleanup() {
-                disableCaptureMode();
-              }
-
-              btn.addEventListener('click', function(ev) {
-                ev.stopPropagation();
-                if (!captureMode) enableCaptureMode();
-                else disableCaptureMode();
-              });
-
-              console.log('✅ Herramienta de captura lista. Pulsa el botón CAPTURAR BOTÓN y luego toca el control que abre el menú.');
-              tinyToast('Herramienta de captura lista — pulsa CAPTURAR BOTÓN');
-
-            })();
-        """.trimIndent()
-        binding.webView.evaluateJavascript(jsScript, null)
+        // Esta función ya no se usa, pero la mantenemos por si se reutiliza en el futuro.
     }
 
     private fun autofillCurrentPage() {
