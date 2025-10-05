@@ -1,6 +1,5 @@
 package com.example.imageextractor
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
@@ -51,6 +50,7 @@ class ExtractionFragment : Fragment() {
     private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
+    private var currentZoom = 1.0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -74,6 +74,9 @@ class ExtractionFragment : Fragment() {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
                 updateButtonStates(url)
+                // Reset zoom on new page load
+                currentZoom = 1.0
+                applyZoom(currentZoom)
             }
         }
         binding.webView.loadUrl(loginUrl)
@@ -81,14 +84,14 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         val actionButton = binding.actionButton
-        binding.extractButton.visibility = View.GONE
+        binding.extractButton.visibility = View.GONE // This button is no longer used
 
         when {
             url?.contains(resultsUrlSubstring) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_media_play)
                 actionButton.contentDescription = "Iniciar extracción de imágenes"
-                binding.debugButton.visibility = View.VISIBLE // Reutilizamos el debug button como botón de zoom
+                binding.debugButton.visibility = View.VISIBLE
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
@@ -114,39 +117,24 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
-        binding.debugButton.setImageResource(android.R.drawable.ic_menu_zoom) // Cambiamos el ícono a una lupa
         binding.debugButton.setOnClickListener {
-            showZoomSelectionDialog()
+            increaseResolution()
         }
         binding.extractButton.setOnClickListener(null)
     }
 
-    private fun showZoomSelectionDialog() {
-        val zoomLevels = (3..10).map { "${it * 10}%" }.toTypedArray()
-        val defaultSelectionIndex = zoomLevels.indexOf("100%")
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Seleccionar Zoom")
-            .setSingleChoiceItems(zoomLevels, defaultSelectionIndex) { dialog, which ->
-                val selectedZoom = zoomLevels[which].replace("%", "").toDouble() / 100.0
-                applyZoom(selectedZoom)
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
+    private fun increaseResolution() {
+        currentZoom *= 1.5
+        applyZoom(currentZoom)
     }
 
     private fun applyZoom(zoomLevel: Double) {
         val script = "document.body.style.zoom='${zoomLevel}'"
         binding.webView.evaluateJavascript(script) {
             activity?.runOnUiThread {
-                Toast.makeText(context, "Zoom ajustado al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Resolución aumentada al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun activateDebugMode() {
-        // Esta función ya no se usa, pero la mantenemos por si se reutiliza en el futuro.
     }
 
     private fun autofillCurrentPage() {
