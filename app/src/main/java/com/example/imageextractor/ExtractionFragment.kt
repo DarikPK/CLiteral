@@ -554,21 +554,17 @@ class ExtractionFragment : Fragment() {
               console.log("Inicio recorrido asientos/páginas...");
 
               try {
-                const button = await waitForElement('button.collapse-button, button > span.anticon-menu', 7000);
-                const clickable = button.tagName.toUpperCase() === 'SPAN' ? button.parentElement : button;
-
-                const style = window.getComputedStyle(clickable);
-                const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && clickable.offsetParent !== null;
-
-                if (clickable && !clickable.disabled && isVisible) {
-                    clickable.click();
-                    console.log("✅ Botón encontrado y clickeado");
-                    await waitForElement('.ant-collapse-item', 5000);
-                } else {
-                    console.log("❌ No se encontró el botón");
-                }
+                const btn = await waitForElement('button.collapse-button, span.anticon-menu, [data-icon="menu"]', 10000);
+                btn.click();
+                console.log("✅ Botón encontrado y clickeado");
+                await sleep(500); // Dar tiempo a que la animación del menú termine
               } catch (e) {
-                  console.log("❌ No se encontró el botón");
+                console.log("❌ No se encontró el botón");
+                if (e instanceof Error) {
+                  console.error("⚠️ Error al buscar botón:", e.message);
+                } else {
+                  console.error("⚠️ Error al buscar botón:", e);
+                }
               }
 
               const allImageData = [];
