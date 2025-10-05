@@ -40,8 +40,8 @@ class ExtractionFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
-    private val loginUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/inicio"
-    private val searchUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
+    private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
+    private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
 
