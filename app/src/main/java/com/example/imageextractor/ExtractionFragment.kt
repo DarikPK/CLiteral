@@ -471,33 +471,8 @@ class ExtractionFragment : Fragment() {
     private fun extractImagesFromPartida() {
         Toast.makeText(context, "Iniciando extracción detallada...", Toast.LENGTH_SHORT).show()
         val jsScript = """
-            (async function traverseAndCaptureAscending() {
+            (async function() {
               function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-              function parseIntSafe(s){
-                if(!s) return null;
-                const m = (''+s).match(/(\d+)/);
-                return m ? parseInt(m[1], 10) : null;
-              }
-
-              function getText(node){ return node && node.textContent ? node.textContent.trim() : ''; }
-
-              function robustClick(el){
-                try {
-                  const rect = el.getBoundingClientRect();
-                  const cx = Math.floor(rect.left + rect.width/2);
-                  const cy = Math.floor(rect.top + rect.height/2);
-                  const opts = { bubbles: true, cancelable: true, composed: true, clientX: cx, clientY: cy };
-                  el.dispatchEvent(new PointerEvent('pointerdown', opts));
-                  el.dispatchEvent(new PointerEvent('pointerup', opts));
-                  el.dispatchEvent(new MouseEvent('mousedown', opts));
-                  el.dispatchEvent(new MouseEvent('mouseup', opts));
-                  el.dispatchEvent(new MouseEvent('click', opts));
-                  return true;
-                } catch(e){
-                  try { el.click(); return true; } catch(_) { return false; }
-                }
-              }
 
               async function waitForVisibleCanvas(timeout = 10000) {
                 const start = Date.now();
@@ -524,188 +499,73 @@ class ExtractionFragment : Fragment() {
                 return Array.from(document.querySelectorAll('canvas'));
               }
 
-              function captureCanvases(asientoOrTomo, id, paginaOrFolio){
+              function captureCanvases(type, index, label) {
                 const canvases = Array.from(document.querySelectorAll('canvas'));
                 const images = [];
-                for(let i=0;i<canvases.length;i++){
-                  try{
+                for(let i=0; i<canvases.length; i++) {
+                  try {
                     const dataUrl = canvases[i].toDataURL('image/png');
-                    const safeId = (''+id).replace(/\s+/g,'_');
-                    const safePF = (''+paginaOrFolio).replace(/\s+/g,'_');
-                    let filename;
-                    if(asientoOrTomo === 'tomo') filename = `tomo_${'$'}{safeId}_folio_${'$'}{safePF}.png`;
-                    else filename = `asiento_${'$'}{safeId}_pagina_${'$'}{safePF}.png`;
+                    const filename = `${'$'}{type}_${'$'}{index}_${'$'}{label}_canvas_${'$'}{i+1}.png`;
                     images.push({ filename, dataUrl });
-                  }catch(err){
+                  } catch(err) {
                     console.error('capture error', err);
                   }
                 }
                 return images;
               }
 
-              // --- Build lists ---
-              const containers = Array.from(document.querySelectorAll('.side-bar-content .columna-lista'));
-              if(containers.length === 0) {
-                console.warn('No se encontraron .columna-lista');
-                return JSON.stringify([]);
-              }
+              const folios = Array.from(document.querySelectorAll('div.pagina a'));
+              const paginas = Array.from(document.querySelectorAll('span.boton-pagina.ng-star-inserted'));
 
-              const tomos = []; // { tomoId: "002207", folios: [{node, text}] }
-              const asientos = []; // { asientoNum: 5, paginas: [{node, text}] }
+              const botonesFolio = folios.reverse().map((el, idx) => ({type: 'folio', element: el, originalIndex: folios.length - 1 - idx}));
+              const botonesPagina = paginas.reverse().map((el, idx) => ({type: 'pagina', element: el, originalIndex: paginas.length - 1 - idx}));
 
-              // iterate DOM top->bottom to extract metadata
-              containers.forEach((cont, idx) => {
-                const titulo = cont.querySelector('.titulo');
-                const paginaBlock = cont.querySelector('.pagina');
-                const txtTitulo = getText(titulo);
-                const inner = getText(cont);
+              const botones = [...botonesFolio, ...botonesPagina];
 
-                if(txtTitulo && /TOMO[:\s]/i.test(txtTitulo)) {
-                  // extract tomo id (digits)
-                  const tomoId = (txtTitulo.match(/TOMO[:\s]*([0-9\-]+)/i) || [null, null])[1] || txtTitulo;
-                  const folioAnchors = paginaBlock ? Array.from(paginaBlock.querySelectorAll('a')) : [];
-                  const folios = folioAnchors.map(a => ({ node: a, text: getText(a), orderIdx: idx }));
-                  tomos.push({ tomoId, folios, orderIdx: idx });
-                } else if(inner && /N°\s*Asiento[:\s]/i.test(inner)) {
-                  // asiento block
-                  const match = inner.match(/N°\s*Asiento[:\s]*([0-9]+)/i);
-                  const asientoNum = match ? parseInt(match[1],10) : null;
-                  const pageSpans = paginaBlock ? Array.from(paginaBlock.querySelectorAll('.boton-pagina, span, a')) : [];
-                  const paginas = pageSpans.map(s => ({ node: s, text: getText(s), orderIdx: idx }));
-                  asientos.push({ asientoNum, paginas, orderIdx: idx });
-                } else if(txtTitulo && /Ficha[:\s]/i.test(txtTitulo)) {
-                  // treat 'Ficha' as asiento-like group
-                  const fichaId = (txtTitulo.match(/Ficha[:\s]*([0-9\-]+)/i) || [null, null])[1] || txtTitulo;
-                  const pageSpans = paginaBlock ? Array.from(paginaBlock.querySelectorAll('.boton-pagina, span, a')) : [];
-                  const paginas = pageSpans.map(s => ({ node: s, text: getText(s), orderIdx: idx }));
-                  asientos.push({ asientoNum: fichaId, paginas, orderIdx: idx, isFicha: true });
-                } else {
-                  // fallback: detect <a> or .boton-pagina inside
-                  if(paginaBlock){
-                    const anchors = Array.from(paginaBlock.querySelectorAll('a'));
-                    if(anchors.length){
-                      // ambiguous, push as tomo-like with unknown tomoId
-                      tomos.push({ tomoId: null, folios: anchors.map(a=>({node:a, text:getText(a), orderIdx: idx})), orderIdx: idx });
-                      return;
-                    }
-                    const spans = Array.from(paginaBlock.querySelectorAll('.boton-pagina, span'));
-                    if(spans.length){
-                      asientos.push({ asientoNum: null, paginas: spans.map(s=>({node:s, text:getText(s), orderIdx: idx})), orderIdx: idx });
-                    }
-                  }
-                }
-              });
-
-              // --- Sorting: ensure ascending (old → recent) ---
-              function sortByParsedNumberAsc(items, keyExtractor){
-                return items.sort((a,b) => {
-                  const na = parseIntSafe(keyExtractor(a));
-                  const nb = parseIntSafe(keyExtractor(b));
-                  if(na != null && nb != null) return na - nb;
-                  if(na != null) return -1;
-                  if(nb != null) return 1;
-                  // fallback to DOM order (orderIdx)
-                  return (a.orderIdx || 0) - (b.orderIdx || 0);
-                });
-              }
-
-              // sort tomos (by tomoId)
-              sortByParsedNumberAsc(tomos, t => t.tomoId);
-              // sort folios inside each tomo
-              tomos.forEach(t => {
-                t.folios.sort((a,b) => {
-                  const na = parseIntSafe(a.text), nb = parseIntSafe(b.text);
-                  if(na != null && nb != null) return na - nb;
-                  return a.orderIdx - b.orderIdx;
-                });
-              });
-
-              // sort asientos by number (or DOM order)
-              sortByParsedNumberAsc(asientos, s => s.asientoNum);
-              // sort pages inside each asiento
-              asientos.forEach(a => {
-                a.paginas.sort((x,y) => {
-                  const nx = parseIntSafe(x.text), ny = parseIntSafe(y.text);
-                  if(nx != null && ny != null) return nx - ny;
-                  return x.orderIdx - y.orderIdx;
-                });
-              });
-
-              // --- Create processing queue: tomos first (old→new), then asientos (old→new) ---
-              const queue = [];
-              tomos.forEach(t => {
-                const tomoId = t.tomoId || 'tomo_unknown';
-                t.folios.forEach(f => queue.push({ type: 'tomo', tomoId, element: f.node, label: f.text }));
-              });
-              asientos.forEach(a => {
-                const asientoId = a.asientoNum != null ? a.asientoNum : (a.asientoNum === null ? `asiento_unknown_${'$'}{a.orderIdx}` : a.asientoNum);
-                a.paginas.forEach(p => queue.push({ type: 'asiento', asientoId, element: p.node, label: p.text }));
-              });
-
-              if(queue.length === 0){
-                console.warn('No hay elementos clickeables en lista para procesar.');
-                return JSON.stringify([]);
-              }
-
-              const processedSet = new Set();
+              console.log(`Encontrados ${'$'}{botones.length} botones a recorrer`);
               const allImages = [];
 
-              for(let i=0;i<queue.length;i++){
-                const item = queue[i];
+              for (const [i, item] of botones.entries()) {
                 const el = item.element;
-                if(!el) continue;
-                const key = item.type === 'tomo' ? `tomo::${'$'}{item.tomoId}::${'$'}{item.label}` : `asiento::${'$'}{item.asientoId}::${'$'}{item.label}`;
-                if(processedSet.has(key)) { console.log('Saltando duplicado', key); continue; }
-                processedSet.add(key);
+                const label = el.textContent.trim();
+                console.log(`Intentando click en botón ${'$'}{i+1}/${'$'}{botones.length}: ${'$'}{item.type} - ${'$'}{label}`);
 
-                // ensure element is in viewport
-                try { el.scrollIntoView({ block: 'center', behavior: 'auto' }); } catch(e){}
-
-                // click (with retry once)
-                let clicked = robustClick(el);
-                await sleep(350);
-                if(!clicked) {
-                  console.warn('Click inicial falló para', key, '. Intentando dispatch eventos.');
-                  try { el.dispatchEvent(new MouseEvent('click', { bubbles: true })); clicked = true; } catch(e){}
-                }
-
-                // wait for viewer to render canvases
-                let canvases = [];
                 try {
-                  await sleep(250); // tiny delay for Angular
-                  try {
+                  el.click();
+                } catch (e) {
+                    try {
+                        console.warn("Click directo falló, intentando con dispatchEvent");
+                        const evt = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                        el.dispatchEvent(evt);
+                    } catch (err) {
+                        console.error(`❌ Fallo al clickear`, el, err);
+                        continue;
+                    }
+                }
+
+                console.log(`✔️ Click exitoso en ${'$'}{el.tagName}`);
+
+                try {
                     await waitForVisibleCanvas(7000);
-                  } catch(e){
-                    // retry once: scroll more then click again
-                    console.warn('No apareció canvas tras click, reintentando una vez para', key);
-                    try { el.scrollIntoView({ block: 'center' }); robustClick(el); }
-                    catch(_){}
-                  }
-                  canvases = await waitForCanvasStable(10000);
-                } catch(e){
-                  console.warn('No se detectó canvas estable para', key, e.message);
+                    const canvases = await waitForCanvasStable(10000);
+                    if (canvases && canvases.length > 0) {
+                        const safeLabel = label.replace(/\s+/g, '_');
+                        const imgs = captureCanvases(item.type, item.originalIndex, safeLabel);
+                        if(imgs && imgs.length) {
+                            allImages.push(...imgs);
+                            console.log(`✅ Capturadas ${'$'}{imgs.length} imágenes para ${'$'}{item.type} ${'$'}{label}`);
+                        }
+                    } else {
+                        console.warn(`❌ No hubo canvas para ${'$'}{item.type} ${'$'}{label}`);
+                    }
+                } catch (err) {
+                    console.error(`❌ Error esperando o capturando canvas para ${'$'}{item.type} ${'$'}{label}: ${'$'}{err.message}`);
                 }
 
-                if(canvases && canvases.length > 0){
-                  const tipo = item.type === 'tomo' ? 'tomo' : 'asiento';
-                  const id = item.type === 'tomo' ? item.tomoId : item.asientoId;
-                  const label = (''+item.label).trim().replace(/\s+/g,'_');
-                  const imgs = captureCanvases(tipo, id, label);
-                  if(imgs && imgs.length) {
-                    allImages.push(...imgs);
-                    console.log('✅ Capturas para', key, '->', imgs.map(x=>x.filename).join(', '));
-                  } else {
-                    console.warn('No se extrajeron imagenes (capture returned none) para', key);
-                  }
-                } else {
-                  console.warn('❌ No hubo canvas para', key);
-                }
-
-                // small pause between items
-                await sleep(400);
+                await new Promise(r => setTimeout(r, 2500));
               }
 
-              console.log('Recorrido finalizado. Total imágenes:', allImages.length);
+              console.log('✅ Recorrido de botones completado. Total imágenes:', allImages.length);
               return JSON.stringify(allImages);
             })();
         """.trimIndent()
