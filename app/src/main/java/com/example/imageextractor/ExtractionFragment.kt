@@ -20,13 +20,18 @@ import java.io.FileOutputStream
 
 class ExtractionFragment : Fragment() {
 
-    private inner class JsBridge {
+    private val clickBridge = object {
+        private var lastClickedSelector: String? = null
+
         @JavascriptInterface
-        fun onElementClicked(url: String, html: String) {
-            activity?.runOnUiThread {
-                Log.d("WebViewClick", "URL: $url, HTML: $html")
-                Toast.makeText(context, "URL: $url", Toast.LENGTH_SHORT).show()
-            }
+        fun onElementClicked(tag: String, selector: String?, html: String?) {
+            Log.d("JulesCapture", "🟢 Clic detectado en <$tag> selector=$selector")
+            lastClickedSelector = selector
+        }
+
+        @JavascriptInterface
+        fun getLastClickedSelector(): String? {
+            return lastClickedSelector
         }
     }
 
@@ -56,7 +61,7 @@ class ExtractionFragment : Fragment() {
 
     private fun setupWebView() {
         binding.webView.settings.javaScriptEnabled = true
-        binding.webView.addJavascriptInterface(JsBridge(), "AndroidBridge")
+        binding.webView.addJavascriptInterface(clickBridge, "ClickBridge")
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -64,14 +69,23 @@ class ExtractionFragment : Fragment() {
                 updateButtonStates(url)
 
                 val clickListenerScript = """
-                    (function() {
-                        document.addEventListener('click', function(e) {
-                            const targetElement = e.target;
-                            if (targetElement && typeof AndroidBridge !== 'undefined' && AndroidBridge.onElementClicked) {
-                                AndroidBridge.onElementClicked(window.location.href, targetElement.outerHTML);
-                            }
-                        }, true);
-                    })();
+                    function generateSelector(el) {
+                        if (el.id) return '#' + el.id;
+                        if (el.className && typeof el.className === 'string') {
+                           const classNames = el.className.trim().replace(/\s+/g, '.');
+                           if (classNames) return el.tagName.toLowerCase() + '.' + classNames;
+                        }
+                        return el.tagName.toLowerCase();
+                    }
+
+                    document.addEventListener('click', function(e) {
+                        let el = e.target.closest('button, a, svg, span, div');
+                        if (!el) return;
+                        let selector = generateSelector(el);
+                        if (typeof window.ClickBridge !== 'undefined' && window.ClickBridge.onElementClicked) {
+                            window.ClickBridge.onElementClicked(el.tagName, selector, el.outerHTML);
+                        }
+                    }, true);
                 """.trimIndent()
                 view?.evaluateJavascript(clickListenerScript, null)
             }
@@ -88,14 +102,17 @@ class ExtractionFragment : Fragment() {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_media_play)
                 actionButton.contentDescription = "Iniciar extracción de imágenes"
+                binding.debugButton.visibility = View.VISIBLE
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_menu_edit)
                 actionButton.contentDescription = "Autocompletar Datos"
+                binding.debugButton.visibility = View.GONE
             }
             else -> {
                 actionButton.visibility = View.GONE
+                binding.debugButton.visibility = View.GONE
             }
         }
     }
@@ -111,9 +128,30 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
-        binding.debugButton.visibility = View.GONE
-        binding.debugButton.setOnClickListener(null)
+        binding.debugButton.setOnClickListener {
+            simulateLastClick()
+        }
         binding.extractButton.setOnClickListener(null)
+    }
+
+    private fun simulateLastClick() {
+        val script = """
+            (function() {
+                const selector = window.ClickBridge.getLastClickedSelector && window.ClickBridge.getLastClickedSelector();
+                if (!selector) {
+                    console.warn("⚠️ No hay selector registrado todavía");
+                    return;
+                }
+                const el = document.querySelector(selector);
+                if (el) {
+                    el.click();
+                    console.log("✅ Clic replicado en: " + selector);
+                } else {
+                    console.warn("❌ No se encontró el elemento con el selector guardado:", selector);
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun autofillCurrentPage() {
