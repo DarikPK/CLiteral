@@ -87,14 +87,17 @@ class ExtractionFragment : Fragment() {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_media_play)
                 actionButton.contentDescription = "Iniciar extracción de imágenes"
+                binding.resolutionButton.visibility = View.VISIBLE
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_menu_edit)
                 actionButton.contentDescription = "Autocompletar Datos"
+                binding.resolutionButton.visibility = View.GONE
             }
             else -> {
                 actionButton.visibility = View.GONE
+                binding.resolutionButton.visibility = View.GONE
             }
         }
     }
@@ -113,7 +116,18 @@ class ExtractionFragment : Fragment() {
         binding.debugButton.setOnClickListener {
             activateDebugMode()
         }
+        binding.resolutionButton.setOnClickListener {
+            adjustResolution()
+        }
         binding.extractButton.setOnClickListener(null)
+    }
+
+    private fun adjustResolution() {
+        binding.webView.evaluateJavascript("document.body.style.zoom='1.5'") {
+            activity?.runOnUiThread {
+                Toast.makeText(context, "Resolución ajustada para mantener el acordeón visible.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun activateDebugMode() {
@@ -472,101 +486,222 @@ class ExtractionFragment : Fragment() {
         Toast.makeText(context, "Iniciando extracción detallada...", Toast.LENGTH_SHORT).show()
         val jsScript = """
             (async function() {
-              function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+              function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-              async function waitForVisibleCanvas(timeout = 10000) {
-                const start = Date.now();
-                while(Date.now() - start < timeout){
-                  const canvas = document.querySelector('canvas');
-                  if(canvas && canvas.width > 0 && canvas.height > 0) return canvas;
-                  await sleep(200);
-                }
-                throw new Error('Visible canvas not found');
+              function waitForElement(selector, timeout = 5000, scope = document) {
+                  return new Promise((resolve, reject) => {
+                      const interval = setInterval(() => {
+                          const element = scope.querySelector(selector);
+                          if (element) {
+                              clearInterval(interval);
+                              resolve(element);
+                          }
+                      }, 100);
+                      setTimeout(() => {
+                          clearInterval(interval);
+                          reject(new Error(`Element with selector "\${'$'}{selector}" not found within \${'$'}{timeout}ms`));
+                      }, timeout);
+                  });
               }
 
               async function waitForCanvasStable(timeout = 10000) {
                 const start = Date.now();
-                let lastCount = -1, stableSince = Date.now();
-                while(Date.now() - start < timeout){
-                  const canvases = Array.from(document.querySelectorAll('canvas'));
-                  const c = canvases.length;
-                  if(c > 0){
-                    if(c !== lastCount){ lastCount = c; stableSince = Date.now(); }
-                    else if(Date.now() - stableSince >= 600) return canvases;
+                let lastCount = 0;
+                let stableSince = Date.now();
+
+                while (Date.now() - start < timeout) {
+                  const canvases = document.querySelectorAll('canvas');
+                  const count = canvases.length;
+
+                  if (count > 0) {
+                    if (count !== lastCount) {
+                      stableSince = Date.now();
+                      lastCount = count;
+                    } else {
+                      if (Date.now() - stableSince >= 600) {
+                        return Array.from(canvases);
+                      }
+                    }
                   }
                   await sleep(200);
                 }
                 return Array.from(document.querySelectorAll('canvas'));
               }
 
-              function captureCanvases(type, index, label) {
+              async function waitForVisibleCanvas(timeout = 10000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                      const canvas = document.querySelector('canvas');
+                      if (canvas && canvas.height > 0 && canvas.width > 0) {
+                          return canvas;
+                      }
+                      await sleep(200);
+                  }
+                  throw new Error('Visible canvas not found within timeout');
+              }
+
+              async function openAsientoIfCollapsed(asientoElem) {
+                const header = asientoElem.querySelector('.ant-collapse-header');
+                if (header && !asientoElem.classList.contains('ant-collapse-item-active')) {
+                  header.click();
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+
+              async function captureCanvasesAndGetData(asientoNum, paginaNum) {
                 const canvases = Array.from(document.querySelectorAll('canvas'));
-                const images = [];
-                for(let i=0; i<canvases.length; i++) {
+                const capturedImages = [];
+                for (let i = 0; i < canvases.length; i++) {
                   try {
-                    const dataUrl = canvases[i].toDataURL('image/png');
-                    const filename = `${'$'}{type}_${'$'}{index}_${'$'}{label}_canvas_${'$'}{i+1}.png`;
-                    images.push({ filename, dataUrl });
-                  } catch(err) {
-                    console.error('capture error', err);
+                    const canvas = canvases[i];
+                    const dataUrl = canvas.toDataURL("image/png");
+                    const filename = `asiento_\${'$'}{asientoNum}_pagina_\${'$'}{paginaNum}_canvas_\${'$'}{i+1}.png`;
+                    capturedImages.push({ filename: filename, dataUrl: dataUrl });
+                    console.log(`Asiento \${'$'}{asientoNum} - Página \${'$'}{paginaNum} - Canvas \${'$'}{i+1} capturado.`);
+                  } catch (err) {
+                    console.error(`Error capturando canvas \${'$'}{i+1} de asiento \${'$'}{asientoNum} página \${'$'}{paginaNum}:`, err);
                   }
                 }
-                return images;
+                return capturedImages;
               }
 
-              const folios = Array.from(document.querySelectorAll('div.pagina a'));
-              const paginas = Array.from(document.querySelectorAll('span.boton-pagina.ng-star-inserted'));
+              console.log("Inicio recorrido asientos/páginas...");
 
-              const botonesFolio = folios.reverse().map((el, idx) => ({type: 'folio', element: el, originalIndex: folios.length - 1 - idx}));
-              const botonesPagina = paginas.reverse().map((el, idx) => ({type: 'pagina', element: el, originalIndex: paginas.length - 1 - idx}));
+              try {
+                console.log("Intentando expandir el menú de asientos (robusto)...");
 
-              const botones = [...botonesFolio, ...botonesPagina];
+                // 1) Intentar encontrar el SVG del ícono de menú y subir al botón contenedor.
+                let collapseButton = null;
+                const svgMenu = document.querySelector('svg[data-icon="menu"], svg.anticon-menu');
+                if (svgMenu) {
+                  collapseButton = svgMenu.closest('button, a, div, span');
+                }
 
-              console.log(`Encontrados ${'$'}{botones.length} botones a recorrer`);
-              const allImages = [];
+                // 2) Si no hubo SVG, intentar selector directo clásico
+                if (!collapseButton) {
+                  collapseButton = document.querySelector('button.ant-btn.collapse-button');
+                }
 
-              for (const [i, item] of botones.entries()) {
-                const el = item.element;
-                const label = el.textContent.trim();
-                console.log(`Intentando click en botón ${'$'}{i+1}/${'$'}{botones.length}: ${'$'}{item.type} - ${'$'}{label}`);
+                // 3) Fallback: buscar por clases del span/icon
+                if (!collapseButton) {
+                  const spanIcon = document.querySelector('span.anticon.anticon-menu, span[nz-icon]');
+                  if (spanIcon) collapseButton = spanIcon.closest('button, a, div, span');
+                }
 
-                try {
-                  el.click();
-                } catch (e) {
+                // 4) Si aún no hay botón, log y continuar (no bloquear)
+                if (!collapseButton) {
+                  console.warn("No se encontró el botón para expandir el menú de asientos (fallbacks). Continuando sin expandir.");
+                } else {
+                  // Función robusta de click (simula eventos pointer + mouse si click simple falla)
+                  function robustClick(el) {
                     try {
-                        console.warn("Click directo falló, intentando con dispatchEvent");
-                        const evt = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-                        el.dispatchEvent(evt);
+                      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                      return true;
                     } catch (err) {
-                        console.error(`❌ Fallo al clickear`, el, err);
-                        continue;
+                      try { el.click(); return true; } catch (_) { return false; }
                     }
-                }
+                  }
 
-                console.log(`✔️ Click exitoso en ${'$'}{el.tagName}`);
-
-                try {
-                    await waitForVisibleCanvas(7000);
-                    const canvases = await waitForCanvasStable(10000);
-                    if (canvases && canvases.length > 0) {
-                        const safeLabel = label.replace(/\s+/g, '_');
-                        const imgs = captureCanvases(item.type, item.originalIndex, safeLabel);
-                        if(imgs && imgs.length) {
-                            allImages.push(...imgs);
-                            console.log(`✅ Capturadas ${'$'}{imgs.length} imágenes para ${'$'}{item.type} ${'$'}{label}`);
-                        }
+                  const didClick = robustClick(collapseButton);
+                  // Dar un poco más de tiempo a la apertura (algunas páginas Angular tardan)
+                  try {
+                    await waitForElement('.ant-collapse-item', 8000);
+                    console.log("Menú de asientos expandido (detected .ant-collapse-item).");
+                  } catch (waitErr) {
+                    // Si no aparece .ant-collapse-item, pero hicimos click, intentamos detectar presencia de lista
+                    const fallbackDetected = document.querySelector('.columna-lista, .menu-asientos, .ant-collapse-item');
+                    if (fallbackDetected) {
+                      console.log("Menú de asientos expandido (fallback detectado).");
                     } else {
-                        console.warn(`❌ No hubo canvas para ${'$'}{item.type} ${'$'}{label}`);
+                      console.warn("No se detectó apertura del menú tras el click. didClick=", didClick);
                     }
-                } catch (err) {
-                    console.error(`❌ Error esperando o capturando canvas para ${'$'}{item.type} ${'$'}{label}: ${'$'}{err.message}`);
+                  }
                 }
-
-                await new Promise(r => setTimeout(r, 2500));
+              } catch (e) {
+                console.error("Error al intentar expandir el menú de asientos (robusto):", e);
               }
 
-              console.log('✅ Recorrido de botones completado. Total imágenes:', allImages.length);
-              return JSON.stringify(allImages);
+              const allImageData = [];
+              let X = 1;
+
+              while (true) {
+                const asientoElem = Array.from(document.querySelectorAll('.columna-lista'))
+                  .find(el => (el.innerText || "").includes(`N° Asiento: \${'$'}{X}`));
+
+                if (!asientoElem) {
+                  console.log(`No se encontró Asiento \${'$'}{X}. Fin del recorrido.`);
+                  break;
+                }
+
+                await openAsientoIfCollapsed(asientoElem);
+
+                console.log(`Procesando Asiento \${'$'}{X}...`);
+                let Y = 1;
+
+                while (true) {
+                  const asientoElemCurrent = Array.from(document.querySelectorAll('.columna-lista'))
+                    .find(el => (el.innerText || "").includes(`N° Asiento: \${'$'}{X}`));
+
+                  if (!asientoElemCurrent) {
+                    console.warn(`El Asiento \${'$'}{X} desapareció; salir de sus páginas.`);
+                    break;
+                  }
+
+                  const botonY = Array.from(asientoElemCurrent.querySelectorAll('.pagina .boton-pagina'))
+                    .find(span => (span.textContent || span.innerText || "").trim() === `\${'$'}{Y}`);
+
+                  if (!botonY) {
+                    console.log(`No se encontró página \${'$'}{Y} en Asiento \${'$'}{X} — pasar a Asiento \${'$'}{X+1}.`);
+                    break;
+                  }
+
+                  try {
+                    console.log(`Asiento \${'$'}{X} -> Página \${'$'}{Y}: clic...`);
+                    botonY.click();
+                  } catch (err) {
+                    try {
+                      botonY.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                    } catch (innerErr) {
+                      console.error(`No se pudo hacer click en Asiento \${'$'}{X} Página \${'$'}{Y}:`, innerErr);
+                    }
+                  }
+
+                  // Force viewer container to be visible and wait for a visible canvas
+                  try {
+                      const pdfViewerContainer = document.querySelector('.pdfViewer, .ng2-pdf-viewer-container');
+                      if (pdfViewerContainer) {
+                          pdfViewerContainer.style.height = "1000px";
+                          pdfViewerContainer.style.display = "block";
+                      }
+
+                      await waitForVisibleCanvas(10000);
+                      const canvases = await waitForCanvasStable();
+
+                      if (!canvases || canvases.length === 0) {
+                           console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectaron <canvas> estables. Continuando.`);
+                      } else {
+                          const imagesData = await captureCanvasesAndGetData(X, Y);
+                          allImageData.push(...imagesData);
+                          console.log(`Asiento \${'$'}{X} Página \${'$'}{Y}: \${'$'}{imagesData.length} canvas capturados.`);
+                      }
+                  } catch (e) {
+                       console.warn(`En Asiento \${'$'}{X} Página \${'$'}{Y} no se detectó canvas visible (timeout): `, e.message);
+                  }
+
+                  Y++;
+                  await sleep(300);
+                }
+
+                X++;
+                await sleep(400);
+              }
+
+              console.log("✅ Recorrido completo de todos los asientos y páginas.");
+              return JSON.stringify(allImageData);
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript) { result ->
