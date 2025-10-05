@@ -118,13 +118,13 @@ class ExtractionFragment : Fragment() {
             }
         }
         binding.debugButton.setOnClickListener {
-            increaseResolution()
+            decreaseZoom()
         }
         binding.extractButton.setOnClickListener(null)
     }
 
-    private fun increaseResolution() {
-        currentZoom *= 1.5
+    private fun decreaseZoom() {
+        currentZoom /= 1.2
         applyZoom(currentZoom)
     }
 
@@ -132,7 +132,7 @@ class ExtractionFragment : Fragment() {
         val script = "document.body.style.zoom='${zoomLevel}'"
         binding.webView.evaluateJavascript(script) {
             activity?.runOnUiThread {
-                Toast.makeText(context, "Resolución aumentada al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Zoom ajustado al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
             }
         }
     }

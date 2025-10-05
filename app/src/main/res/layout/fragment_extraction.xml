@@ -31,8 +31,8 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         app:fabSize="mini"
-        android:src="@android:drawable/ic_input_add"
-        android:contentDescription="Aumentar Resolución"
+        android:src="@android:drawable/ic_menu_delete"
+        android:contentDescription="Reducir Zoom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/action_button" />
 
