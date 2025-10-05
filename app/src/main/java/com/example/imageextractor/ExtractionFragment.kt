@@ -77,19 +77,7 @@ class ExtractionFragment : Fragment() {
                 if (url?.contains("servicio/busqueda/visualizar-partida") == true) {
                     val jsCode = """
                         (async function() {
-                          const selector = 'button.ant-btn.collapse-button';
-                          const timeout = 5000;
-
-                          if (window.innerWidth > 768) {
-                            console.log('[INFO] Simulando vista móvil...');
-                            document.documentElement.style.width = '375px';
-                            document.documentElement.style.height = '812px';
-                            document.documentElement.style.zoom = '0.7';
-                            window.dispatchEvent(new Event('resize'));
-                            await new Promise(r => setTimeout(r, 500));
-                          }
-
-                          function waitForElement(selector, timeout) {
+                          function waitForElement(selector, timeout = 5000) {
                             return new Promise((resolve, reject) => {
                               const start = performance.now();
                               const timer = setInterval(() => {
@@ -99,34 +87,44 @@ class ExtractionFragment : Fragment() {
                                   resolve(el);
                                 } else if (performance.now() - start > timeout) {
                                   clearInterval(timer);
-                                  reject(`No se encontró el elemento ${'$'}{selector} después de ${'$'}{timeout}ms`);
+                                  reject("No se encontró el botón");
                                 }
                               }, 200);
                             });
                           }
 
                           try {
-                            const btn = await waitForElement(selector, timeout);
-                            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            await new Promise(r => setTimeout(r, 500));
+                            const btn = await waitForElement("button.ant-btn.collapse-button", 7000);
 
-                            btn.style.display = 'block';
-                            btn.style.visibility = 'visible';
-                            btn.style.opacity = '1';
-                            btn.click();
+                            // 🔹 Añadir borde luminoso para confirmar visualmente
+                            btn.style.outline = "3px solid lime";
+                            btn.style.transition = "outline 0.3s ease";
 
-                            console.log('[✅] Botón clickeado con éxito');
-                            return 'ok';
-                          } catch (err) {
-                            console.error('[❌] Error:', err);
-                            return 'error';
+                            // 🔹 Simular “mano” flotante (opcional)
+                            const pointer = document.createElement("div");
+                            pointer.style.position = "absolute";
+                            pointer.style.width = "24px";
+                            pointer.style.height = "24px";
+                            pointer.style.background = "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAF0lEQVR42mNkYGD4z0AEYBxVSFIA0gkGAAAJpwMW3Y8dhAAAAABJRU5ErkJggg==')";
+                            pointer.style.top = (btn.getBoundingClientRect().top + window.scrollY - 30) + "px";
+                            pointer.style.left = (btn.getBoundingClientRect().left + window.scrollX + 10) + "px";
+                            pointer.style.zIndex = 9999;
+                            pointer.style.transition = "transform 0.3s ease";
+                            document.body.appendChild(pointer);
+
+                            // 🔹 Mover la “mano” y hacer clic
+                            setTimeout(() => {
+                              pointer.style.transform = "translateY(30px)";
+                              btn.click();
+                              console.log("✅ Botón clickeado visualmente");
+                              setTimeout(() => pointer.remove(), 1000);
+                            }, 400);
+                          } catch(e) {
+                            console.error("❌ Error:", e);
                           }
                         })();
                     """.trimIndent()
-
-                    view?.evaluateJavascript(jsCode) { result ->
-                        Log.d("WebViewJS", result)
-                    }
+                    view?.evaluateJavascript(jsCode, null)
                 }
             }
         }
