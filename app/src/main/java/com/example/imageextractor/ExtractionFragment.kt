@@ -40,8 +40,8 @@ class ExtractionFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
-    private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
-    private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
+    private val loginUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/inicio"
+    private val searchUrl = "https://conoce-a-qui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
 
@@ -102,17 +102,14 @@ class ExtractionFragment : Fragment() {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_media_play)
                 actionButton.contentDescription = "Iniciar extracción de imágenes"
-                binding.debugButton.visibility = View.VISIBLE
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
                 actionButton.setImageResource(android.R.drawable.ic_menu_edit)
                 actionButton.contentDescription = "Autocompletar Datos"
-                binding.debugButton.visibility = View.GONE
             }
             else -> {
                 actionButton.visibility = View.GONE
-                binding.debugButton.visibility = View.GONE
             }
         }
     }
@@ -128,6 +125,7 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
+        binding.debugButton.visibility = View.VISIBLE
         binding.debugButton.setOnClickListener {
             simulateLastClick()
         }
