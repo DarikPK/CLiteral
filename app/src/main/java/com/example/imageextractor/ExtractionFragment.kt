@@ -76,34 +76,57 @@ class ExtractionFragment : Fragment() {
 
                 if (url?.contains("servicio/busqueda/visualizar-partida") == true) {
                     val jsCode = """
-                        (function waitForCollapseButton() {
-                            console.log("⏳ Buscando botón collapse en visor-partida...");
+                        (async function() {
+                          const selector = 'button.ant-btn.collapse-button';
+                          const timeout = 5000;
 
-                            const timeout = setTimeout(() => {
-                                clearInterval(interval);
-                                console.warn("❌ No se encontró el botón collapse tras 15 segundos.");
-                            }, 15000);
+                          if (window.innerWidth > 768) {
+                            console.log('[INFO] Simulando vista móvil...');
+                            document.documentElement.style.width = '375px';
+                            document.documentElement.style.height = '812px';
+                            document.documentElement.style.zoom = '0.7';
+                            window.dispatchEvent(new Event('resize'));
+                            await new Promise(r => setTimeout(r, 500));
+                          }
 
-                            const interval = setInterval(() => {
-                                try {
-                                    const button = document.querySelector("app-visor-partida button.ant-btn.collapse-button");
-
-                                    if (button) {
-                                        console.log("✅ Botón encontrado:", button);
-                                        button.click();
-                                        clearInterval(interval);
-                                        clearTimeout(timeout);
-                                    }
-                                } catch (err) {
-                                    console.error("⚠️ Error al intentar acceder al botón:", err);
-                                    clearInterval(interval);
-                                    clearTimeout(timeout);
+                          function waitForElement(selector, timeout) {
+                            return new Promise((resolve, reject) => {
+                              const start = performance.now();
+                              const timer = setInterval(() => {
+                                const el = document.querySelector(selector);
+                                if (el) {
+                                  clearInterval(timer);
+                                  resolve(el);
+                                } else if (performance.now() - start > timeout) {
+                                  clearInterval(timer);
+                                  reject(`No se encontró el elemento ${'$'}{selector} después de ${'$'}{timeout}ms`);
                                 }
-                            }, 1000);
+                              }, 200);
+                            });
+                          }
+
+                          try {
+                            const btn = await waitForElement(selector, timeout);
+                            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            await new Promise(r => setTimeout(r, 500));
+
+                            btn.style.display = 'block';
+                            btn.style.visibility = 'visible';
+                            btn.style.opacity = '1';
+                            btn.click();
+
+                            console.log('[✅] Botón clickeado con éxito');
+                            return 'ok';
+                          } catch (err) {
+                            console.error('[❌] Error:', err);
+                            return 'error';
+                          }
                         })();
                     """.trimIndent()
 
-                    view?.evaluateJavascript(jsCode, null)
+                    view?.evaluateJavascript(jsCode) { result ->
+                        Log.d("WebViewJS", result)
+                    }
                 }
             }
         }
