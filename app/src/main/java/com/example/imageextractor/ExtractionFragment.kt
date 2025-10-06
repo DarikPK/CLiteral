@@ -53,6 +53,7 @@ class ExtractionFragment : Fragment() {
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
     private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
+    private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
 
@@ -85,11 +86,18 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         val isResultsPage = url?.contains(resultsUrlSubstring) == true
+        val isLoginPage = url == loginUrl || url?.startsWith(searchUrl) == true
 
-        // Screenshot button is only visible on results page
-        binding.actionButton.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.actionButton.visibility = if (isResultsPage || isLoginPage) View.VISIBLE else View.GONE
 
-        // Navigation buttons are also only visible on results page
+        if (isResultsPage) {
+            binding.actionButton.setImageResource(android.R.drawable.ic_menu_camera)
+            binding.actionButton.contentDescription = "Capturar Pantalla"
+        } else if (isLoginPage) {
+            binding.actionButton.setImageResource(android.R.drawable.ic_menu_edit)
+            binding.actionButton.contentDescription = "Autocompletar Datos"
+        }
+
         binding.fabGoToFirstItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToLastItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
         binding.fabPrevious.visibility = if (isResultsPage) View.VISIBLE else View.GONE
@@ -98,7 +106,6 @@ class ExtractionFragment : Fragment() {
         binding.extractButton.visibility = View.GONE
 
         if (isResultsPage) {
-            // Initial state: user starts at the last item (most recent), which is the first in the DOM.
             binding.fabGoToLastItem.isEnabled = false
             binding.fabNext.isEnabled = false
             binding.fabGoToFirstItem.isEnabled = true
@@ -110,6 +117,8 @@ class ExtractionFragment : Fragment() {
         binding.actionButton.setOnClickListener {
             if (currentPageUrl?.contains(resultsUrlSubstring) == true) {
                 captureScreenshot()
+            } else {
+                autofillCurrentPage()
             }
         }
 
@@ -245,6 +254,138 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun autofillCurrentPage() {
+        val currentUrl = binding.webView.url
+        when {
+            currentUrl == loginUrl -> {
+                val newLoginData = sharedViewModel.getRandomLoginData()
+                sharedViewModel.config.value?.let {
+                    sharedViewModel.setExtractionConfig(it.copy(loginData = newLoginData))
+                }
+                autofillLoginForm(newLoginData)
+            }
+            currentUrl?.startsWith(searchUrl) == true -> {
+                sharedViewModel.config.value?.let {
+                    autofillSearchForm(it)
+                } ?: Toast.makeText(context, "No hay configuración de búsqueda guardada.", Toast.LENGTH_SHORT).show()
+            }
+            else -> Toast.makeText(context, "No hay formulario para autocompletar en esta página.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun autofillLoginForm(loginData: LoginData) {
+        val jsScript = """
+            (function() {
+                document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
+                document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
+                document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
+                ['input', 'blur'].forEach(eventName => {
+                    document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
+                });
+                document.querySelector('button[class*="btn-sunarp-green"]').click();
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsScript, null)
+    }
+
+    private fun autofillSearchForm(config: ExtractionConfig) {
+        val jsScript = """
+            (async function() {
+                function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+                function waitForElement(selector, timeout = 5000, scope = document) {
+                    return new Promise((resolve, reject) => {
+                        const interval = setInterval(() => {
+                            const element = scope.querySelector(selector);
+                            if (element) {
+                                clearInterval(interval);
+                                resolve(element);
+                            }
+                        }, 100);
+                        setTimeout(() => {
+                            clearInterval(interval);
+                            reject(new Error(`Element with selector "${'$'}{selector}" not found within ${'$'}{timeout}ms`));
+                        }, timeout);
+                    });
+                }
+
+                async function waitForOptionByText(optionText, timeout = 5000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                    const options = document.querySelectorAll('.ant-select-item-option-content');
+                    for (const opt of options) {
+                      if ((opt.textContent || "").trim().toUpperCase() === optionText.toUpperCase()) {
+                        return opt;
+                      }
+                    }
+                    await new Promise(r => setTimeout(r, 100));
+                  }
+                  throw new Error(`Opción "${'$'}{optionText}" no encontrada en el menú desplegable dentro de ${'$'}{timeout}ms`);
+                }
+
+                async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
+                    try {
+                        const dropdown = await waitForElement(dropdownSelector);
+                        const clickable = dropdown.querySelector('.ant-select-selector') || dropdown;
+                        clickable.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                        const overlayContainer = await waitForElement('.cdk-overlay-container .ant-select-dropdown', 5000);
+                        const targetIndex = predefinedList.indexOf(optionTitle);
+                        if (targetIndex === -1) {
+                            return false;
+                        }
+                        const scrollViewport = overlayContainer.querySelector('.cdk-virtual-scroll-viewport');
+                        if (scrollViewport) {
+                            const itemHeight = 32;
+                            scrollViewport.scrollTo({ top: targetIndex * itemHeight, behavior: 'auto' });
+                            await sleep(300);
+                        }
+                        const optionToClick = await waitForOptionByText(optionTitle);
+                        optionToClick.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        optionToClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                        await sleep(300);
+                        return true;
+                    } catch(e) {
+                        return false;
+                    }
+                }
+
+                const officeList = ["ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA", "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA", "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO", "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES", "YURIMAGUAS"];
+                const newAreaList = ["PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES", "REGISTRO MOBILIARIO DE CONTRATOS", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE NAVES)"];
+                const areaMapping = {
+                    "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
+                    "REGISTRO DE PERSONAS JURIDICAS": "PERSONAS JURIDICAS",
+                    "REGISTRO DE PERSONAS NATURALES": "PERSONAS NATURALES",
+                    "REGISTRO DE BIENES MUEBLES": "REGISTRO MOBILIARIO DE CONTRATOS"
+                };
+                const mappedAreaTitle = areaMapping['${config.areaRegistral}'] || '${config.areaRegistral}';
+
+                await selectDropdownOption('nz-select[formcontrolname="oficinaRegistral"]', '${config.oficina}', officeList);
+                await selectDropdownOption('nz-select[formcontrolname="areaRegistral"]', mappedAreaTitle, newAreaList);
+
+                const partidaRadio = await waitForElement('label[nzvalue="2"] input');
+                partidaRadio.click();
+
+                const numeroInput = await waitForElement('input[formcontrolname="numero"]');
+                numeroInput.value = '${config.numeroPartida}';
+                numeroInput.dispatchEvent(new Event('input', { bubbles: true }));
+                numeroInput.dispatchEvent(new Event('blur', { bubbles: true }));
+
+                const submitButton = await waitForElement('button.btn-buscar-partida');
+                submitButton.click();
+
+                const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
+                previewButton.click();
+
+                await waitForElement('.columna-lista', 10000);
+                if (typeof AndroidBridge !== 'undefined') {
+                    AndroidBridge.notifyUrlChanged();
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsScript, null)
     }
 
     private fun extractImagesFromPartida() {
