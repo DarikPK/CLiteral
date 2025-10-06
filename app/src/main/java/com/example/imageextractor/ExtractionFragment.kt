@@ -95,6 +95,11 @@ class ExtractionFragment : Fragment() {
                 // Extraction is now automatic, so hide the action button
                 actionButton.visibility = View.GONE
                 binding.debugButton.visibility = View.VISIBLE
+                binding.fabGoToFirst.visibility = View.VISIBLE
+                binding.fabGoToLast.visibility = View.VISIBLE
+                // Set initial state: user starts at the last page
+                binding.fabGoToFirst.isEnabled = true
+                binding.fabGoToLast.isEnabled = false
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
                 actionButton.visibility = View.VISIBLE
@@ -124,6 +129,68 @@ class ExtractionFragment : Fragment() {
             showSidePanel()
         }
         binding.extractButton.setOnClickListener(null)
+
+        binding.fabGoToFirst.setOnClickListener { navigateToFirst() }
+        binding.fabGoToLast.setOnClickListener { navigateToLast() }
+    }
+
+    private fun navigateToFirst() {
+        val script = """
+            (function() {
+                function realisticClick(element) {
+                    try {
+                        const events = ['mousedown', 'mouseup', 'click'];
+                        events.forEach(type => element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+                        return true;
+                    } catch (e) { return false; }
+                }
+                const firstPageButton = document.querySelector('.pagina .boton-pagina');
+                if (firstPageButton) {
+                    return realisticClick(firstPageButton);
+                }
+                return false;
+            })();
+        """
+        binding.webView.evaluateJavascript(script) { result ->
+            activity?.runOnUiThread {
+                if (result == "true") {
+                    binding.fabGoToFirst.isEnabled = false
+                    binding.fabGoToLast.isEnabled = true
+                } else {
+                    Toast.makeText(context, "No se pudo ir a la primera hoja", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun navigateToLast() {
+        val script = """
+            (function() {
+                 function realisticClick(element) {
+                    try {
+                        const events = ['mousedown', 'mouseup', 'click'];
+                        events.forEach(type => element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+                        return true;
+                    } catch (e) { return false; }
+                }
+                const pageButtons = document.querySelectorAll('.pagina .boton-pagina');
+                if (pageButtons.length > 0) {
+                    const lastPageButton = pageButtons[pageButtons.length - 1];
+                    return realisticClick(lastPageButton);
+                }
+                return false;
+            })();
+        """
+        binding.webView.evaluateJavascript(script) { result ->
+            activity?.runOnUiThread {
+                if (result == "true") {
+                    binding.fabGoToFirst.isEnabled = true
+                    binding.fabGoToLast.isEnabled = false
+                } else {
+                    Toast.makeText(context, "No se pudo ir a la última hoja", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun showSidePanel() {

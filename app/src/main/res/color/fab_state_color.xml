@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Color cuando el botón está habilitado -->
+    <item android:state_enabled="true" android:color="?attr/colorAccent" />
+    <!-- Color cuando el botón está deshabilitado (opaco) -->
+    <item android:state_enabled="false" android:color="@android:color/darker_gray" />
+    <!-- Color por defecto -->
+    <item android:color="?attr/colorAccent" />
+</selector>
