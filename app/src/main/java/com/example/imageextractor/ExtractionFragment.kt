@@ -289,130 +289,64 @@ class ExtractionFragment : Fragment() {
             (async function() {
                 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-                // 1. Función estricta para esperar elementos visibles
-                function waitForElement(selector, scope = document, timeout = 20000) {
-                    return new Promise((resolve, reject) => {
-                        const startTime = Date.now();
-                        const interval = setInterval(() => {
-                            const element = scope.querySelector(selector);
-                            // offsetParent es null para elementos no visibles
-                            if (element && element.offsetParent !== null) {
-                                clearInterval(interval);
-                                resolve(element);
-                            } else if (Date.now() - startTime > timeout) {
-                                clearInterval(interval);
-                                reject(new Error(`Elemento '\${'$'}{selector}' no encontrado o no visible en \${'$'}{timeout}ms`));
-                            }
-                        }, 100);
-                    });
-                }
-
-                // Espera a que al menos un canvas visible aparezca y se estabilice
-                async function waitForCanvasStable(timeout = 20000) {
-                    const start = Date.now();
-                    let lastCount = -1;
-                    let stableSince = Date.now();
-                    while (Date.now() - start < timeout) {
-                        const visibleCanvases = Array.from(document.querySelectorAll('canvas')).filter(c => c.height > 0 && c.width > 0);
-                        const count = visibleCanvases.length;
-
-                        if (count > 0) {
-                            if (count !== lastCount) {
-                                lastCount = count;
-                                stableSince = Date.now();
-                            } else if (Date.now() - stableSince >= 600) { // Estable por 600ms
-                                return visibleCanvases;
-                            }
-                        }
-                        await sleep(200);
-                    }
-                    throw new Error(`Ningún canvas estable fue encontrado en \${'$'}{timeout}ms.`);
-                }
-
-                async function expandAsiento(asientoElem) {
-                    const header = asientoElem.querySelector('.ant-collapse-header');
-                    if (header && !asientoElem.classList.contains('ant-collapse-item-active')) {
-                        console.log('Asiento colapsado, expandiendo...');
-                        header.click();
-                        await sleep(500); // Pausa para la animación de expansión
-                    }
-                }
-
-                async function captureCanvases(asientoNum, paginaNum) {
-                    const captured = [];
+                function realisticClick(element) {
                     try {
-                        const canvases = await waitForCanvasStable();
-                        console.log(` -> Capturando \${'$'}{canvases.length} canvas...`);
-                        for (let i = 0; i < canvases.length; i++) {
-                            const canvas = canvases[i];
-                            const dataUrl = canvas.toDataURL("image/png");
-                            const filename = `asiento_\${'$'}{asientoNum}_pagina_\${'$'}{paginaNum}_canvas_\${'$'}{i + 1}.png`;
-                            captured.push({ filename, dataUrl });
-                        }
-                    } catch (err) {
-                        console.error(`Error capturando canvas para Asiento \${'$'}{asientoNum} Página \${'$'}{paginaNum}: \${'$'}{err.message}`);
+                        const events = ['mousedown', 'mouseup', 'click'];
+                        events.forEach(type => element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+                        return true;
+                    } catch (e) {
+                        console.error("Error en realisticClick:", e);
+                        return false;
                     }
-                    return captured;
                 }
 
-                console.log("Iniciando recorrido robusto de asientos y páginas...");
+                async function waitForVisibleCanvas(timeout = 15000) {
+                    const start = Date.now();
+                    while (Date.now() - start < timeout) {
+                        const canvas = document.querySelector('canvas');
+                        if (canvas && canvas.offsetParent !== null && canvas.height > 100 && canvas.width > 100) {
+                            await sleep(300); // Dar un respiro extra para el renderizado final
+                            return canvas;
+                        }
+                        await sleep(100);
+                    }
+                    throw new Error(`Canvas visible no encontrado en \${'$'}{timeout}ms`);
+                }
+
+                console.log("Iniciando recorrido simple de páginas...");
                 const allImageData = [];
-                let asientoIndex = 1;
+                const pageButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina'));
 
-                while (true) {
-                    const asientosList = Array.from(document.querySelectorAll('.columna-lista .ant-collapse-item, .columna-lista > div'));
-                    const asientoRegex = new RegExp(`Asiento\\s*:?\\s*\\b\${'$'}{asientoIndex}\\b`, "i");
-                    const asientoElem = asientosList.find(el => (el.innerText || "").match(asientoRegex));
+                for (let i = 0; i < pageButtons.length; i++) {
+                    const button = pageButtons[i];
+                    const pageNumber = (button.textContent || "").trim();
 
-                    if (!asientoElem) {
-                        console.log(`No se encontró Asiento \${'$'}{asientoIndex}. Fin del recorrido.`);
-                        break;
+                    if (button.offsetParent === null) {
+                        console.log(`Página \${'$'}{pageNumber} no está visible, saltando.`);
+                        continue;
                     }
 
-                    console.log(`Procesando Asiento \${'$'}{asientoIndex}...`);
-                    await expandAsiento(asientoElem);
+                    console.log(`Procesando página \${'$'}{pageNumber}...`);
+                    realisticClick(button);
+                    await sleep(600); // Pausa crítica para el renderizado del PDF
 
-                    let pageIndex = 1;
-                    while (true) {
-                        const currentAsientoElem = Array.from(document.querySelectorAll('.columna-lista .ant-collapse-item, .columna-lista > div'))
-                                                        .find(el => (el.innerText || "").match(asientoRegex));
+                    try {
+                        await waitForVisibleCanvas();
+                        const canvases = Array.from(document.querySelectorAll('canvas')).filter(c => c.offsetParent !== null);
 
-                        if (!currentAsientoElem) {
-                            console.warn(`Asiento \${'$'}{asientoIndex} ya no se encuentra en el DOM. Pasando al siguiente.`);
-                            break;
+                        for (let j = 0; j < canvases.length; j++) {
+                            const canvas = canvases[j];
+                            const dataUrl = canvas.toDataURL("image/png");
+                            const filename = `pagina_\${'$'}{pageNumber}_canvas_\${'$'}{j + 1}.png`;
+                            allImageData.push({ filename, dataUrl });
+                            console.log(` -> Canvas \${'$'}{j + 1} de la página \${'$'}{pageNumber} capturado.`);
                         }
-
-                        const pageButtons = Array.from(currentAsientoElem.querySelectorAll('.pagina .boton-pagina'));
-                        const pageButton = pageButtons.find(btn => (btn.textContent || "").trim() == pageIndex.toString());
-
-                        if (!pageButton) {
-                             if (pageIndex === 1) {
-                                 console.log(`Asiento \${'$'}{asientoIndex} no tiene páginas, o no se encontró la página 1.`);
-                             }
-                            break; // No más páginas en este asiento
-                        }
-
-                        if (pageButton.offsetParent === null) {
-                            console.warn(`Página \${'$'}{pageIndex} en Asiento \${'$'}{asientoIndex} no está visible. Saltando.`);
-                            pageIndex++;
-                            continue;
-                        }
-
-                        console.log(` -> Página \${'$'}{pageIndex}: Clic...`);
-                        pageButton.click();
-                        await sleep(600); // Pausa crítica tras el clic
-
-                        const imagesData = await captureCanvases(asientoIndex, pageIndex);
-                        allImageData.push(...imagesData);
-
-                        pageIndex++;
+                    } catch (e) {
+                        console.error(`Error procesando página \${'$'}{pageNumber}: \${'$'}{e.message}`);
                     }
-
-                    asientoIndex++;
-                    await sleep(300); // Pausa entre asientos
                 }
 
-                console.log("✅ Recorrido completo.");
+                console.log("✅ Recorrido de páginas completo.");
                 return JSON.stringify(allImageData);
             })();
         """.trimIndent()
