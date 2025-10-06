@@ -145,7 +145,7 @@ class ExtractionFragment : Fragment() {
             Toast.makeText(context, "Captura guardada en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Log.e("CaptureScreenshot", "Error guardando captura: ${e.message}", e)
-            Toast.makeText(context, "Error al guardar la captura.", Toast.SHORT).show()
+            Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_SHORT).show()
         }
     }
 
