@@ -50,7 +50,6 @@ class ExtractionFragment : Fragment() {
     private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
-    private var currentZoom = 1.0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -74,9 +73,6 @@ class ExtractionFragment : Fragment() {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
                 updateButtonStates(url)
-                // Reset zoom on new page load
-                currentZoom = 1.0
-                applyZoom(currentZoom)
             }
         }
         binding.webView.loadUrl(loginUrl)
@@ -118,23 +114,23 @@ class ExtractionFragment : Fragment() {
             }
         }
         binding.debugButton.setOnClickListener {
-            decreaseZoom()
+            showSidePanel()
         }
         binding.extractButton.setOnClickListener(null)
     }
 
-    private fun decreaseZoom() {
-        currentZoom /= 1.2
-        applyZoom(currentZoom)
-    }
-
-    private fun applyZoom(zoomLevel: Double) {
-        val script = "document.body.style.zoom='${zoomLevel}'"
-        binding.webView.evaluateJavascript(script) {
-            activity?.runOnUiThread {
-                Toast.makeText(context, "Zoom ajustado al ${(zoomLevel * 100).toInt()}%", Toast.LENGTH_SHORT).show()
-            }
-        }
+    private fun showSidePanel() {
+        val script = """
+            (function() {
+                const sideBar = document.querySelector('.side-bar-container');
+                if (sideBar) {
+                    sideBar.style.display = 'block';
+                    sideBar.classList.add('side-bar-no-collapsed');
+                    sideBar.classList.remove('side-bar-collapsed');
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun autofillCurrentPage() {
@@ -367,61 +363,23 @@ class ExtractionFragment : Fragment() {
               console.log("Inicio recorrido asientos/páginas...");
 
               try {
-                console.log("Intentando expandir el menú de asientos (robusto)...");
+                  // Se espera a que aparezca un botón que coincida con los selectores robustos.
+                  const button = await waitForElement('button.collapse-button, .anticon-menu', 7000);
 
-                // 1) Intentar encontrar el SVG del ícono de menú y subir al botón contenedor.
-                let collapseButton = null;
-                const svgMenu = document.querySelector('svg[data-icon="menu"], svg.anticon-menu');
-                if (svgMenu) {
-                  collapseButton = svgMenu.closest('button, a, div, span');
-                }
+                  // Se busca el elemento clickeable más cercano, en caso de que el selector haya encontrado un ícono dentro del botón.
+                  const clickableElement = button.closest('button');
 
-                // 2) Si no hubo SVG, intentar selector directo clásico
-                if (!collapseButton) {
-                  collapseButton = document.querySelector('button.ant-btn.collapse-button');
-                }
-
-                // 3) Fallback: buscar por clases del span/icon
-                if (!collapseButton) {
-                  const spanIcon = document.querySelector('span.anticon.anticon-menu, span[nz-icon]');
-                  if (spanIcon) collapseButton = spanIcon.closest('button, a, div, span');
-                }
-
-                // 4) Si aún no hay botón, log y continuar (no bloquear)
-                if (!collapseButton) {
-                  console.warn("No se encontró el botón para expandir el menú de asientos (fallbacks). Continuando sin expandir.");
-                } else {
-                  // Función robusta de click (simula eventos pointer + mouse si click simple falla)
-                  function robustClick(el) {
-                    try {
-                      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
-                      el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
-                      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                      return true;
-                    } catch (err) {
-                      try { el.click(); return true; } catch (_) { return false; }
-                    }
+                  if (clickableElement && !clickableElement.disabled && clickableElement.offsetParent !== null) {
+                      clickableElement.click();
+                      console.log("✅ Botón encontrado y clickeado");
+                      // Opcional: esperar a que el panel de asientos se muestre como confirmación.
+                      await waitForElement('.columna-lista .ant-collapse', 5000);
+                  } else {
+                      // Este caso es poco probable si waitForElement tuvo éxito, pero es una salvaguarda.
+                      console.log("❌ No se encontró el botón o no está visible/habilitado.");
                   }
-
-                  const didClick = robustClick(collapseButton);
-                  // Dar un poco más de tiempo a la apertura (algunas páginas Angular tardan)
-                  try {
-                    await waitForElement('.ant-collapse-item', 8000);
-                    console.log("Menú de asientos expandido (detected .ant-collapse-item).");
-                  } catch (waitErr) {
-                    // Si no aparece .ant-collapse-item, pero hicimos click, intentamos detectar presencia de lista
-                    const fallbackDetected = document.querySelector('.columna-lista, .menu-asientos, .ant-collapse-item');
-                    if (fallbackDetected) {
-                      console.log("Menú de asientos expandido (fallback detectado).");
-                    } else {
-                      console.warn("No se detectó apertura del menú tras el click. didClick=", didClick);
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error("Error al intentar expandir el menú de asientos (robusto):", e);
+              } catch (error) {
+                  console.log("❌ No se encontró el botón: " + error.message);
               }
 
               const allImageData = [];
