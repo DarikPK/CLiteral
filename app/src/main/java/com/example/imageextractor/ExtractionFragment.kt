@@ -190,7 +190,7 @@ class ExtractionFragment : Fragment() {
                         }, 100);
                         setTimeout(() => {
                             clearInterval(interval);
-                            reject(new Error(`Element with selector "\${'$'}{selector}" not found within \${'$'}{timeout}ms`));
+                            reject(new Error(`Element with selector "${'$'}{selector}" not found within ${'$'}{timeout}ms`));
                         }, timeout);
                     });
                 }
@@ -206,7 +206,7 @@ class ExtractionFragment : Fragment() {
                     }
                     await new Promise(r => setTimeout(r, 100));
                   }
-                  throw new Error(`Opción "\${'$'}{optionText}" no encontrada en el menú desplegable dentro de \${'$'}{timeout}ms`);
+                  throw new Error(`Opción "${'$'}{optionText}" no encontrada en el menú desplegable dentro de ${'$'}{timeout}ms`);
                 }
 
                 async function selectDropdownOption(dropdownSelector, optionTitle, predefinedList) {
@@ -223,7 +223,7 @@ class ExtractionFragment : Fragment() {
 
                         const targetIndex = predefinedList.indexOf(optionTitle);
                         if (targetIndex === -1) {
-                            console.error(`Option "\${'$'}{optionTitle}" not found in list.`);
+                            console.error(`Option "${'$'}{optionTitle}" not found in list.`);
                             return false;
                         }
 
@@ -243,7 +243,7 @@ class ExtractionFragment : Fragment() {
                         return true;
 
                     } catch(e) {
-                        console.error(`Failed to select dropdown option "\${'$'}{optionTitle}":`, e);
+                        console.error(`Failed to select dropdown option "${'$'}{optionTitle}":`, e);
                         return false;
                     }
                 }
@@ -311,7 +311,7 @@ class ExtractionFragment : Fragment() {
                         }
                         await sleep(100);
                     }
-                    throw new Error(`Canvas visible no encontrado en \${'$'}{timeout}ms`);
+                    throw new Error(`Canvas visible no encontrado en ${'$'}{timeout}ms`);
                 }
 
                 console.log("Iniciando recorrido de asientos y páginas...");
@@ -322,13 +322,13 @@ class ExtractionFragment : Fragment() {
                     const asiento = asientos[i];
                     const asientoNumber = i + 1;
 
-                    console.log(`Procesando Asiento \${'$'}{asientoNumber}...`);
+                    console.log(`Procesando Asiento ${'$'}{asientoNumber}...`);
 
                     // Expandir si está colapsado
                     if (!asiento.classList.contains('ant-collapse-item-active')) {
                         const header = asiento.querySelector('.ant-collapse-header');
                         if (header) {
-                            console.log(` -> Asiento \${'$'}{asientoNumber} está colapsado, expandiendo...`);
+                            console.log(` -> Asiento ${'$'}{asientoNumber} está colapsado, expandiendo...`);
                             realisticClick(header);
                             await sleep(500); // Pausa para la animación
                         }
@@ -341,11 +341,11 @@ class ExtractionFragment : Fragment() {
                         const pageNumber = (button.textContent || "").trim();
 
                         if (button.offsetParent === null) {
-                            console.log(` -> Página \${'$'}{pageNumber} en Asiento \${'$'}{asientoNumber} no está visible, saltando.`);
+                            console.log(` -> Página ${'$'}{pageNumber} en Asiento ${'$'}{asientoNumber} no está visible, saltando.`);
                             continue;
                         }
 
-                        console.log(` -> Procesando Página \${'$'}{pageNumber}...`);
+                        console.log(` -> Procesando Página ${'$'}{pageNumber}...`);
                         realisticClick(button);
                         await sleep(600); // Pausa crítica para el renderizado
 
@@ -356,12 +356,12 @@ class ExtractionFragment : Fragment() {
                             for (let k = 0; k < canvases.length; k++) {
                                 const canvas = canvases[k];
                                 const dataUrl = canvas.toDataURL("image/png");
-                                const filename = `asiento_\${'$'}{asientoNumber}_pagina_\${'$'}{pageNumber}_canvas_\${'$'}{k + 1}.png`;
+                                const filename = `asiento_${'$'}{asientoNumber}_pagina_${'$'}{pageNumber}_canvas_${'$'}{k + 1}.png`;
                                 allImageData.push({ filename, dataUrl });
-                                console.log(`   -> Canvas \${'$'}{k + 1} de Página \${'$'}{pageNumber} (Asiento \${'$'}{asientoNumber}) capturado.`);
+                                console.log(`   -> Canvas ${'$'}{k + 1} de Página ${'$'}{pageNumber} (Asiento ${'$'}{asientoNumber}) capturado.`);
                             }
                         } catch (e) {
-                            console.error(`Error procesando Página \${'$'}{pageNumber} en Asiento \${'$'}{asientoNumber}: \${'$'}{e.message}`);
+                            console.error(`Error procesando Página ${'$'}{pageNumber} en Asiento ${'$'}{asientoNumber}: ${'$'}{e.message}`);
                         }
                     }
                 }
@@ -395,11 +395,11 @@ class ExtractionFragment : Fragment() {
                     }
 
                     sharedViewModel.setImageUrls(savedImagePaths)
-                    Toast.makeText(context, "\${savedImagePaths.size} imágenes guardadas exitosamente.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "${'$'}{savedImagePaths.size} imágenes guardadas exitosamente.", Toast.LENGTH_SHORT).show()
                     findNavController().popBackStack(R.id.mainMenuFragment, false)
 
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Error al procesar o guardar las imágenes: \${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Error al procesar o guardar las imágenes: ${'$'}{e.message}", Toast.LENGTH_LONG).show()
                     e.printStackTrace()
                 }
             }
@@ -423,7 +423,7 @@ class ExtractionFragment : Fragment() {
             }
             imageFile.absolutePath
         } catch (e: Exception) {
-            Log.e("SaveImage", "Error guardando imagen: \${e.message}", e)
+            Log.e("SaveImage", "Error guardando imagen: ${'$'}{e.message}", e)
             null
         }
     }
