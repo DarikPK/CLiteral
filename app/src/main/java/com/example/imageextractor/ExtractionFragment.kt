@@ -45,9 +45,9 @@ class ExtractionFragment : Fragment() {
         fun updateNavigationState(isFirst: Boolean, isLast: Boolean) {
             activity?.runOnUiThread {
                 binding.fabGoToFirstItem.isEnabled = !isFirst
-                binding.fab_previous.isEnabled = !isFirst
+                binding.fabPrevious.isEnabled = !isFirst
                 binding.fabGoToLastItem.isEnabled = !isLast
-                binding.fab_next.isEnabled = !isLast
+                binding.fabNext.isEnabled = !isLast
             }
         }
     }
@@ -106,8 +106,8 @@ class ExtractionFragment : Fragment() {
         binding.debugButton.visibility = if (isResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToFirstItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToLastItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-        binding.fab_previous.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-        binding.fab_next.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fabPrevious.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fabNext.visibility = if (isResultsPage) View.VISIBLE else View.GONE
 
         actionButton.visibility = if (isLoginPage) View.VISIBLE else View.GONE
 
@@ -119,9 +119,9 @@ class ExtractionFragment : Fragment() {
         if (isResultsPage) {
             // Initial state: user starts at the last item (most recent), which is the first in the DOM.
             binding.fabGoToLastItem.isEnabled = false
-            binding.fab_next.isEnabled = false
+            binding.fabNext.isEnabled = false
             binding.fabGoToFirstItem.isEnabled = true
-            binding.fab_previous.isEnabled = true
+            binding.fabPrevious.isEnabled = true
         }
     }
 
@@ -136,8 +136,8 @@ class ExtractionFragment : Fragment() {
 
         binding.fabGoToFirstItem.setOnClickListener { navigateTo("first") }
         binding.fabGoToLastItem.setOnClickListener { navigateTo("last") }
-        binding.fab_previous.setOnClickListener { navigateTo("previous") }
-        binding.fab_next.setOnClickListener { navigateTo("next") }
+        binding.fabPrevious.setOnClickListener { navigateTo("previous") }
+        binding.fabNext.setOnClickListener { navigateTo("next") }
     }
 
     private fun navigateTo(direction: String) {
