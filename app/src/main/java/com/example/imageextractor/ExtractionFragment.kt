@@ -50,6 +50,7 @@ class ExtractionFragment : Fragment() {
     private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
     private var currentPageUrl: String? = null
+    private var extractionTriggered = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -73,6 +74,12 @@ class ExtractionFragment : Fragment() {
                 super.onPageFinished(view, url)
                 currentPageUrl = url
                 updateButtonStates(url)
+
+                if (url?.contains(resultsUrlSubstring) == true && !extractionTriggered) {
+                    extractionTriggered = true
+                    Toast.makeText(context, "Página de partida detectada, iniciando extracción automática...", Toast.LENGTH_SHORT).show()
+                    view?.postDelayed({ extractImagesFromPartida() }, 2000)
+                }
             }
         }
         binding.webView.loadUrl(loginUrl)
@@ -84,9 +91,8 @@ class ExtractionFragment : Fragment() {
 
         when {
             url?.contains(resultsUrlSubstring) == true -> {
-                actionButton.visibility = View.VISIBLE
-                actionButton.setImageResource(android.R.drawable.ic_media_play)
-                actionButton.contentDescription = "Iniciar extracción de imágenes"
+                // Extraction is now automatic, so hide the action button
+                actionButton.visibility = View.GONE
                 binding.debugButton.visibility = View.VISIBLE
             }
             url == loginUrl || url?.startsWith(searchUrl) == true -> {
