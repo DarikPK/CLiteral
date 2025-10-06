@@ -25,29 +25,59 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Navigation controls group -->
+
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fab_go_to_last"
+        android:id="@+id/fab_go_to_last_item"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:text="2"
-        android:contentDescription="Ir a la última hoja"
+        android:text="Último"
+        android:contentDescription="Ir al último elemento (más reciente)"
         app:backgroundTint="@color/fab_state_color"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/debug_button"
         android:visibility="gone"
         tools:visibility="visible"/>
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fab_go_to_first"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_next"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        android:text="1"
-        android:contentDescription="Ir a la primera hoja"
+        app:fabSize="mini"
+        android:src="@android:drawable/ic_media_next"
+        android:contentDescription="Siguiente"
         app:backgroundTint="@color/fab_state_color"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/fab_go_to_last"
+        app:layout_constraintEnd_toStartOf="@id/fab_go_to_last_item"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_previous"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        app:fabSize="mini"
+        android:src="@android:drawable/ic_media_previous"
+        android:contentDescription="Anterior"
+        app:backgroundTint="@color/fab_state_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/fab_next"
+        android:visibility="gone"
+        tools:visibility="visible"/>
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fab_go_to_first_item"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:text="Inicio"
+        android:contentDescription="Ir al primer elemento (más antiguo)"
+        app:backgroundTint="@color/fab_state_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/fab_previous"
         android:visibility="gone"
         tools:visibility="visible"/>
 

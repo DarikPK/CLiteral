@@ -40,6 +40,16 @@ class ExtractionFragment : Fragment() {
         fun onSelectorCaptured(selector: String) {
             Log.d("JsBridge", "Selector capturado: $selector")
         }
+
+        @JavascriptInterface
+        fun updateNavigationState(isFirst: Boolean, isLast: Boolean) {
+            activity?.runOnUiThread {
+                binding.fabGoToFirstItem.isEnabled = !isFirst
+                binding.fab_previous.isEnabled = !isFirst
+                binding.fabGoToLastItem.isEnabled = !isLast
+                binding.fab_next.isEnabled = !isLast
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -78,8 +88,8 @@ class ExtractionFragment : Fragment() {
 
                 if (url?.contains(resultsUrlSubstring) == true && !extractionTriggered) {
                     extractionTriggered = true
-                    Toast.makeText(context, "Página de partida detectada, iniciando extracción automática...", Toast.LENGTH_SHORT).show()
-                    view?.postDelayed({ extractImagesFromPartida() }, 2000)
+                    // Automatic extraction is replaced by manual navigation.
+                    // You can trigger extraction manually if needed, for example, via a button.
                 }
             }
         }
@@ -88,106 +98,167 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         val actionButton = binding.actionButton
-        binding.extractButton.visibility = View.GONE // This button is no longer used
+        binding.extractButton.visibility = View.GONE
 
-        when {
-            url?.contains(resultsUrlSubstring) == true -> {
-                // Extraction is now automatic, so hide the action button
-                actionButton.visibility = View.GONE
-                binding.debugButton.visibility = View.VISIBLE
-                binding.fabGoToFirst.visibility = View.VISIBLE
-                binding.fabGoToLast.visibility = View.VISIBLE
-                // Set initial state: user starts at the last page
-                binding.fabGoToFirst.isEnabled = true
-                binding.fabGoToLast.isEnabled = false
-            }
-            url == loginUrl || url?.startsWith(searchUrl) == true -> {
-                actionButton.visibility = View.VISIBLE
-                actionButton.setImageResource(android.R.drawable.ic_menu_edit)
-                actionButton.contentDescription = "Autocompletar Datos"
-                binding.debugButton.visibility = View.GONE
-            }
-            else -> {
-                actionButton.visibility = View.GONE
-                binding.debugButton.visibility = View.GONE
-            }
+        val isResultsPage = url?.contains(resultsUrlSubstring) == true
+        val isLoginPage = url == loginUrl || url?.startsWith(searchUrl) == true
+
+        binding.debugButton.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fabGoToFirstItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fabGoToLastItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fab_previous.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fab_next.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+
+        actionButton.visibility = if (isLoginPage) View.VISIBLE else View.GONE
+
+        if (isLoginPage) {
+            actionButton.setImageResource(android.R.drawable.ic_menu_edit)
+            actionButton.contentDescription = "Autocompletar Datos"
+        }
+
+        if (isResultsPage) {
+            // Initial state: user starts at the last item (most recent), which is the first in the DOM.
+            binding.fabGoToLastItem.isEnabled = false
+            binding.fab_next.isEnabled = false
+            binding.fabGoToFirstItem.isEnabled = true
+            binding.fab_previous.isEnabled = true
         }
     }
 
     private fun setupButtons() {
         binding.actionButton.setOnClickListener {
-            when {
-                currentPageUrl?.contains(resultsUrlSubstring) == true -> {
-                    extractImagesFromPartida()
-                }
-                else -> {
-                    autofillCurrentPage()
-                }
+            if (currentPageUrl?.contains(resultsUrlSubstring) != true) {
+                autofillCurrentPage()
             }
         }
-        binding.debugButton.setOnClickListener {
-            showSidePanel()
-        }
-        binding.extractButton.setOnClickListener(null)
+        binding.debugButton.setOnClickListener { showSidePanel() }
+        binding.extractButton.setOnClickListener { extractImagesFromPartida() }
 
-        binding.fabGoToFirst.setOnClickListener { navigateToFirst() }
-        binding.fabGoToLast.setOnClickListener { navigateToLast() }
+        binding.fabGoToFirstItem.setOnClickListener { navigateTo("first") }
+        binding.fabGoToLastItem.setOnClickListener { navigateTo("last") }
+        binding.fab_previous.setOnClickListener { navigateTo("previous") }
+        binding.fab_next.setOnClickListener { navigateTo("next") }
     }
 
-    private fun navigateToFirst() {
+    private fun navigateTo(direction: String) {
         val script = """
-            (function() {
+            ((direction) => {
+                function getNavigableItems() {
+                    // This selector targets both "asientos" and "tomos/folios" containers
+                    return Array.from(document.querySelectorAll('.columna-lista'));
+                }
+
+                function findClickableChild(element) {
+                    // This finds the correct clickable element inside a container, whether it's an asiento header or a tomo/folio link
+                    return element.querySelector('.ant-collapse-header, .pagina .boton-pagina, .pagina a');
+                }
+
                 function realisticClick(element) {
                     try {
-                        const events = ['mousedown', 'mouseup', 'click'];
-                        events.forEach(type => element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+                        element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                        element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                         return true;
-                    } catch (e) { return false; }
+                    } catch (e) {
+                        return false;
+                    }
                 }
-                const firstPageButton = document.querySelector('.pagina .boton-pagina');
-                if (firstPageButton) {
-                    return realisticClick(firstPageButton);
-                }
-                return false;
-            })();
-        """
-        binding.webView.evaluateJavascript(script) { result ->
-            activity?.runOnUiThread {
-                if (result == "true") {
-                    binding.fabGoToFirst.isEnabled = false
-                    binding.fabGoToLast.isEnabled = true
-                } else {
-                    Toast.makeText(context, "No se pudo ir a la primera hoja", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
-    private fun navigateToLast() {
-        val script = """
-            (function() {
-                 function realisticClick(element) {
-                    try {
-                        const events = ['mousedown', 'mouseup', 'click'];
-                        events.forEach(type => element.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
-                        return true;
-                    } catch (e) { return false; }
+                function getCurrentItemIndex(items) {
+                    // Find the currently displayed item by checking the subtitle in the viewer
+                    const titleElement = document.querySelector('.visor-subtitle');
+                    if (!titleElement) return 0;
+
+                    const titleText = (titleElement.innerText || "").trim().toLowerCase();
+                    const asientoMatch = titleText.match(/asiento (\d+)/);
+                    const tomoMatch = titleText.match(/tomo: (\d+)/);
+                    const folioMatch = titleText.match(/folio: (\d+)/);
+                    const fichaMatch = titleText.match(/ficha: (\d+)/);
+
+                    for (let i = 0; i < items.length; i++) {
+                        const itemText = (items[i].innerText || "").toLowerCase();
+                        let isMatch = false;
+                        if (asientoMatch && itemText.includes(`n° asiento: ${'$'}{asientoMatch[1]}`)) {
+                            isMatch = true;
+                        } else if (tomoMatch && folioMatch && itemText.includes(`tomo: ${'$'}{tomoMatch[1]}`) && itemText.includes(`folio: ${'$'}{folioMatch[1]}`)) {
+                            isMatch = true;
+                        } else if (fichaMatch && itemText.includes(`ficha: ${'$'}{fichaMatch[1]}`)) {
+                            isMatch = true;
+                        }
+                        if (isMatch) return i;
+                    }
+                    return 0; // Fallback to the first item if no match is found
                 }
-                const pageButtons = document.querySelectorAll('.pagina .boton-pagina');
-                if (pageButtons.length > 0) {
-                    const lastPageButton = pageButtons[pageButtons.length - 1];
-                    return realisticClick(lastPageButton);
+
+                try {
+                    const items = getNavigableItems();
+                    if (items.length === 0) {
+                        return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación (asientos, tomos, etc.)." });
+                    }
+
+                    const currentIndex = getCurrentItemIndex(items);
+                    let targetIndex = -1;
+
+                    switch (direction) {
+                        case 'first': // "Inicio" -> oldest item, which is the last in the DOM list
+                            targetIndex = items.length - 1;
+                            break;
+                        case 'last': // "Último" -> newest item, which is the first in the DOM list
+                            targetIndex = 0;
+                            break;
+                        case 'next': // ">" -> towards newer/most recent, so index decreases
+                            if (currentIndex > 0) targetIndex = currentIndex - 1;
+                            break;
+                        case 'previous': // "<" -> towards older, so index increases
+                            if (currentIndex < items.length - 1) targetIndex = currentIndex + 1;
+                            break;
+                    }
+
+                    if (targetIndex === -1) {
+                         return JSON.stringify({ success: false, error: "Ya te encuentras en el extremo de la navegación." });
+                    }
+
+                    const targetItem = items[targetIndex];
+                    // If it's a collapsible "asiento", expand it first
+                    if (!targetItem.classList.contains('ant-collapse-item-active')) {
+                        const header = targetItem.querySelector('.ant-collapse-header');
+                        if(header) realisticClick(header);
+                    }
+
+                    const clickable = findClickableChild(targetItem);
+                    if (!clickable) {
+                        return JSON.stringify({ success: false, error: "No se encontró un elemento clickeable en el destino." });
+                    }
+
+                    if (!realisticClick(clickable)) {
+                        return JSON.stringify({ success: false, error: "El clic en el elemento de destino falló." });
+                    }
+
+                    const isFirst = (targetIndex === items.length - 1);
+                    const isLast = (targetIndex === 0);
+
+                    if (typeof AndroidBridge !== 'undefined') {
+                        AndroidBridge.updateNavigationState(isFirst, isLast);
+                    }
+
+                    return JSON.stringify({ success: true });
+
+                } catch (e) {
+                    return JSON.stringify({ success: false, error: "Ocurrió un error inesperado en el script: " + e.message });
                 }
-                return false;
-            })();
-        """
+            })('$direction');
+        """.trimIndent()
+
         binding.webView.evaluateJavascript(script) { result ->
             activity?.runOnUiThread {
-                if (result == "true") {
-                    binding.fabGoToFirst.isEnabled = true
-                    binding.fabGoToLast.isEnabled = false
-                } else {
-                    Toast.makeText(context, "No se pudo ir a la última hoja", Toast.LENGTH_SHORT).show()
+                try {
+                    val json = org.json.JSONObject(result)
+                    if (!json.getBoolean("success")) {
+                        val error = json.optString("error", "Error desconocido.")
+                        Toast.makeText(context, "Error en la navegación: $error", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error al procesar la respuesta de navegación.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
