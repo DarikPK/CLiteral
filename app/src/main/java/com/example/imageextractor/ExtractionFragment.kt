@@ -51,22 +51,23 @@ class ExtractionFragment : Fragment() {
             }
         }
 
-        private val imageChunkBuilder = StringBuilder()
+        private val base64ChunkBuilder = StringBuilder()
 
         @JavascriptInterface
-        fun receiveChunk(chunk: String, isLast: Boolean) {
+        fun onChunkReceived(chunk: String, isLast: Boolean) {
             activity?.runOnUiThread {
-                imageChunkBuilder.append(chunk)
-                Toast.makeText(requireContext(), "Recibiendo datos... (${imageChunkBuilder.length/1024} KB)", Toast.LENGTH_SHORT).show()
+                if (isViewDestroyed) return@runOnUiThread
+
+                base64ChunkBuilder.append(chunk)
+                Log.d("ChunkReceiver", "Chunk recibido. Tamaño acumulado: ${base64ChunkBuilder.length} bytes")
 
                 if (isLast) {
-                    val dataUrl = imageChunkBuilder.toString()
-                    imageChunkBuilder.setLength(0) // Clear for next use
-                    if (dataUrl.startsWith("data:image/png;base64")) {
-                        saveImageFromDataUrl(dataUrl, generarNombreArchivo())
-                    } else {
-                        Toast.makeText(requireContext(), "Error reconstruyendo imagen.", Toast.LENGTH_LONG).show()
-                    }
+                    Log.d("ChunkReceiver", "Último chunk recibido. Reconstruyendo y guardando imagen.")
+                    val base64Data = base64ChunkBuilder.toString()
+                    base64ChunkBuilder.setLength(0)
+
+                    val dataUrl = "data:image/png;base64,$base64Data"
+                    saveImageFromDataUrl(dataUrl, generarNombreArchivo())
                 }
             }
         }
@@ -197,10 +198,13 @@ class ExtractionFragment : Fragment() {
             }
             try {
                 const dataUrl = canvas.toDataURL('image/png');
-                const chunkSize = 200000; // ~200 KB
-                for (let i = 0; i < dataUrl.length; i += chunkSize) {
-                    const chunk = dataUrl.substring(i, i + chunkSize);
-                    AndroidBridge.receiveChunk(chunk, (i + chunkSize >= dataUrl.length));
+                const base64Data = dataUrl.split(',')[1];
+                const chunkSize = 102400; // 100 KB
+
+                for (let i = 0; i < base64Data.length; i += chunkSize) {
+                    const chunk = base64Data.substring(i, i + chunkSize);
+                    const isLast = (i + chunkSize) >= base64Data.length;
+                    AndroidBridge.onChunkReceived(chunk, isLast);
                 }
                 return "ok";
             } catch(e) {
