@@ -56,4 +56,21 @@ class SharedViewModel : ViewModel() {
     fun getRandomLoginData(): LoginData {
         return randomLoginDatabase[Random.nextInt(randomLoginDatabase.size)]
     }
+
+    // --- Listas para Dropdowns ---
+    private val officeList = listOf(
+        "ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA",
+        "CALLAO", "CAMANA", "CASMA", "CASTILLA _ APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN",
+        "CHICLAYO", "CHIMBOTE", "CHINCHA", "CUSCO", "HUACHO", "HUANCAVELICA", "HUANCAYO",
+        "HUANUCO", "HUARAL", "HUARAZ", "ICA", "IQUITOS", "JAEN", "JAUJA", "JULIACA",
+        "LA MERCED", "LIMA", "LORETO", "MADRE DE DIOS", "MOLLENDO", "MOQUEGUA", "MOYOBAMBA",
+        "NASCA", "OXAPAMPA", "PACASMAYO", "PASCO", "PISCO", "PIURA", "PUCALLPA", "PUNO",
+        "QUILLABAMBA", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TUMBES",
+        "YURIMAGUAS"
+    ).map { it.toUpperCase() }
+
+    fun getOfficeListJson(): String {
+        // Crea una cadena JSON a partir de la lista
+        return officeList.joinToString(prefix = "[\"", separator = "\",\"", postfix = "\"]")
+    }
 }

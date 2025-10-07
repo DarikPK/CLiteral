@@ -337,65 +337,105 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
-        (async function() {
-          function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-          function waitForElement(sel, t=8000, scope=document){
-            return new Promise((res,rej)=>{
-              const ts = Date.now();
-              const it = setInterval(()=>{
-                const el = scope.querySelector(sel);
-                if (el && el.offsetParent !== null) { clearInterval(it); res(el); }
-                else if (Date.now()-ts>t){ clearInterval(it); rej(new Error("No "+sel)); }
-              },100);
-            });
-          }
-          async function waitForOptionByText(txt, t=8000){
-            const ts = Date.now();
-            while(Date.now()-ts<t){
-              const opts = document.querySelectorAll('.ant-select-item-option-content');
-              for(const o of opts){
-                if(((o.textContent||"").trim().toUpperCase())===txt.toUpperCase()) return o;
+    (async function() {
+      function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+      function waitForElement(sel, t=8000, scope=document){
+        return new Promise((res,rej)=>{
+          const ts = Date.now();
+          const it = setInterval(()=>{
+            const el = scope.querySelector(sel);
+            if (el && el.offsetParent !== null) { clearInterval(it); res(el); }
+            else if (Date.now()-ts>t){ clearInterval(it); rej(new Error("No se encontró "+sel)); }
+          },100);
+        });
+      }
+
+      async function robustClick(element, timeout = 5000) {
+          const start = Date.now();
+          while (Date.now() - start < timeout) {
+              if (element && element.offsetParent !== null && !element.disabled) {
+                  element.scrollIntoView({block: 'center'});
+                  await sleep(200);
+                  element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                  element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                  element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                  return true;
               }
-              await sleep(120);
-            }
-            throw new Error("Opción '"+txt+"' no encontrada");
+              await sleep(100);
           }
-          async function selectDropdown(dropdownSel, optionText){
-            const dd = await waitForElement(dropdownSel);
-            const clickable = dd.querySelector('.ant-select-selector') || dd;
-            clickable.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
-            clickable.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-            const overlay = await waitForElement('.cdk-overlay-container .ant-select-dropdown', 6000);
-            const opt = await waitForOptionByText(optionText, 8000);
-            opt.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
-            opt.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
-            await sleep(300);
+          throw new Error('No se pudo hacer clic en el elemento de forma robusta.');
+      }
+
+      async function waitForOptionAndScroll(optionText, container, timeout = 8000) {
+          const start = Date.now();
+          const viewport = container.querySelector('.cdk-virtual-scroll-viewport');
+
+          // Primero, intentar encontrar la opción sin scrollear, por si ya está visible
+          let options = Array.from(container.querySelectorAll('.ant-select-item-option-content'));
+          let foundOption = options.find(o => (o.textContent || "").trim().toUpperCase() === optionText.toUpperCase());
+          if (foundOption) return foundOption;
+
+          // Si no está visible y hay un viewport virtual, scrollear
+          if (viewport) {
+              // Obtener todas las opciones para calcular el índice correcto
+              const allOptionsText = ${sharedViewModel.getOfficeListJson()}; // Asume que tienes una lista completa
+              const optionIndex = allOptionsText.indexOf(optionText.toUpperCase());
+
+              if (optionIndex !== -1) {
+                  const itemHeight = 32; // Altura estándar de un item en antd
+                  viewport.scrollTo({ top: optionIndex * itemHeight, behavior: 'auto' });
+                  await sleep(400); // Esperar a que el scroll termine y se renderice
+              }
           }
 
-          const areaMap = {
-            "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
-            "REGISTRO DE PERSONAS JURIDICAS": "PERSONAS JURIDICAS",
-            "REGISTRO DE PERSONAS NATURALES": "PERSONAS NATURALES",
-            "REGISTRO DE BIENES MUEBLES": "REGISTRO MOBILIARIO DE CONTRATOS"
-          };
-          const mappedArea = areaMap["${config.areaRegistral}"] || "${config.areaRegistral}";
+          // Volver a buscar la opción después del scroll
+          const finalOptions = Array.from(container.querySelectorAll('.ant-select-item-option-content'));
+          foundOption = finalOptions.find(o => (o.textContent || "").trim().toUpperCase() === optionText.toUpperCase());
+          if (foundOption) return foundOption;
 
-          await selectDropdown('nz-select[formcontrolname="oficinaRegistral"]', "${config.oficina}");
-          await selectDropdown('nz-select[formcontrolname="areaRegistral"]', mappedArea);
+          throw new Error("Opción '" + optionText + "' no encontrada en el dropdown.");
+      }
 
-          (await waitForElement('label[nzvalue="2"] input')).click(); // Partida
+      async function selectDropdown(dropdownSel, optionText){
+        const dd = await waitForElement(dropdownSel);
+        await robustClick(dd.querySelector('.ant-select-selector') || dd);
 
-          const numero = await waitForElement('input[formcontrolname="numero"]');
-          numero.value = "${config.numeroPartida}";
-          numero.dispatchEvent(new Event('input',{bubbles:true}));
-          numero.dispatchEvent(new Event('blur',{bubbles:true}));
+        const overlay = await waitForElement('.cdk-overlay-container .ant-select-dropdown', 6000);
+        const opt = await waitForOptionAndScroll(optionText, overlay);
 
-          (await waitForElement('button.btn-buscar-partida')).click();
-          (await waitForElement('button[title="Previsualizar"].btn-search', 15000)).click();
+        await robustClick(opt);
+        await sleep(300);
+      }
 
-          await waitForElement('.columna-lista', 15000);
-          try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
-        })();
+      const areaMap = {
+        "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
+        "REGISTRO DE PERSONAS JURIDICAS": "PERSONAS JURIDICAS",
+        "REGISTRO DE PERSONAS NATURALES": "PERSONAS NATURALES",
+        "REGISTRO DE BIENES MUEBLES": "REGISTRO MOBILIARIO DE CONTRATOS"
+      };
+      const mappedArea = areaMap["${config.areaRegistral}"] || "${config.areaRegistral}";
+
+      await selectDropdown('nz-select[formcontrolname="oficinaRegistral"]', "${config.oficina}");
+      await selectDropdown('nz-select[formcontrolname="areaRegistral"]', mappedArea);
+
+      const partidaRadio = await waitForElement('label[nzvalue="2"] input');
+      await robustClick(partidaRadio);
+
+      const numero = await waitForElement('input[formcontrolname="numero"]');
+      numero.value = "${config.numeroPartida}";
+      numero.dispatchEvent(new Event('input',{bubbles:true}));
+      numero.dispatchEvent(new Event('blur',{bubbles:true}));
+
+      const buscarBtn = await waitForElement('button.btn-buscar-partida');
+      await robustClick(buscarBtn);
+
+      const previewBtn = await waitForElement('button[title="Previsualizar"].btn-search', 15000);
+      await robustClick(previewBtn);
+
+      await waitForElement('.columna-lista', 15000);
+      try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
+    })();
     """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
     }
