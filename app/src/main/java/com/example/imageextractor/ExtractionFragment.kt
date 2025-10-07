@@ -430,27 +430,8 @@ class ExtractionFragment : Fragment() {
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
 
-      const previewButton = await waitForElement('button.btn-search[title="Previsualizar"]', 15000);
-
-      // esperar a que se habilite
-      let tries = 0;
-      while ((previewButton.disabled || previewButton.getAttribute('aria-disabled') === 'true' ||
-             previewButton.classList.contains('ant-btn-loading') || previewButton.classList.contains('disabled'))
-             && tries < 75) {
-        await sleep(200);
-        tries++;
-      }
-
-      if (previewButton.disabled || previewButton.getAttribute('aria-disabled') === 'true') {
-        throw new Error("El botón de Previsualizar no se habilitó a tiempo.");
-      }
-
-      previewButton.scrollIntoView({block: 'center'});
-      await sleep(200);
-
-      ['mousedown','mouseup','click'].forEach(type => {
-        previewButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true }));
-      });
+      const previewBtn = await waitForElement('button[title="Previsualizar"].btn-search', 15000);
+      await robustClick(previewBtn);
 
       await waitForElement('.columna-lista', 15000);
       try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
