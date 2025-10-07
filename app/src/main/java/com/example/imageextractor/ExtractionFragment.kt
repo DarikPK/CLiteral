@@ -430,25 +430,27 @@ class ExtractionFragment : Fragment() {
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
 
-      const previewButton = await waitForElement('[title="Previsualizar"]', 10000);
+      const previewButton = await waitForElement('button.btn-search[title="Previsualizar"]', 15000);
 
       // esperar a que se habilite
       let tries = 0;
-      while (previewButton.disabled && tries < 75) { // 75 * 200ms = 15s
+      while ((previewButton.disabled || previewButton.getAttribute('aria-disabled') === 'true' ||
+             previewButton.classList.contains('ant-btn-loading') || previewButton.classList.contains('disabled'))
+             && tries < 75) {
         await sleep(200);
         tries++;
       }
 
-      if (previewButton.disabled) {
-        throw new Error("El botón de previsualizar no se habilitó a tiempo.");
+      if (previewButton.disabled || previewButton.getAttribute('aria-disabled') === 'true') {
+        throw new Error("El botón de Previsualizar no se habilitó a tiempo.");
       }
 
       previewButton.scrollIntoView({block: 'center'});
-      await sleep(200); // Pequeña pausa después del scroll
+      await sleep(200);
 
-      // clic realista igual que en extractImagesFromPartida
-      const events = ['mousedown','mouseup','click'];
-      events.forEach(type => previewButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true })));
+      ['mousedown','mouseup','click'].forEach(type => {
+        previewButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true }));
+      });
 
       await waitForElement('.columna-lista', 15000);
       try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
