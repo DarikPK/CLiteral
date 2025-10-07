@@ -110,9 +110,10 @@ class ExtractionFragment : Fragment() {
             )
             if (!downloadDir.exists()) downloadDir.mkdirs()
 
-            val fileName = android.webkit.URLUtil.parseContentDisposition(contentDisposition).let { disposition ->
-                disposition.substringAfter("filename=\"").removeSuffix("\"")
-            }.ifEmpty { generarNombreArchivo() }
+            val fileName = contentDisposition
+                .substringAfter("filename=\"", "")
+                .substringBefore("\"")
+                .takeIf { it.isNotEmpty() } ?: generarNombreArchivo()
 
             val file = File(downloadDir, fileName)
 
