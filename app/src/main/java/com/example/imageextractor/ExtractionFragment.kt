@@ -98,24 +98,19 @@ class ExtractionFragment : Fragment() {
         val isResultsPage = url?.contains(resultsUrlSubstring) == true
         val isAutofillPage = url == loginUrl || (url?.startsWith(searchUrl) == true && !isResultsPage)
 
-        binding.actionButton.visibility = if (isResultsPage || isAutofillPage) View.VISIBLE else View.GONE
+        binding.autofillButton.visibility = if (isAutofillPage) View.VISIBLE else View.GONE
+        binding.captureButton.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+
+        val navigationVisible = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.fabGoToFirstItem.visibility = navigationVisible
+        binding.fabGoToLastItem.visibility = navigationVisible
+        binding.fabPrevious.visibility = navigationVisible
+        binding.fabNext.visibility = navigationVisible
+
+        binding.extractButton.visibility = View.GONE // Keep it hidden as per original logic
 
         if (isResultsPage) {
-            binding.actionButton.setImageResource(android.R.drawable.ic_menu_camera)
-            binding.actionButton.contentDescription = "Capturar Pantalla"
-        } else if (isAutofillPage) {
-            binding.actionButton.setImageResource(android.R.drawable.ic_menu_edit)
-            binding.actionButton.contentDescription = "Autocompletar Datos"
-        }
-
-        binding.fabGoToFirstItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-        binding.fabGoToLastItem.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-        binding.fabPrevious.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-        binding.fabNext.visibility = if (isResultsPage) View.VISIBLE else View.GONE
-
-        binding.extractButton.visibility = View.GONE
-
-        if (isResultsPage) {
+            // Reset navigation buttons to initial state when entering results page
             binding.fabGoToLastItem.isEnabled = false
             binding.fabNext.isEnabled = false
             binding.fabGoToFirstItem.isEnabled = true
@@ -124,13 +119,12 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.actionButton.setOnClickListener {
-            val url = currentPageUrl
-            if (url != null && url.contains(resultsUrlSubstring)) {
-                captureVisibleCanvas()
-            } else {
-                autofillCurrentPage()
-            }
+        binding.autofillButton.setOnClickListener {
+            autofillCurrentPage()
+        }
+
+        binding.captureButton.setOnClickListener {
+            captureVisibleCanvas()
         }
 
         binding.extractButton.setOnClickListener { extractImagesFromPartida() }
