@@ -118,9 +118,21 @@ class ExtractionFragment : Fragment() {
 
     private fun setupButtons() {
         binding.actionButton.setOnClickListener {
-            if (currentPageUrl?.contains(resultsUrlSubstring) == true) {
-                captureScreenshot()
+            if (binding.actionButton.contentDescription == "Capturar Pantalla") {
+                // We expect to be on a capture page. Let's verify with a DOM check.
+                val script = "(function() { return document.querySelector('canvas') !== null && document.querySelector('canvas').offsetParent !== null; })();"
+                binding.webView.evaluateJavascript(script) { result ->
+                    activity?.runOnUiThread {
+                        if (result == "true") {
+                            captureScreenshot()
+                        } else {
+                            // The button is a camera, but there's no canvas. This is the error state.
+                            Toast.makeText(context, "No estás en la parte de capturas", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             } else {
+                // The button is for autofill
                 autofillCurrentPage()
             }
         }
