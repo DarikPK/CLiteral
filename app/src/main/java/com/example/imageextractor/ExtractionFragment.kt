@@ -50,32 +50,13 @@ class ExtractionFragment : Fragment() {
                 binding.fabNext.isEnabled = !isLast
             }
         }
-
-        private val base64ChunkBuilder = StringBuilder()
-
-        @JavascriptInterface
-        fun onChunkReceived(chunk: String, isLast: Boolean) {
-            activity?.runOnUiThread {
-                if (isViewDestroyed) return@runOnUiThread
-
-                base64ChunkBuilder.append(chunk)
-                Log.d("ChunkReceiver", "Chunk recibido. Tamaño acumulado: ${base64ChunkBuilder.length} bytes")
-
-                if (isLast) {
-                    Log.d("ChunkReceiver", "Último chunk recibido. Reconstruyendo y guardando imagen.")
-                    val base64Data = base64ChunkBuilder.toString()
-                    base64ChunkBuilder.setLength(0)
-
-                    val dataUrl = "data:image/png;base64,$base64Data"
-                    saveImageFromDataUrl(dataUrl, generarNombreArchivo())
-                }
-            }
-        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
     private val binding get() = _binding!!
     private var isViewDestroyed = false
+    private val toastHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    private var toastRunnable: Runnable? = null
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
@@ -111,7 +92,45 @@ class ExtractionFragment : Fragment() {
                 injectSpaUrlWatcher()
             }
         }
+
+        binding.webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
+            if (mimeType == "image/png" && url.startsWith("data:")) {
+                handleDataUrlDownload(url, contentDisposition)
+            }
+        }
+
         binding.webView.loadUrl(loginUrl)
+    }
+
+    private fun handleDataUrlDownload(url: String, contentDisposition: String) {
+        try {
+            val downloadDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "capturas_sunarp"
+            )
+            if (!downloadDir.exists()) downloadDir.mkdirs()
+
+            val fileName = android.webkit.URLUtil.parseContentDisposition(contentDisposition).let { disposition ->
+                disposition.substringAfter("filename=\"").removeSuffix("\"")
+            }.ifEmpty { generarNombreArchivo() }
+
+            val file = File(downloadDir, fileName)
+
+            val base64EncodedString = url.substring(url.indexOf(",") + 1)
+            val decodedBytes = Base64.decode(base64EncodedString, Base64.DEFAULT)
+
+            FileOutputStream(file).use { it.write(decodedBytes) }
+
+            toastRunnable?.let { toastHandler.removeCallbacks(it) }
+            toastRunnable = Runnable {
+                Toast.makeText(context, "Captura(s) guardada(s) en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
+            }
+            toastHandler.postDelayed(toastRunnable!!, 500)
+
+        } catch (e: Exception) {
+            Log.e("WebViewDownload", "Error al guardar captura desde data URL", e)
+            Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun injectSpaUrlWatcher() {
@@ -192,39 +211,29 @@ class ExtractionFragment : Fragment() {
     private fun captureVisibleCanvas() {
         val script = """
         (function() {
-            const canvas = document.querySelector('canvas:not([style*="display: none"])');
-            if (!canvas || canvas.offsetParent === null || canvas.width < 50 || canvas.height < 50) {
-                return "error:NoCanvas";
-            }
+          const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');
+          if (!canvases.length) {
+            console.log("No hay canvas para capturar");
+            return;
+          }
+          canvases.forEach((canvas, i) => {
             try {
-                const dataUrl = canvas.toDataURL('image/png');
-                const base64Data = dataUrl.split(',')[1];
-                const chunkSize = 102400; // 100 KB
-
-                for (let i = 0; i < base64Data.length; i += chunkSize) {
-                    const chunk = base64Data.substring(i, i + chunkSize);
-                    const isLast = (i + chunkSize) >= base64Data.length;
-                    AndroidBridge.onChunkReceived(chunk, isLast);
-                }
-                return "ok";
-            } catch(e) {
-                return "error:" + e.message;
+              const dataUrl = canvas.toDataURL("image/png");
+              const a = document.createElement("a");
+              a.href = dataUrl;
+              a.download = "captura_" + Date.now() + "_" + (i+1) + ".png";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            } catch (e) {
+              console.error("Error al capturar canvas: ", e);
             }
+          });
         })();
         """.trimIndent()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            binding.webView.evaluateJavascript(script) { result ->
-                activity?.runOnUiThread {
-                    if (result != null && result != "\"ok\"") {
-                        val errorMsg = result.replace("\"", "").substringAfter("error:")
-                        Toast.makeText(requireContext(), "Error en captura: $errorMsg", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
-        } else {
-            binding.webView.loadUrl("javascript:$script")
-        }
+        // loadUrl is compatible with all API levels for this fire-and-forget script.
+        binding.webView.loadUrl("javascript:$script")
     }
 
     private fun navigateTo(direction: String) {
