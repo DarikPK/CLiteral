@@ -1,9 +1,12 @@
 package com.example.imageextractor
 
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Base64
 import android.util.Log
 import android.view.LayoutInflater
@@ -139,22 +142,47 @@ class ExtractionFragment : Fragment() {
         val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val timestamp = sdf.format(Date())
         val filename = "captura_sunarp_$timestamp.png"
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val imageDir = File(downloadsDir, "capturas_sunarp")
-        if (!imageDir.exists()) {
-            imageDir.mkdirs()
-        }
-        val imageFile = File(imageDir, filename)
 
-        try {
-            FileOutputStream(imageFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                out.flush()
+        saveBitmapToDownloads(bitmap, filename)
+    }
+
+    private fun saveBitmapToDownloads(bitmap: Bitmap, filename: String) {
+        val resolver = context?.contentResolver ?: return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/capturas_sunarp")
             }
-            Toast.makeText(context, "Captura guardada en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) {
-            Log.e("CaptureScreenshot", "Error guardando captura: ${e.message}", e)
-            Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_SHORT).show()
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            if (uri != null) {
+                try {
+                    resolver.openOutputStream(uri)?.use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    }
+                    Toast.makeText(context, "Captura guardada en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Log.e("CaptureScreenshot", "Error guardando captura con MediaStore: ${e.message}", e)
+                    Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val imageDir = File(downloadsDir, "capturas_sunarp")
+            if (!imageDir.exists()) {
+                imageDir.mkdirs()
+            }
+            val imageFile = File(imageDir, filename)
+            try {
+                FileOutputStream(imageFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                Toast.makeText(context, "Captura guardada en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("CaptureScreenshot", "Error guardando captura: ${e.message}", e)
+                Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -500,24 +528,45 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun saveImageFromDataUrl(dataUrl: String, filename: String): String? {
-        return try {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val imageDir = File(downloadsDir, "capturas_sunarp")
-            if (!imageDir.exists()) {
-                imageDir.mkdirs()
-            }
-            val imageFile = File(imageDir, filename)
+        val base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1)
+        val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
 
-            val base64Data = dataUrl.substring(dataUrl.indexOf(",") + 1)
-            val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
-
-            FileOutputStream(imageFile).use { out ->
-                out.write(decodedBytes)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/capturas_sunarp")
             }
-            imageFile.absolutePath
-        } catch (e: Exception) {
-            Log.e("SaveImage", "Error guardando imagen: ${'$'}{e.message}", e)
-            null
+            val resolver = context?.contentResolver ?: return null
+            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            uri?.let {
+                try {
+                    resolver.openOutputStream(it)?.use { outputStream ->
+                        outputStream.write(decodedBytes)
+                    }
+                    return it.toString()
+                } catch (e: Exception) {
+                    Log.e("SaveImage", "Error guardando con MediaStore: ${e.message}", e)
+                    return null
+                }
+            }
+            return null
+        } else {
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val imageDir = File(downloadsDir, "capturas_sunarp")
+                if (!imageDir.exists()) {
+                    imageDir.mkdirs()
+                }
+                val imageFile = File(imageDir, filename)
+                FileOutputStream(imageFile).use { out ->
+                    out.write(decodedBytes)
+                }
+                return imageFile.absolutePath
+            } catch (e: Exception) {
+                Log.e("SaveImage", "Error guardando imagen: ${e.message}", e)
+                return null
+            }
         }
     }
 
