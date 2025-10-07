@@ -137,27 +137,36 @@ class ExtractionFragment : Fragment() {
         val script = """
             (function() {
                 const canvas = document.querySelector('canvas:not([style*="display: none"])');
-                if (canvas && canvas.offsetParent !== null) {
-                    return canvas.toDataURL('image/png');
+                if (canvas && canvas.offsetParent !== null && canvas.width > 100 && canvas.height > 100) {
+                    try {
+                        return canvas.toDataURL('image/png');
+                    } catch(e) {
+                        return 'error:' + e.message;
+                    }
                 }
                 return 'error:NoCanvas';
             })();
         """
         binding.webView.evaluateJavascript(script) { result ->
             activity?.runOnUiThread {
-                if (result != null && result != "null" && !result.contains("error:NoCanvas")) {
-                    // Clean the Base64 string
+                if (result != null && result != "null") {
                     val cleanResult = result.trim('"')
                                             .replace("\\u003d", "=")
                                             .replace("\\u002B", "+")
                                             .replace("\\/", "/")
 
-                    val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-                    val timestamp = sdf.format(Date())
-                    val filename = "captura_sunarp_$timestamp.png"
-                    saveImageFromDataUrl(cleanResult, filename)
+                    if (cleanResult.startsWith("error:")) {
+                        val errorMessage = cleanResult.substringAfter("error:")
+                        val displayMessage = if (errorMessage == "NoCanvas") "No se encontró un canvas visible para capturar." else errorMessage
+                        Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
+                    } else {
+                        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                        val timestamp = sdf.format(Date())
+                        val filename = "captura_sunarp_$timestamp.png"
+                        saveImageFromDataUrl(cleanResult, filename)
+                    }
                 } else {
-                    Toast.makeText(context, "No se encontró un canvas visible para capturar.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Error: no se recibió respuesta de la página.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
