@@ -294,7 +294,7 @@ class ExtractionFragment : Fragment() {
                 }
                 autofillLoginForm(newLoginData)
             }
-            currentUrl?.startsWith(searchUrl) == true -> {
+            currentUrl?.startsWith(searchUrl) == true && !currentUrl.contains(resultsUrlSubstring) -> {
                 sharedViewModel.config.value?.let {
                     autofillSearchForm(it)
                 } ?: Toast.makeText(context, "No hay configuración de búsqueda guardada.", Toast.LENGTH_SHORT).show()
