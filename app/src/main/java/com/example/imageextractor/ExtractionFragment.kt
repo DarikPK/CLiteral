@@ -87,21 +87,48 @@ class ExtractionFragment : Fragment() {
                 if (isViewDestroyed) return
                 currentPageUrl = url
                 updateButtonStates(url)
+                injectSpaUrlWatcher()
             }
         }
         binding.webView.loadUrl(loginUrl)
     }
 
+    private fun injectSpaUrlWatcher() {
+        val script = """
+            (function() {
+              if (window.__androidUrlHooked) return;
+              window.__androidUrlHooked = true;
+              function notify(){ try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){} }
+              var pushState = history.pushState;
+              history.pushState = function(){ pushState.apply(this, arguments); setTimeout(notify, 0); };
+              var replaceState = history.replaceState;
+              history.replaceState = function(){ replaceState.apply(this, arguments); setTimeout(notify, 0); };
+              window.addEventListener('popstate', notify, true);
+              window.addEventListener('hashchange', notify, true);
+              // Notificación inicial por si ya estamos en una subruta
+              setTimeout(notify, 0);
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
+    }
+
+    private fun isResultsPage(url: String?) =
+        url?.contains(resultsUrlSubstring, ignoreCase = true) == true
+
+    private fun isSearchPage(url: String?) =
+        url?.startsWith(searchUrl, ignoreCase = true) == true && !isResultsPage(url)
+
     private fun updateButtonStates(url: String?) {
         if (isViewDestroyed) return
 
-        val isResultsPage = url?.contains(resultsUrlSubstring) == true
-        val isAutofillPage = url == loginUrl || (url?.startsWith(searchUrl) == true && !isResultsPage)
+        val onLoginPage = url == loginUrl
+        val onSearchPage = isSearchPage(url)
+        val onResultsPage = isResultsPage(url)
 
-        binding.autofillButton.visibility = if (isAutofillPage) View.VISIBLE else View.GONE
-        binding.captureButton.visibility = if (isResultsPage) View.VISIBLE else View.GONE
+        binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
+        binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
 
-        val navigationVisible = if (isResultsPage) View.VISIBLE else View.GONE
+        val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToFirstItem.visibility = navigationVisible
         binding.fabGoToLastItem.visibility = navigationVisible
         binding.fabPrevious.visibility = navigationVisible
@@ -109,7 +136,7 @@ class ExtractionFragment : Fragment() {
 
         binding.extractButton.visibility = View.GONE // Keep it hidden as per original logic
 
-        if (isResultsPage) {
+        if (onResultsPage) {
             // Reset navigation buttons to initial state when entering results page
             binding.fabGoToLastItem.isEnabled = false
             binding.fabNext.isEnabled = false
@@ -310,11 +337,66 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
-            (async function() {
-                function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-                // ... (rest of the script is omitted for brevity as it's unchanged)
-            })();
-        """.trimIndent()
+        (async function() {
+          function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+          function waitForElement(sel, t=8000, scope=document){
+            return new Promise((res,rej)=>{
+              const ts = Date.now();
+              const it = setInterval(()=>{
+                const el = scope.querySelector(sel);
+                if (el && el.offsetParent !== null) { clearInterval(it); res(el); }
+                else if (Date.now()-ts>t){ clearInterval(it); rej(new Error("No "+sel)); }
+              },100);
+            });
+          }
+          async function waitForOptionByText(txt, t=8000){
+            const ts = Date.now();
+            while(Date.now()-ts<t){
+              const opts = document.querySelectorAll('.ant-select-item-option-content');
+              for(const o of opts){
+                if(((o.textContent||"").trim().toUpperCase())===txt.toUpperCase()) return o;
+              }
+              await sleep(120);
+            }
+            throw new Error("Opción '"+txt+"' no encontrada");
+          }
+          async function selectDropdown(dropdownSel, optionText){
+            const dd = await waitForElement(dropdownSel);
+            const clickable = dd.querySelector('.ant-select-selector') || dd;
+            clickable.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
+            clickable.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            const overlay = await waitForElement('.cdk-overlay-container .ant-select-dropdown', 6000);
+            const opt = await waitForOptionByText(optionText, 8000);
+            opt.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));
+            opt.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
+            await sleep(300);
+          }
+
+          const areaMap = {
+            "REGISTRO DE PREDIOS": "PROPIEDAD INMUEBLE PREDIAL",
+            "REGISTRO DE PERSONAS JURIDICAS": "PERSONAS JURIDICAS",
+            "REGISTRO DE PERSONAS NATURALES": "PERSONAS NATURALES",
+            "REGISTRO DE BIENES MUEBLES": "REGISTRO MOBILIARIO DE CONTRATOS"
+          };
+          const mappedArea = areaMap["${config.areaRegistral}"] || "${config.areaRegistral}";
+
+          await selectDropdown('nz-select[formcontrolname="oficinaRegistral"]', "${config.oficina}");
+          await selectDropdown('nz-select[formcontrolname="areaRegistral"]', mappedArea);
+
+          (await waitForElement('label[nzvalue="2"] input')).click(); // Partida
+
+          const numero = await waitForElement('input[formcontrolname="numero"]');
+          numero.value = "${config.numeroPartida}";
+          numero.dispatchEvent(new Event('input',{bubbles:true}));
+          numero.dispatchEvent(new Event('blur',{bubbles:true}));
+
+          (await waitForElement('button.btn-buscar-partida')).click();
+          (await waitForElement('button[title="Previsualizar"].btn-search', 15000)).click();
+
+          await waitForElement('.columna-lista', 15000);
+          try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
+        })();
+    """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
     }
 
