@@ -96,14 +96,14 @@ class ExtractionFragment : Fragment() {
         if (isViewDestroyed) return
 
         val isResultsPage = url?.contains(resultsUrlSubstring) == true
-        val isLoginPage = url == loginUrl || url?.startsWith(searchUrl) == true
+        val isAutofillPage = url == loginUrl || (url?.startsWith(searchUrl) == true && !isResultsPage)
 
-        binding.actionButton.visibility = if (isResultsPage || isLoginPage) View.VISIBLE else View.GONE
+        binding.actionButton.visibility = if (isResultsPage || isAutofillPage) View.VISIBLE else View.GONE
 
         if (isResultsPage) {
             binding.actionButton.setImageResource(android.R.drawable.ic_menu_camera)
             binding.actionButton.contentDescription = "Capturar Pantalla"
-        } else if (isLoginPage) {
+        } else if (isAutofillPage) {
             binding.actionButton.setImageResource(android.R.drawable.ic_menu_edit)
             binding.actionButton.contentDescription = "Autocompletar Datos"
         }
