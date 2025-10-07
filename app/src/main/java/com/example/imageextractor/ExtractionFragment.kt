@@ -50,11 +50,26 @@ class ExtractionFragment : Fragment() {
                 binding.fabNext.isEnabled = !isLast
             }
         }
+
+        @JavascriptInterface
+        fun onImageChunk(chunk: String, isLast: Boolean) {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                accumulatedBase64.append(chunk)
+                if (isLast) {
+                    val fullBase64 = accumulatedBase64.toString()
+                    accumulatedBase64.setLength(0) // Clear for next image
+                    val dataUrl = "data:image/png;base64,$fullBase64"
+                    saveImageFromDataUrl(dataUrl, generarNombreArchivo())
+                }
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
     private val binding get() = _binding!!
     private var isViewDestroyed = false
+    private val accumulatedBase64 = StringBuilder()
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
@@ -162,43 +177,39 @@ class ExtractionFragment : Fragment() {
         binding.fabNext.setOnClickListener { navigateTo("next") }
     }
 
+    private fun generarNombreArchivo(): String {
+        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+        val timestamp = sdf.format(Date())
+        return "captura_sunarp_$timestamp.png"
+    }
+
     private fun captureVisibleCanvas() {
         val script = """
-            (function() {
+        (function() {
+            try {
                 const canvas = document.querySelector('canvas:not([style*="display: none"])');
-                if (canvas && canvas.offsetParent !== null && canvas.width > 100 && canvas.height > 100) {
-                    try {
-                        return canvas.toDataURL('image/png');
-                    } catch(e) {
-                        return 'error:' + e.message;
-                    }
+                if (!canvas || canvas.offsetParent === null || canvas.width <= 100 || canvas.height <= 100) {
+                    return; // No canvas found, do nothing.
                 }
-                return 'error:NoCanvas';
-            })();
-        """
-        binding.webView.evaluateJavascript(script) { result ->
-            activity?.runOnUiThread {
-                if (isViewDestroyed) return@runOnUiThread
-                if (result != null && result != "null") {
-                    val cleanResult = result.trim('"')
-                                            .replace("\\u003d", "=")
-                                            .replace("\\u002B", "+")
-                                            .replace("\\/", "/")
+                const dataUrl = canvas.toDataURL('image/png');
+                const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                const chunkSize = 512000; // 500KB
 
-                    if (cleanResult.startsWith("error:")) {
-                        val errorMessage = cleanResult.substringAfter("error:")
-                        val displayMessage = if (errorMessage == "NoCanvas") "No se encontró un canvas visible para capturar." else errorMessage
-                        Toast.makeText(requireContext().applicationContext, displayMessage, Toast.LENGTH_LONG).show()
-                    } else {
-                        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-                        val timestamp = sdf.format(Date())
-                        val filename = "captura_sunarp_$timestamp.png"
-                        saveImageFromDataUrl(cleanResult, filename)
-                    }
-                } else {
-                    Toast.makeText(requireContext().applicationContext, "Error: no se recibió respuesta de la página.", Toast.LENGTH_SHORT).show()
+                for (let i = 0; i < base64Data.length; i += chunkSize) {
+                    const chunk = base64Data.substring(i, i + chunkSize);
+                    const isLast = (i + chunkSize) >= base64Data.length;
+                    AndroidBridge.onImageChunk(chunk, isLast);
                 }
+            } catch (e) {
+                // The JS error is not propagated to Kotlin in this setup.
             }
+        })();
+        """.trimIndent()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            binding.webView.evaluateJavascript(script, null)
+        } else {
+            binding.webView.loadUrl("javascript:$script")
         }
     }
 
