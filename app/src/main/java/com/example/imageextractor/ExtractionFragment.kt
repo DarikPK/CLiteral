@@ -119,20 +119,8 @@ class ExtractionFragment : Fragment() {
     private fun setupButtons() {
         binding.actionButton.setOnClickListener {
             if (binding.actionButton.contentDescription == "Capturar Pantalla") {
-                // We expect to be on a capture page. Let's verify with a DOM check.
-                val script = "(function() { return document.querySelector('canvas') !== null && document.querySelector('canvas').offsetParent !== null; })();"
-                binding.webView.evaluateJavascript(script) { result ->
-                    activity?.runOnUiThread {
-                        if (result == "true") {
-                            captureScreenshot()
-                        } else {
-                            // The button is a camera, but there's no canvas. This is the error state.
-                            Toast.makeText(context, "No estás en la parte de capturas", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
+                captureVisibleCanvas()
             } else {
-                // The button is for autofill
                 autofillCurrentPage()
             }
         }
@@ -145,17 +133,34 @@ class ExtractionFragment : Fragment() {
         binding.fabNext.setOnClickListener { navigateTo("next") }
     }
 
-    private fun captureScreenshot() {
-        val webView = binding.webView
-        val bitmap = Bitmap.createBitmap(webView.width, webView.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        webView.draw(canvas)
+    private fun captureVisibleCanvas() {
+        val script = """
+            (function() {
+                const canvas = document.querySelector('canvas:not([style*="display: none"])');
+                if (canvas && canvas.offsetParent !== null) {
+                    return canvas.toDataURL('image/png');
+                }
+                return 'error:NoCanvas';
+            })();
+        """
+        binding.webView.evaluateJavascript(script) { result ->
+            activity?.runOnUiThread {
+                if (result != null && result != "null" && !result.contains("error:NoCanvas")) {
+                    // Clean the Base64 string
+                    val cleanResult = result.trim('"')
+                                            .replace("\\u003d", "=")
+                                            .replace("\\u002B", "+")
+                                            .replace("\\/", "/")
 
-        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-        val timestamp = sdf.format(Date())
-        val filename = "captura_sunarp_$timestamp.png"
-
-        saveBitmapToDownloads(bitmap, filename)
+                    val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                    val timestamp = sdf.format(Date())
+                    val filename = "captura_sunarp_$timestamp.png"
+                    saveImageFromDataUrl(cleanResult, filename)
+                } else {
+                    Toast.makeText(context, "No se encontró un canvas visible para capturar.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun saveBitmapToDownloads(bitmap: Bitmap, filename: String) {
