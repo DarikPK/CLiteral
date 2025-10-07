@@ -430,8 +430,61 @@ class ExtractionFragment : Fragment() {
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
 
-      const previewBtn = await waitForElement('button[title="Previsualizar"].btn-search', 15000);
-      await robustClick(previewBtn);
+      async function robustClickPreview(timeout = 15000) {
+        const start = Date.now();
+        const selector = 'button[title="Previsualizar"].btn-search, button.btn-search[title="Previsualizar"]';
+
+        while (Date.now() - start < timeout) {
+            if (document.querySelector('.cdk-overlay-backdrop') || document.querySelector('.ant-select-dropdown')) {
+                await sleep(200);
+                continue;
+            }
+
+            const buttons = Array.from(document.querySelectorAll(selector));
+            let targetButton = null;
+
+            for (const btn of buttons) {
+                const style = window.getComputedStyle(btn);
+                const rect = btn.getBoundingClientRect();
+
+                if (
+                    btn.offsetParent !== null &&
+                    !btn.disabled &&
+                    style.pointerEvents !== 'none' &&
+                    rect.width > 0 && rect.height > 0
+                ) {
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const elementAtCenter = document.elementFromPoint(centerX, centerY);
+
+                    if (elementAtCenter && (elementAtCenter === btn || btn.contains(elementAtCenter))) {
+                        targetButton = btn;
+                        break;
+                    }
+                }
+            }
+
+            if (targetButton) {
+                try {
+                    targetButton.scrollIntoView({ block: 'center' });
+                    await sleep(100);
+                    targetButton.focus();
+                    await sleep(100);
+
+                    ['mousedown', 'mouseup', 'click'].forEach(type => {
+                        targetButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+                    });
+                    return; // Success
+                } catch (e) {
+                    console.error("Click en Previsualizar falló, reintentando...", e);
+                }
+            }
+            await sleep(250);
+        }
+        throw new Error("No se pudo hacer clic en Previsualizar después de " + (timeout / 1000) + "s.");
+      }
+
+      await robustClickPreview(15000);
 
       await waitForElement('.columna-lista', 15000);
       try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
