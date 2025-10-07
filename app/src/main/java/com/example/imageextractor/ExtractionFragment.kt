@@ -125,7 +125,8 @@ class ExtractionFragment : Fragment() {
 
     private fun setupButtons() {
         binding.actionButton.setOnClickListener {
-            if (binding.actionButton.contentDescription == "Capturar Pantalla") {
+            val url = currentPageUrl
+            if (url != null && url.contains(resultsUrlSubstring)) {
                 captureVisibleCanvas()
             } else {
                 autofillCurrentPage()
@@ -289,7 +290,7 @@ class ExtractionFragment : Fragment() {
                 }
                 autofillLoginForm(newLoginData)
             }
-            currentUrl?.startsWith(searchUrl) == true && !currentUrl.contains(resultsUrlSubstring) -> {
+            currentUrl?.startsWith(searchUrl) == true -> {
                 sharedViewModel.config.value?.let {
                     autofillSearchForm(it)
                 } ?: Toast.makeText(requireContext().applicationContext, "No hay configuración de búsqueda guardada.", Toast.LENGTH_SHORT).show()
