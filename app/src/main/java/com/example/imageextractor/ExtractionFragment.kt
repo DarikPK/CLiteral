@@ -51,16 +51,22 @@ class ExtractionFragment : Fragment() {
             }
         }
 
+        private val imageChunkBuilder = StringBuilder()
+
         @JavascriptInterface
-        fun onImageChunk(chunk: String, isLast: Boolean) {
+        fun receiveChunk(chunk: String, isLast: Boolean) {
             activity?.runOnUiThread {
-                if (isViewDestroyed) return@runOnUiThread
-                accumulatedBase64.append(chunk)
+                imageChunkBuilder.append(chunk)
+                Toast.makeText(requireContext(), "Recibiendo datos... (${imageChunkBuilder.length/1024} KB)", Toast.LENGTH_SHORT).show()
+
                 if (isLast) {
-                    val fullBase64 = accumulatedBase64.toString()
-                    accumulatedBase64.setLength(0) // Clear for next image
-                    val dataUrl = "data:image/png;base64,$fullBase64"
-                    saveImageFromDataUrl(dataUrl, generarNombreArchivo())
+                    val dataUrl = imageChunkBuilder.toString()
+                    imageChunkBuilder.setLength(0) // Clear for next use
+                    if (dataUrl.startsWith("data:image/png;base64")) {
+                        saveImageFromDataUrl(dataUrl, generarNombreArchivo())
+                    } else {
+                        Toast.makeText(requireContext(), "Error reconstruyendo imagen.", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -69,7 +75,6 @@ class ExtractionFragment : Fragment() {
     private var _binding: FragmentExtractionBinding? = null
     private val binding get() = _binding!!
     private var isViewDestroyed = false
-    private val accumulatedBase64 = StringBuilder()
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
@@ -186,28 +191,33 @@ class ExtractionFragment : Fragment() {
     private fun captureVisibleCanvas() {
         val script = """
         (function() {
+            const canvas = document.querySelector('canvas:not([style*="display: none"])');
+            if (!canvas || canvas.offsetParent === null || canvas.width < 50 || canvas.height < 50) {
+                return "error:NoCanvas";
+            }
             try {
-                const canvas = document.querySelector('canvas:not([style*="display: none"])');
-                if (!canvas || canvas.offsetParent === null || canvas.width <= 100 || canvas.height <= 100) {
-                    return; // No canvas found, do nothing.
-                }
                 const dataUrl = canvas.toDataURL('image/png');
-                const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1);
-                const chunkSize = 512000; // 500KB
-
-                for (let i = 0; i < base64Data.length; i += chunkSize) {
-                    const chunk = base64Data.substring(i, i + chunkSize);
-                    const isLast = (i + chunkSize) >= base64Data.length;
-                    AndroidBridge.onImageChunk(chunk, isLast);
+                const chunkSize = 200000; // ~200 KB
+                for (let i = 0; i < dataUrl.length; i += chunkSize) {
+                    const chunk = dataUrl.substring(i, i + chunkSize);
+                    AndroidBridge.receiveChunk(chunk, (i + chunkSize >= dataUrl.length));
                 }
-            } catch (e) {
-                // The JS error is not propagated to Kotlin in this setup.
+                return "ok";
+            } catch(e) {
+                return "error:" + e.message;
             }
         })();
         """.trimIndent()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            binding.webView.evaluateJavascript(script, null)
+            binding.webView.evaluateJavascript(script) { result ->
+                activity?.runOnUiThread {
+                    if (result != null && result != "\"ok\"") {
+                        val errorMsg = result.replace("\"", "").substringAfter("error:")
+                        Toast.makeText(requireContext(), "Error en captura: $errorMsg", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         } else {
             binding.webView.loadUrl("javascript:$script")
         }
