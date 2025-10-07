@@ -430,7 +430,7 @@ class ExtractionFragment : Fragment() {
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
 
-      const previewButton = await waitForElement('button[title="Previsualizar"].btn-search', 10000);
+      const previewButton = await waitForElement('[title="Previsualizar"]', 10000);
 
       // esperar a que se habilite
       let tries = 0;
