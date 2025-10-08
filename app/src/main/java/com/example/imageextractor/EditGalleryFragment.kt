@@ -44,9 +44,10 @@ class EditGalleryFragment : Fragment() {
 
     private fun setupRecyclerView() {
         folderAdapter = FolderAdapter { folder ->
-            val action =
-                EditingFragmentDirections.actionEditingFragmentToViewGalleryFragment(folder.imagePaths.toTypedArray())
-            findNavController().navigate(action)
+            val bundle = Bundle().apply {
+                putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+            }
+            findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
         }
         binding.editGalleryRecyclerView.apply {
             layoutManager = GridLayoutManager(context, 2)

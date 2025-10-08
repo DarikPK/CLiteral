@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentViewGalleryBinding
 
@@ -14,7 +13,6 @@ class ViewGalleryFragment : Fragment() {
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
-    private val args: ViewGalleryFragmentArgs by navArgs()
     private lateinit var imageAdapter: ImageAdapter
 
     override fun onCreateView(
@@ -40,7 +38,7 @@ class ViewGalleryFragment : Fragment() {
     }
 
     private fun displayImages() {
-        val imageUrls = args.imageUrls.toList()
+        val imageUrls = arguments?.getStringArray("imageUrls")?.toList() ?: emptyList()
         imageAdapter.updateImages(imageUrls)
     }
 
