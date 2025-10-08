@@ -242,59 +242,33 @@ class ExtractionFragment : Fragment() {
                         a.click();
                         document.body.removeChild(a);
                     }
-                    async function waitForActiveElement(expectedElement, timeout = 5000) {
-                        const startTime = Date.now();
-                        while (Date.now() - startTime < timeout) {
-                            const activeElement = document.querySelector('.boton-pagina-seleccionado');
-                            if (activeElement === expectedElement) return true;
-                            await sleep(250);
-                        }
-                        return false;
-                    }
-
                     const items = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
                     if (items.length === 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
-
-                    const hoja1Element = items[items.length - 1];
-                    if (!hoja1Element.classList.contains('boton-pagina-seleccionado')) {
-                        console.log("Navegando a Hoja 1 para iniciar...");
-                        if (!await robustClick(hoja1Element) || !await waitForActiveElement(hoja1Element)) {
-                            console.error("No se pudo navegar a la Hoja 1 para iniciar. Abortando.");
-                            if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
-                            return;
-                        }
-                    }
-
                     let captureCount = 0;
                     // Iterar desde el más antiguo (final de la lista) al más reciente (inicio de la lista)
                     for (let i = items.length - 1; i >= 0; i--) {
                         const item = items[i];
-
-                        // Si no es la primera iteración del bucle, hacemos clic.
-                        // En la primera (i == items.length - 1), ya estamos en la hoja correcta gracias a la validación inicial.
-                        if (i < items.length - 1) {
-                            const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
-                             if (!await robustClick(item)) {
-                                console.warn(`No se pudo hacer clic en la hoja ${'$'}{items.length - i}`);
-                                continue;
-                            }
-                            // Esperar a que la página cambie (basado en el subtítulo o un timeout)
-                            const pollStart = Date.now();
-                            let subtitleChanged = false;
-                            while(Date.now() - pollStart < 5000) {
-                                const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
-                                if(newSubtitle && newSubtitle !== originalSubtitle) {
-                                    subtitleChanged = true;
-                                    break;
-                                }
-                                await sleep(200);
-                            }
-                            if(!subtitleChanged) console.warn("No se confirmó el cambio de página, se continuará por timeout.");
+                        const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
+                        if (!await robustClick(item)) {
+                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{items.length - i}`);
+                            continue;
                         }
 
+                        // Esperar a que la página cambie (basado en el subtítulo o un timeout)
+                        const pollStart = Date.now();
+                        let subtitleChanged = false;
+                        while(Date.now() - pollStart < 5000) {
+                            const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
+                            if(newSubtitle && newSubtitle !== originalSubtitle) {
+                                subtitleChanged = true;
+                                break;
+                            }
+                            await sleep(200);
+                        }
+                        if(!subtitleChanged) console.warn("No se confirmó el cambio de página, se continuará por timeout.");
                         const canvas = await waitForCanvas();
                         if (canvas) {
                             try {
