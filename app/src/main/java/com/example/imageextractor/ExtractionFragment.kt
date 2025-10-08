@@ -247,18 +247,7 @@ class ExtractionFragment : Fragment() {
             ((direction) => {
                 try {
                     function getNavigableItems() {
-                        const allClickableItems = [];
-                        const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
-                        if (!sections) return [];
-                        sections.forEach(section => {
-                            const header = section.querySelector('.ant-collapse-header');
-                            if (header) {
-                                allClickableItems.push(header);
-                            }
-                            const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                            allClickableItems.push(...subPages);
-                        });
-                        return allClickableItems;
+                        return Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a'));
                     }
 
                     function realisticClick(element) {
@@ -285,46 +274,37 @@ class ExtractionFragment : Fragment() {
                         if (!titleElement) return 0;
                         const titleText = (titleElement.innerText || "").trim().toLowerCase();
 
+                        // Fallback: Check for a match in the button text itself.
+                        // This is less reliable but better than nothing.
                         for (let i = 0; i < items.length; i++) {
-                             const item = items[i];
-                             const itemText = (item.innerText || "").toLowerCase();
-                             const section = item.closest('.ant-collapse-item');
-                             if (!section) continue;
-                             const headerText = (section.querySelector('.ant-collapse-header').innerText || "").toLowerCase();
-
-                             const asientoMatch = titleText.match(/asiento\s+n°?\s*(\d+)/);
-                             if (asientoMatch && headerText.includes("asiento") && headerText.includes(`n°: ${"$"}{asientoMatch[1]}`)) {
-                                 const pageMatch = titleText.match(/página\s+(\d+)/);
-                                 if (item.classList.contains('ant-collapse-header') && !pageMatch) return i;
-                                 if (!item.classList.contains('ant-collapse-header') && pageMatch && itemText.includes(`página ${"$"}{pageMatch[1]}`)) return i;
-                                 if (!pageMatch && !item.classList.contains('ant-collapse-header') && item.classList.contains('boton-pagina')) return i; // First page
-                             }
-
-                             const tomoMatch = titleText.match(/tomo:\s*(\d+)/);
-                             if (tomoMatch && headerText.includes(`tomo: ${"$"}{tomoMatch[1]}`)) {
-                                 const folioMatch = titleText.match(/folio:\s*(\d+)/);
-                                 if (item.classList.contains('ant-collapse-header') && !folioMatch) return i;
-                                 if (!item.classList.contains('ant-collapse-header') && folioMatch && itemText.includes(`folio: ${"$"}{folioMatch[1]}`)) return i;
-                                 if (!folioMatch && !item.classList.contains('ant-collapse-header') && item.classList.contains('boton-pagina')) return i; // First folio
-                             }
+                            const itemText = (items[i].innerText || "").toLowerCase();
+                            if (titleText.includes(itemText) && itemText.length > 2) {
+                                return i;
+                            }
                         }
-                        return 0; // Fallback to the first item
+
+                        return 0; // Default to first item if no match found
                     }
 
                     const items = getNavigableItems();
-                    if (items.length === 0) return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación." });
+                    if (items.length === 0) {
+                        return JSON.stringify({ success: false, error: "No se encontraron botones de página." });
+                    }
 
                     const currentIndex = getCurrentItemIndex(items);
                     let targetIndex = -1;
 
+                    // Note: 'first' and 'last' are swapped semantically based on user request.
+                    // 'previous' moves towards older items (higher index), 'next' moves towards newer items (lower index).
                     switch (direction) {
-                        case 'first': targetIndex = items.length - 1; break;
-                        case 'last': targetIndex = 0; break;
-                        case 'next': if (currentIndex > 0) targetIndex = currentIndex - 1; break;
+                        case 'first': targetIndex = items.length - 1; break; // Oldest
+                        case 'last':  targetIndex = 0; break; // Newest
+                        case 'next':  if (currentIndex > 0) targetIndex = currentIndex - 1; break;
                         case 'previous': if (currentIndex < items.length - 1) targetIndex = currentIndex + 1; break;
                     }
 
                     if (targetIndex === -1) {
+                        // Already at the edge, update button state just in case and exit.
                         const isFirst = (currentIndex === items.length - 1);
                         const isLast = (currentIndex === 0);
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
@@ -332,15 +312,8 @@ class ExtractionFragment : Fragment() {
                     }
 
                     const targetItem = items[targetIndex];
-                    const section = targetItem.closest('.ant-collapse-item');
-
-                    if (section && !section.classList.contains('ant-collapse-item-active')) {
-                        const header = section.querySelector('.ant-collapse-header');
-                        realisticClick(header);
-                    }
-
                     if (!realisticClick(targetItem)) {
-                        return JSON.stringify({ success: false, error: "El clic en el destino falló." });
+                        return JSON.stringify({ success: false, error: "El clic en el botón de página de destino falló." });
                     }
 
                     const isFirst = (targetIndex === items.length - 1);
