@@ -13,7 +13,7 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.view.drawToBitmap
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 
@@ -33,7 +33,6 @@ class EditGalleryFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentEditGalleryBinding.inflate(inflater, container, false)
-        binding.editControls.visibility = View.GONE
         return binding.root
     }
 
