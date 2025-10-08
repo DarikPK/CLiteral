@@ -283,7 +283,7 @@ class ExtractionFragment : Fragment() {
                     }
 
                     // 1. Fase de Planificación: Crear el plan de captura
-                    const allLinks = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
+                    const allLinks = Array.from(document.querySelectorAll('a[class]'));
                     if (allLinks.length === 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
