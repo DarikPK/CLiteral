@@ -244,23 +244,56 @@ class ExtractionFragment : Fragment() {
 
     private fun navigateTo(direction: String) {
         val script = """
-            ((direction) => {
+            (async (direction) => {
                 try {
-                    function getNavigableItems() {
-                        return Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a'));
+                    function sleep(ms) {
+                        return new Promise(resolve => setTimeout(resolve, ms));
                     }
 
-                    function realisticClick(element) {
-                        if (!element) return false;
-                        try {
-                            element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                            element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                            element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                            return true;
-                        } catch (e) {
-                            console.error("realisticClick failed", e);
-                            return false;
+                    async function robustClick(element) {
+                        for (let i = 0; i < 3; i++) {
+                            try {
+                                if (!element || !document.body.contains(element)) return false;
+                                element.scrollIntoView({ block: 'center' });
+                                await sleep(100);
+                                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                                await sleep(50);
+                                element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                                await sleep(50);
+                                element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                                return true;
+                            } catch (e) {
+                                console.warn(`Intento de clic ${'$'}{i + 1} fallido`, e);
+                                await sleep(150);
+                            }
                         }
+                        return false;
+                    }
+
+                    function getNavigableItems() {
+                        const allItems = [];
+                        const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                        sections.forEach(section => {
+                            const header = section.querySelector('.ant-collapse-header');
+                            if (!header) return;
+
+                            const headerText = (header.innerText || "").toLowerCase();
+                            const isTomo = headerText.includes('tomo:');
+
+                            if (isTomo) {
+                                const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a'));
+                                if (subPages.length > 0) {
+                                    allItems.push(...subPages);
+                                } else {
+                                     // Tomo sin paginas visibles, se añade el header
+                                     allItems.push(header);
+                                }
+                            } else {
+                                // Asiento o Ficha, se añade el header
+                                allItems.push(header);
+                            }
+                        });
+                        return allItems;
                     }
 
                     function getCurrentItemIndex(items) {
@@ -274,51 +307,72 @@ class ExtractionFragment : Fragment() {
                         if (!titleElement) return 0;
                         const titleText = (titleElement.innerText || "").trim().toLowerCase();
 
-                        // Fallback: Check for a match in the button text itself.
-                        // This is less reliable but better than nothing.
                         for (let i = 0; i < items.length; i++) {
-                            const itemText = (items[i].innerText || "").toLowerCase();
-                            if (titleText.includes(itemText) && itemText.length > 2) {
-                                return i;
-                            }
+                            const item = items[i];
+                            const itemText = (item.innerText || "").toLowerCase();
+                            if (titleText.includes(itemText) && itemText.length > 3) return i;
                         }
+                        return 0;
+                    }
 
-                        return 0; // Default to first item if no match found
+                    function getExpectedSubtitle(item) {
+                        return (item.innerText || "").trim().toLowerCase();
                     }
 
                     const items = getNavigableItems();
                     if (items.length === 0) {
-                        return JSON.stringify({ success: false, error: "No se encontraron botones de página." });
+                        return JSON.stringify({ success: false, error: "No se encontraron elementos navegables." });
                     }
 
                     const currentIndex = getCurrentItemIndex(items);
                     let targetIndex = -1;
 
-                    // Note: 'first' and 'last' are swapped semantically based on user request.
-                    // 'previous' moves towards older items (higher index), 'next' moves towards newer items (lower index).
                     switch (direction) {
-                        case 'first': targetIndex = items.length - 1; break; // Oldest
-                        case 'last':  targetIndex = 0; break; // Newest
-                        case 'next':  if (currentIndex > 0) targetIndex = currentIndex - 1; break;
+                        case 'first': targetIndex = items.length - 1; break;
+                        case 'last': targetIndex = 0; break;
+                        case 'next': if (currentIndex > 0) targetIndex = currentIndex - 1; break;
                         case 'previous': if (currentIndex < items.length - 1) targetIndex = currentIndex + 1; break;
                     }
 
                     if (targetIndex === -1) {
-                        // Already at the edge, update button state just in case and exit.
                         const isFirst = (currentIndex === items.length - 1);
                         const isLast = (currentIndex === 0);
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
-                        return JSON.stringify({ success: true, message: "Ya estás en el extremo de la navegación." });
+                        return JSON.stringify({ success: true, message: "Ya estás en el extremo." });
                     }
 
                     const targetItem = items[targetIndex];
-                    if (!realisticClick(targetItem)) {
-                        return JSON.stringify({ success: false, error: "El clic en el botón de página de destino falló." });
+                    const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
+
+                    if (!await robustClick(targetItem)) {
+                        return JSON.stringify({ success: false, error: "El clic en el destino falló." });
                     }
 
-                    const isFirst = (targetIndex === items.length - 1);
-                    const isLast = (targetIndex === 0);
-                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
+                    // Poll for subtitle change
+                    let confirmed = false;
+                    const pollingStart = Date.now();
+                    while (Date.now() - pollingStart < 5000) {
+                        const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
+                        if (newSubtitle && newSubtitle !== originalSubtitle) {
+                            confirmed = true;
+                            break;
+                        }
+                        await sleep(200);
+                    }
+
+                    if (!confirmed) {
+                        console.warn("No se pudo confirmar el cambio de subtítulo tras el clic.");
+                    }
+
+                    // Recalculate index after navigation confirmation
+                    const finalItems = getNavigableItems();
+                    const finalIndex = getCurrentItemIndex(finalItems);
+                    const isFirst = (finalIndex === finalItems.length - 1);
+                    const isLast = (finalIndex === 0);
+
+                    if (typeof AndroidBridge !== 'undefined') {
+                        AndroidBridge.updateNavigationState(isFirst, isLast);
+                    }
 
                     return JSON.stringify({ success: true });
 
