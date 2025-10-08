@@ -244,80 +244,79 @@ class ExtractionFragment : Fragment() {
 
     private fun navigateTo(direction: String) {
         val script = """
-            (async (direction) => {
-                function getNavigableItems() {
-                    const allClickableItems = [];
-                    const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
-                    if (!sections) return [];
-                    sections.forEach(section => {
-                        const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                        if (subPages.length > 0) {
-                            allClickableItems.push(...subPages);
-                        } else {
-                            const header = section.querySelector('.ant-collapse-header');
-                            if (header) allClickableItems.push(header);
-                        }
-                    });
-                    return allClickableItems;
-                }
-
-                function realisticClick(element) {
-                    try {
-                        element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-                        element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-                        element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-                        return true;
-                    } catch (e) { return false; }
-                }
-
-                function sleep(ms) {
-                    return new Promise(resolve => setTimeout(resolve, ms));
-                }
-
-                function getCurrentItemIndex(items) {
-                    const activeElement = document.querySelector('.boton-pagina-seleccionado');
-                    if (activeElement) {
-                        const index = items.findIndex(item => item === activeElement);
-                        if (index !== -1) return index;
-                    }
-
-                    const titleElement = document.querySelector('.visor-subtitle');
-                    if (!titleElement) return 0;
-                    const titleText = (titleElement.innerText || "").trim().toLowerCase();
-
-                    for (let i = 0; i < items.length; i++) {
-                        const item = items[i];
-                        const section = item.closest('.ant-collapse-item');
-                        if (!section) continue;
-                        const headerText = (section.querySelector('.ant-collapse-header').innerText || "").toLowerCase();
-
-                        const asientoMatch = titleText.match(/asiento\s+n°?\s*(\d+)/);
-                        if (asientoMatch && headerText.includes("asiento") && headerText.includes(`n°: ${"$"}{asientoMatch[1]}`)) {
-                             const pageMatch = titleText.match(/página\s+(\d+)/);
-                             if (item.classList.contains('ant-collapse-header') && !pageMatch) return i;
-                             if (!item.classList.contains('ant-collapse-header') && pageMatch && (item.innerText || "").toLowerCase().includes(`página ${"$"}{pageMatch[1]}`)) return i;
-                             if (!pageMatch && !item.classList.contains('ant-collapse-header')) return i;
-                        }
-
-                        const tomoMatch = titleText.match(/tomo:\s*(\d+)/);
-                        if (tomoMatch && headerText.includes(`tomo: ${"$"}{tomoMatch[1]}`)) {
-                            const folioMatch = titleText.match(/folio:\s*(\d+)/);
-                            if (item.classList.contains('ant-collapse-header') && !folioMatch) return i;
-                            if (!item.classList.contains('ant-collapse-header') && folioMatch && (item.innerText || "").toLowerCase().includes(`folio: ${"$"}{folioMatch[1]}`)) return i;
-                            if (!folioMatch && !item.classList.contains('ant-collapse-header')) return i;
-                        }
-                    }
-                    return 0;
-                }
-
+            ((direction) => {
                 try {
+                    function getNavigableItems() {
+                        const allClickableItems = [];
+                        const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                        if (!sections) return [];
+                        sections.forEach(section => {
+                            const header = section.querySelector('.ant-collapse-header');
+                            if (header) {
+                                allClickableItems.push(header);
+                            }
+                            const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                            allClickableItems.push(...subPages);
+                        });
+                        return allClickableItems;
+                    }
+
+                    function realisticClick(element) {
+                        if (!element) return false;
+                        try {
+                            element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                            element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                            element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                            return true;
+                        } catch (e) {
+                            console.error("realisticClick failed", e);
+                            return false;
+                        }
+                    }
+
+                    function getCurrentItemIndex(items) {
+                        const activeElement = document.querySelector('.boton-pagina-seleccionado');
+                        if (activeElement) {
+                            const index = items.findIndex(item => item === activeElement);
+                            if (index !== -1) return index;
+                        }
+
+                        const titleElement = document.querySelector('.visor-subtitle');
+                        if (!titleElement) return 0;
+                        const titleText = (titleElement.innerText || "").trim().toLowerCase();
+
+                        for (let i = 0; i < items.length; i++) {
+                             const item = items[i];
+                             const itemText = (item.innerText || "").toLowerCase();
+                             const section = item.closest('.ant-collapse-item');
+                             if (!section) continue;
+                             const headerText = (section.querySelector('.ant-collapse-header').innerText || "").toLowerCase();
+
+                             const asientoMatch = titleText.match(/asiento\s+n°?\s*(\d+)/);
+                             if (asientoMatch && headerText.includes("asiento") && headerText.includes(`n°: ${"$"}{asientoMatch[1]}`)) {
+                                 const pageMatch = titleText.match(/página\s+(\d+)/);
+                                 if (item.classList.contains('ant-collapse-header') && !pageMatch) return i;
+                                 if (!item.classList.contains('ant-collapse-header') && pageMatch && itemText.includes(`página ${"$"}{pageMatch[1]}`)) return i;
+                                 if (!pageMatch && !item.classList.contains('ant-collapse-header') && item.classList.contains('boton-pagina')) return i; // First page
+                             }
+
+                             const tomoMatch = titleText.match(/tomo:\s*(\d+)/);
+                             if (tomoMatch && headerText.includes(`tomo: ${"$"}{tomoMatch[1]}`)) {
+                                 const folioMatch = titleText.match(/folio:\s*(\d+)/);
+                                 if (item.classList.contains('ant-collapse-header') && !folioMatch) return i;
+                                 if (!item.classList.contains('ant-collapse-header') && folioMatch && itemText.includes(`folio: ${"$"}{folioMatch[1]}`)) return i;
+                                 if (!folioMatch && !item.classList.contains('ant-collapse-header') && item.classList.contains('boton-pagina')) return i; // First folio
+                             }
+                        }
+                        return 0; // Fallback to the first item
+                    }
+
                     const items = getNavigableItems();
                     if (items.length === 0) return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación." });
 
                     const currentIndex = getCurrentItemIndex(items);
                     let targetIndex = -1;
 
-                    // 'previous' moves to an older item (higher index), 'next' to a newer one (lower index)
                     switch (direction) {
                         case 'first': targetIndex = items.length - 1; break;
                         case 'last': targetIndex = 0; break;
@@ -326,7 +325,6 @@ class ExtractionFragment : Fragment() {
                     }
 
                     if (targetIndex === -1) {
-                         // Already at the edge, but let's make sure the button state is correct.
                         const isFirst = (currentIndex === items.length - 1);
                         const isLast = (currentIndex === 0);
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
@@ -338,10 +336,7 @@ class ExtractionFragment : Fragment() {
 
                     if (section && !section.classList.contains('ant-collapse-item-active')) {
                         const header = section.querySelector('.ant-collapse-header');
-                        if (header) {
-                            realisticClick(header);
-                            await sleep(400);
-                        }
+                        realisticClick(header);
                     }
 
                     if (!realisticClick(targetItem)) {
@@ -350,10 +345,10 @@ class ExtractionFragment : Fragment() {
 
                     const isFirst = (targetIndex === items.length - 1);
                     const isLast = (targetIndex === 0);
-
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
 
                     return JSON.stringify({ success: true });
+
                 } catch (e) {
                     return JSON.stringify({ success: false, error: e.message });
                 }
