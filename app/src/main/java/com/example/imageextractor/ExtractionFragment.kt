@@ -343,7 +343,7 @@ class ExtractionFragment : Fragment() {
         val script = """
 (function() {
     if (window.sunarpPageListScriptInjected) {
-        if (!document.getElementById('sunarp-lista-btn') && document.querySelector('.columna-lista')) {
+        if (!document.getElementById('sunarp-lista-btn')) {
              createUiElements();
         }
         return;
@@ -438,10 +438,14 @@ class ExtractionFragment : Fragment() {
     }
 
     function showListOverlay() {
+        const container = document.querySelector('.columna-lista');
+        if (!container) {
+            console.error('El contenedor de la lista (.columna-lista) aún no está disponible. Por favor, espere a que la lista de asientos/tomos cargue y vuelva a intentarlo.');
+            return;
+        }
+
         createUiElements();
         const overlay = document.getElementById('sunarp-lista-overlay');
-        const container = document.querySelector('.columna-lista');
-        if (!container) { console.error('No se encontró el contenedor .columna-lista'); return; }
 
         const allPages = [];
         const sections = container.querySelectorAll(':scope > .ant-collapse > .ant-collapse-item, :scope > div.ant-collapse-item');
@@ -511,23 +515,22 @@ class ExtractionFragment : Fragment() {
     }
 
     function setupObserver() {
-        const observer = new MutationObserver(() => {
-            if (document.querySelector('.columna-lista') && !document.getElementById('sunarp-lista-btn')) {
-                 console.log('Botón "Lista" no detectado, reinsertando...');
-                 createUiElements();
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.removedNodes.length) {
+                    if (!document.getElementById('sunarp-lista-btn')) {
+                        createUiElements();
+                        return;
+                    }
+                }
             }
         });
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
     function main() {
-        const checkInterval = setInterval(() => {
-            if (document.querySelector('.columna-lista')) {
-                clearInterval(checkInterval);
-                createUiElements();
-                setupObserver();
-            }
-        }, 500);
+        createUiElements();
+        setupObserver();
     }
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') main();
