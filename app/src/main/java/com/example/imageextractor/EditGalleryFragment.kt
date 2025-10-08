@@ -13,10 +13,13 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.view.drawToBitmap
 import androidx.fragment.app.Fragment
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
-
 import java.io.File
 
 data class ImageFolder(val partidaId: String, val imagePaths: List<String>)
@@ -27,6 +30,15 @@ class EditGalleryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var folderAdapter: FolderAdapter
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                loadFoldersFromStorage()
+            } else {
+                Toast.makeText(requireContext(), "El permiso para leer archivos es necesario para mostrar las extracciones.", Toast.LENGTH_LONG).show()
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,7 +51,7 @@ class EditGalleryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
-        loadFoldersFromStorage()
+        checkAndRequestPermission()
     }
 
     private fun setupRecyclerView() {
@@ -52,6 +64,20 @@ class EditGalleryFragment : Fragment() {
         binding.editGalleryRecyclerView.apply {
             layoutManager = GridLayoutManager(context, 2)
             adapter = folderAdapter
+        }
+    }
+
+    private fun checkAndRequestPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                loadFoldersFromStorage()
+            }
+            else -> {
+                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
         }
     }
 
