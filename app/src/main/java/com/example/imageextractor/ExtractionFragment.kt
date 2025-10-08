@@ -90,6 +90,9 @@ class ExtractionFragment : Fragment() {
                 currentPageUrl = url
                 updateButtonStates(url)
                 injectSpaUrlWatcher()
+                if (isResultsPage(url)) {
+                    injectPageListScript()
+                }
             }
         }
 
@@ -334,6 +337,204 @@ class ExtractionFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun injectPageListScript() {
+        val script = """
+(function() {
+    if (window.sunarpPageListScriptInjected) {
+        if (!document.getElementById('sunarp-lista-btn') && document.querySelector('.columna-lista')) {
+             createUiElements();
+        }
+        return;
+    }
+    window.sunarpPageListScriptInjected = true;
+
+    async function robustClick(element, timeout = 5000) {
+        if (!element) {
+            console.warn('robustClick: Elemento no proporcionado.');
+            return false;
+        }
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            if (!document.body.contains(element)) {
+                 console.error('robustClick: El elemento ya no está en el DOM.');
+                 return false;
+            }
+            const style = window.getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            if (element.offsetParent !== null && !element.disabled && !element.hasAttribute('disabled') && style.pointerEvents !== 'none' && rect.width > 0 && rect.height > 0) {
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const elementAtCenter = document.elementFromPoint(centerX, centerY);
+                if (elementAtCenter && (elementAtCenter === element || element.contains(elementAtCenter))) {
+                    try {
+                        element.scrollIntoView({ block: 'center', inline: 'center' });
+                        await sleep(150);
+                        element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+                        await sleep(50);
+                        element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+                        await sleep(50);
+                        element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                        return true;
+                    } catch (e) {
+                        console.error('robustClick: Falló el evento de clic, reintentando...', e);
+                    }
+                } else if (elementAtCenter) {
+                     console.warn(`robustClick: Elemento tapado por otro elemento ... reintentando.`);
+                }
+            }
+            await sleep(200);
+        }
+        console.error('robustClick: No se pudo hacer clic en el elemento después de ' + (timeout / 1000) + 's.', element);
+        return false;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function createUiElements() {
+        if (document.getElementById('sunarp-lista-btn')) return;
+
+        const button = document.createElement('button');
+        button.id = 'sunarp-lista-btn';
+        button.textContent = 'Lista';
+        Object.assign(button.style, {
+            position: 'fixed', top: '15px', left: '50%', transform: 'translateX(-50%)', zIndex: '9999',
+            padding: '8px 16px', backgroundColor: '#1890ff', color: 'white', border: 'none',
+            borderRadius: '5px', cursor: 'pointer', fontSize: '14px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+        });
+        button.onclick = showListOverlay;
+        document.body.appendChild(button);
+
+        if (document.getElementById('sunarp-lista-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'sunarp-lista-overlay';
+        Object.assign(overlay.style, {
+            position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: '10000', display: 'none',
+            justifyContent: 'center', alignItems: 'center'
+        });
+
+        overlay.innerHTML = `
+            <div id="sunarp-lista-panel" style="background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 id="sunarp-lista-total" style="margin: 0; font-size: 16px;">Total páginas: 0</h3>
+                    <button id="sunarp-lista-close" style="background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 0 8px;">&times;</button>
+                </div>
+                <div id="sunarp-lista-items" style="overflow-y: auto; padding: 8px;"></div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('sunarp-lista-close').onclick = hideListOverlay;
+        overlay.onclick = e => { if (e.target.id === 'sunarp-lista-overlay') hideListOverlay(); };
+    }
+
+    function hideListOverlay() {
+        const overlay = document.getElementById('sunarp-lista-overlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function showListOverlay() {
+        createUiElements();
+        const overlay = document.getElementById('sunarp-lista-overlay');
+        const container = document.querySelector('.columna-lista');
+        if (!container) { console.error('No se encontró el contenedor .columna-lista'); return; }
+
+        const allPages = [];
+        const sections = container.querySelectorAll(':scope > .ant-collapse > .ant-collapse-item, :scope > div.ant-collapse-item');
+
+        sections.forEach((section, sectionIndex) => {
+            const header = section.querySelector('.ant-collapse-header');
+            const headerText = header ? (header.innerText || '').trim() : '';
+
+            let type = 'Sección';
+            let sectionNum = sectionIndex;
+            const asientoMatch = headerText.match(/Asiento\\s+N°:\\s*(\\d+)/i);
+            const tomoMatch = headerText.match(/Tomo:\\s*(\\d+)/i);
+            if (asientoMatch) { type = 'Asiento'; sectionNum = parseInt(asientoMatch[1], 10); }
+            else if (tomoMatch) { type = 'Tomo'; sectionNum = parseInt(tomoMatch[1], 10); }
+
+            const pageButtons = section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina');
+
+            if (pageButtons.length > 0) {
+                pageButtons.forEach((btn, pageIndex) => {
+                    const btnText = (btn.innerText || '').trim();
+                    let pageLabel = `Pág. ${'$'}{pageIndex + 1}`;
+                    let pageNum = pageIndex;
+                    const folioMatch = btnText.match(/Folio:\\s*(\\d+)/i) || btnText.match(/F:\\s*(\\d+)/i);
+                    const pageMatch = btnText.match(/Página:\\s*(\\d+)/i) || btnText.match(/P:\\s*(\\d+)/i);
+                    if (folioMatch) { pageLabel = `Folio ${'$'}{folioMatch[1]}`; pageNum = parseInt(folioMatch[1], 10); }
+                    else if(pageMatch) { pageLabel = `Página ${'$'}{pageMatch[1]}`; pageNum = parseInt(pageMatch[1], 10); }
+
+                    allPages.push({
+                        element: btn, sectionHeader: header, isCollapsed: !section.classList.contains('ant-collapse-item-active'),
+                        sectionNum, pageNum, fullLabel: `${'$'}{type} ${'$'}{asientoMatch || tomoMatch ? sectionNum : ''} - ${'$'}{pageLabel}`
+                    });
+                });
+            } else {
+                allPages.push({
+                    element: header, sectionHeader: header, isCollapsed: false,
+                    sectionNum, pageNum: 0, fullLabel: `${'$'}{headerText} (Página única)`
+                });
+            }
+        });
+
+        allPages.sort((a, b) => a.sectionNum !== b.sectionNum ? a.sectionNum - b.sectionNum : a.pageNum - b.pageNum);
+
+        const listContainer = document.getElementById('sunarp-lista-items');
+        const totalContainer = document.getElementById('sunarp-lista-total');
+        listContainer.innerHTML = '';
+        totalContainer.textContent = `Total páginas: ${'$'}{allPages.length}`;
+
+        allPages.forEach((pageInfo, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.textContent = `Elemento ${'$'}{index + 1}: ${'$'}{pageInfo.fullLabel}`;
+            Object.assign(itemDiv.style, { padding: '10px 16px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' });
+            itemDiv.onmouseenter = () => itemDiv.style.backgroundColor = '#f7f7f7';
+            itemDiv.onmouseleave = () => itemDiv.style.backgroundColor = 'transparent';
+
+            itemDiv.onclick = async () => {
+                hideListOverlay();
+                await sleep(100);
+                if (pageInfo.isCollapsed && pageInfo.sectionHeader) {
+                    await robustClick(pageInfo.sectionHeader);
+                    await sleep(400);
+                }
+                await robustClick(pageInfo.element);
+            };
+            listContainer.appendChild(itemDiv);
+        });
+        overlay.style.display = 'flex';
+    }
+
+    function setupObserver() {
+        const observer = new MutationObserver(() => {
+            if (document.querySelector('.columna-lista') && !document.getElementById('sunarp-lista-btn')) {
+                 console.log('Botón "Lista" no detectado, reinsertando...');
+                 createUiElements();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function main() {
+        const checkInterval = setInterval(() => {
+            if (document.querySelector('.columna-lista')) {
+                clearInterval(checkInterval);
+                createUiElements();
+                setupObserver();
+            }
+        }, 500);
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') main();
+    else document.addEventListener('DOMContentLoaded', main);
+})();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun autofillCurrentPage() {
