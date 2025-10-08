@@ -244,177 +244,117 @@ class ExtractionFragment : Fragment() {
 
     private fun navigateTo(direction: String) {
         val script = """
-            ((direction) => {
-                try {
-                    if (!window.__sunarpNav) {
-                        window.__sunarpNav = { lastIndex: -1, isNavigating: false };
-                    }
-                    window.__sunarpNavV2 = true;
-
-                    if (window.__sunarpNav.isNavigating) {
-                        console.warn("Navegación ya en progreso, se ignora el clic.");
-                        return JSON.stringify({ success: false, error: "Navegación en progreso." });
-                    }
-                    window.__sunarpNav.isNavigating = true;
-                    setTimeout(() => {
-                        if(window.__sunarpNav) window.__sunarpNav.isNavigating = false;
-                    }, 600);
-
-                    async function robustClick(element, timeout = 5000) {
-                        if (!element) { console.warn('robustClick: Elemento no proporcionado.'); return false; }
-                        const start = Date.now();
-                        while (Date.now() - start < timeout) {
-                            if (!document.body.contains(element)) { console.error('robustClick: El elemento ya no está en el DOM.'); return false; }
-                            const style = window.getComputedStyle(element);
-                            const rect = element.getBoundingClientRect();
-                            if (element.offsetParent !== null && !element.disabled && !element.hasAttribute('disabled') && style.pointerEvents !== 'none' && rect.width > 0 && rect.height > 0) {
-                                const centerX = rect.left + rect.width / 2;
-                                const centerY = rect.top + rect.height / 2;
-                                const elementAtCenter = document.elementFromPoint(centerX, centerY);
-                                if (elementAtCenter && (elementAtCenter === element || element.contains(elementAtCenter))) {
-                                    try {
-                                        element.scrollIntoView({ block: 'center', inline: 'center' });
-                                        await sleep(150);
-                                        element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-                                        await sleep(50);
-                                        element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-                                        await sleep(50);
-                                        element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-                                        return true;
-                                    } catch (e) {
-                                        console.error('robustClick: Falló el evento de clic, reintentando...', e);
-                                    }
-                                }
-                            }
-                            await sleep(200);
-                        }
-                        console.error('robustClick: No se pudo hacer clic en el elemento después de ' + (timeout / 1000) + 's.', element);
-                        return false;
-                    }
-
-                    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-                    function buildNavigableItemsList() {
-                        const items = [];
-                        const container = document.querySelector('.columna-lista');
-                        if (!container) { console.error("buildNavigableItemsList: Contenedor .columna-lista no encontrado."); return []; }
-                        const sections = container.querySelectorAll(':scope > .ant-collapse > .ant-collapse-item, :scope > div.ant-collapse-item');
-                        sections.forEach((section) => {
-                            const headerEl = section.querySelector('.ant-collapse-header');
-                            if (!headerEl) return;
-                            const headerText = (headerEl.innerText || '').trim();
-                            const isCollapsed = !section.classList.contains('ant-collapse-item-active');
-                            let type = null, sectionNum = -1;
-                            const asientoMatch = headerText.match(/Asiento\\s+N°:\\s*(\\d+)/i);
-                            if (asientoMatch) { type = 'asiento'; sectionNum = parseInt(asientoMatch[1], 10); }
-                            else {
-                                const tomoMatch = headerText.match(/Tomo:\\s*(\\d+)/i);
-                                if (tomoMatch) { type = 'tomo'; sectionNum = parseInt(tomoMatch[1], 10); }
-                            }
-                            if (!type) { console.warn(`No se pudo determinar el tipo para la sección: "${'$'}{headerText}"`); return; }
-                            const pageButtons = section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina');
-                            if (pageButtons.length > 0) {
-                                pageButtons.forEach((btn, pageIndex) => {
-                                    const btnText = (btn.innerText || '').trim();
-                                    let pageNum = pageIndex + 1;
-                                    const folioMatch = btnText.match(/Folio:\\s*(\\d+)/i);
-                                    if (folioMatch) { pageNum = parseInt(folioMatch[1], 10); }
-                                    else { const pageMatch = btnText.match(/Página:\\s*(\\d+)/i); if (pageMatch) { pageNum = parseInt(pageMatch[1], 10); } }
-                                    items.push({ type, sectionNum, pageNum, headerEl, clickEl: btn, isCollapsed, label: `${'$'}{type} ${'$'}{sectionNum} - P/F ${'$'}{pageNum}` });
-                                });
-                            } else {
-                                items.push({ type, sectionNum, pageNum: 1, headerEl, clickEl: headerEl, isCollapsed: false, label: `${'$'}{type} ${'$'}{sectionNum} - Página única` });
-                            }
-                        });
-                        return items;
-                    }
-
-                    function getCurrentItemIndex(items) {
-                        const titleElement = document.querySelector('.visor-subtitle');
-                        if (!titleElement) {
-                            console.warn("getCurrentItemIndex: No se encontró .visor-subtitle. Usando fallback de último índice.");
-                            return window.__sunarpNav.lastIndex > -1 ? window.__sunarpNav.lastIndex : 0;
-                        }
-                        const titleText = (titleElement.innerText || "").trim().toLowerCase();
-                        let currentType = null, currentSectionNum = -1, currentPageNum = -1;
-                        const asientoMatch = titleText.match(/asiento\s+n°?\s*(\d+)/);
-                        if (asientoMatch) {
-                            currentType = 'asiento';
-                            currentSectionNum = parseInt(asientoMatch[1], 10);
-                            const pageMatch = titleText.match(/página\s+(\d+)/);
-                            currentPageNum = pageMatch ? parseInt(pageMatch[1], 10) : 1;
+            (async (direction) => {
+                function getNavigableItems() {
+                    const allClickableItems = [];
+                    const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                    if (!sections) return [];
+                    sections.forEach(section => {
+                        const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        if (subPages.length > 0) {
+                            allClickableItems.push(...subPages);
                         } else {
-                            const tomoMatch = titleText.match(/tomo:\s*(\d+)/);
-                            if (tomoMatch) {
-                                currentType = 'tomo';
-                                currentSectionNum = parseInt(tomoMatch[1], 10);
-                                const folioMatch = titleText.match(/folio:\s*(\d+)/);
-                                currentPageNum = folioMatch ? parseInt(folioMatch[1], 10) : 1;
-                            }
+                            const header = section.querySelector('.ant-collapse-header');
+                            if (header) allClickableItems.push(header);
                         }
-                        if (!currentType) {
-                            console.warn(`getCurrentItemIndex: No se pudo parsear el tipo desde "${'$'}{titleText}". Usando fallback de último índice.`);
-                            return window.__sunarpNav.lastIndex > -1 ? window.__sunarpNav.lastIndex : 0;
-                        }
-                        let foundIndex = items.findIndex(item => item.type === currentType && item.sectionNum === currentSectionNum && item.pageNum === currentPageNum);
-                        if (foundIndex === -1) {
-                            foundIndex = items.findIndex(item => item.type === currentType && item.sectionNum === currentSectionNum);
-                            if (foundIndex !== -1) console.warn(`getCurrentItemIndex: Coincidencia exacta no encontrada para "${'$'}{titleText}", usando la primera página/folio de la sección.`);
-                        }
-                        if (foundIndex !== -1) return foundIndex;
-                        console.warn(`getCurrentItemIndex: No se encontró coincidencia para "${'$'}{titleText}". Usando fallback final de último índice.`);
-                        return window.__sunarpNav.lastIndex > -1 ? window.__sunarpNav.lastIndex : 0;
+                    });
+                    return allClickableItems;
+                }
+
+                function realisticClick(element) {
+                    try {
+                        element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                        element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                        element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                        return true;
+                    } catch (e) { return false; }
+                }
+
+                function sleep(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }
+
+                function getCurrentItemIndex(items) {
+                    const activeElement = document.querySelector('.boton-pagina-seleccionado');
+                    if (activeElement) {
+                        const index = items.findIndex(item => item === activeElement);
+                        if (index !== -1) return index;
                     }
 
-                    async function main() {
-                        const items = buildNavigableItemsList();
-                        if (items.length === 0) {
-                            return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación." });
-                        }
-                        const currentIndex = getCurrentItemIndex(items);
-                        let targetIndex = -1;
-                        const lastPossibleIndex = items.length - 1;
-                        switch (direction) {
-                            case 'first': targetIndex = lastPossibleIndex; break;
-                            case 'last': targetIndex = 0; break;
-                            case 'next': if (currentIndex > 0) targetIndex = currentIndex - 1; break;
-                            case 'previous': if (currentIndex < lastPossibleIndex) targetIndex = currentIndex + 1; break;
-                        }
+                    const titleElement = document.querySelector('.visor-subtitle');
+                    if (!titleElement) return 0;
+                    const titleText = (titleElement.innerText || "").trim().toLowerCase();
 
-                        if (targetIndex === -1) {
-                            console.info("Ya estás en el extremo de la navegación.");
-                            const isFirst = (currentIndex === lastPossibleIndex);
-                            const isLast = (currentIndex === 0);
-                            if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
-                            return JSON.stringify({ success: true, message: "Extremo de la navegación." });
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        const section = item.closest('.ant-collapse-item');
+                        if (!section) continue;
+                        const headerText = (section.querySelector('.ant-collapse-header').innerText || "").toLowerCase();
+
+                        const asientoMatch = titleText.match(/asiento\s+n°?\s*(\d+)/);
+                        if (asientoMatch && headerText.includes("asiento") && headerText.includes(`n°: ${"$"}{asientoMatch[1]}`)) {
+                             const pageMatch = titleText.match(/página\s+(\d+)/);
+                             if (item.classList.contains('ant-collapse-header') && !pageMatch) return i;
+                             if (!item.classList.contains('ant-collapse-header') && pageMatch && (item.innerText || "").toLowerCase().includes(`página ${"$"}{pageMatch[1]}`)) return i;
+                             if (!pageMatch && !item.classList.contains('ant-collapse-header')) return i;
                         }
 
-                        const targetItem = items[targetIndex];
-                        console.info(`Navegando: De [${'$'}{currentIndex}] ${'$'}{items[currentIndex].label} a [${'$'}{targetIndex}] ${'$'}{targetItem.label}`);
+                        const tomoMatch = titleText.match(/tomo:\s*(\d+)/);
+                        if (tomoMatch && headerText.includes(`tomo: ${"$"}{tomoMatch[1]}`)) {
+                            const folioMatch = titleText.match(/folio:\s*(\d+)/);
+                            if (item.classList.contains('ant-collapse-header') && !folioMatch) return i;
+                            if (!item.classList.contains('ant-collapse-header') && folioMatch && (item.innerText || "").toLowerCase().includes(`folio: ${"$"}{folioMatch[1]}`)) return i;
+                            if (!folioMatch && !item.classList.contains('ant-collapse-header')) return i;
+                        }
+                    }
+                    return 0;
+                }
 
-                        if (targetItem.isCollapsed && targetItem.headerEl !== targetItem.clickEl) {
-                            console.info("Expandiendo sección colapsada...");
-                            await robustClick(targetItem.headerEl);
+                try {
+                    const items = getNavigableItems();
+                    if (items.length === 0) return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación." });
+
+                    const currentIndex = getCurrentItemIndex(items);
+                    let targetIndex = -1;
+
+                    // 'previous' moves to an older item (higher index), 'next' to a newer one (lower index)
+                    switch (direction) {
+                        case 'first': targetIndex = items.length - 1; break;
+                        case 'last': targetIndex = 0; break;
+                        case 'next': if (currentIndex > 0) targetIndex = currentIndex - 1; break;
+                        case 'previous': if (currentIndex < items.length - 1) targetIndex = currentIndex + 1; break;
+                    }
+
+                    if (targetIndex === -1) {
+                         // Already at the edge, but let's make sure the button state is correct.
+                        const isFirst = (currentIndex === items.length - 1);
+                        const isLast = (currentIndex === 0);
+                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
+                        return JSON.stringify({ success: true, message: "Ya estás en el extremo de la navegación." });
+                    }
+
+                    const targetItem = items[targetIndex];
+                    const section = targetItem.closest('.ant-collapse-item');
+
+                    if (section && !section.classList.contains('ant-collapse-item-active')) {
+                        const header = section.querySelector('.ant-collapse-header');
+                        if (header) {
+                            realisticClick(header);
                             await sleep(400);
                         }
-
-                        const clickSuccess = await robustClick(targetItem.clickEl);
-
-                        if (!clickSuccess) {
-                            return JSON.stringify({ success: false, error: "El clic en el destino falló." });
-                        }
-
-                        window.__sunarpNav.lastIndex = targetIndex;
-                        const isFirst = (targetIndex === lastPossibleIndex);
-                        const isLast = (targetIndex === 0);
-                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
-                        return JSON.stringify({ success: true });
                     }
 
-                    return main();
+                    if (!realisticClick(targetItem)) {
+                        return JSON.stringify({ success: false, error: "El clic en el destino falló." });
+                    }
+
+                    const isFirst = (targetIndex === items.length - 1);
+                    const isLast = (targetIndex === 0);
+
+                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
+
+                    return JSON.stringify({ success: true });
                 } catch (e) {
-                    if (window.__sunarpNav) window.__sunarpNav.isNavigating = false;
-                    console.error("Error fatal en la navegación V2:", e);
                     return JSON.stringify({ success: false, error: e.message });
                 }
             })('$direction');
