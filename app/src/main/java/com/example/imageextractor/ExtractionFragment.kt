@@ -303,28 +303,24 @@ class ExtractionFragment : Fragment() {
                     let targetIndex = -1;
 
                     // DOM order: newer (index 0) to older (index length-1)
-                    // fab_go_to_first_item -> direction 'first' -> "más antiguo" -> index length-1
-                    // fab_go_to_last_item -> direction 'last' -> "más reciente" -> index 0
-                    // fab_previous -> direction 'previous' -> "anterior" (newer) -> index - 1
-                    // fab_next -> direction 'next' -> "siguiente" (older) -> index + 1
                     switch (direction) {
-                        case 'first':
-                            targetIndex = items.length - 1;
-                            break;
-                        case 'last':
+                        case 'first': // más reciente
                             targetIndex = 0;
                             break;
-                        case 'previous':
+                        case 'last': // más antiguo
+                            targetIndex = items.length - 1;
+                            break;
+                        case 'next': // hacia más reciente
                             if (currentIndex > 0) targetIndex = currentIndex - 1;
                             break;
-                        case 'next':
+                        case 'previous': // hacia más antiguo
                             if (currentIndex < items.length - 1) targetIndex = currentIndex + 1;
                             break;
                     }
 
                     if (targetIndex === -1) {
-                        const isFirst = (currentIndex === items.length - 1);
-                        const isLast = (currentIndex === 0);
+                        const isFirst = (currentIndex === 0);
+                        const isLast = (currentIndex === items.length - 1);
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
                         return JSON.stringify({ success: true, message: "Ya estás en el extremo." });
                     }
