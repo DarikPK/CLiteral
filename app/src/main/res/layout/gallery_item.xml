@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/gallery_image_view"
-    android:layout_width="120dp"
-    android:layout_height="120dp"
-    android:scaleType="centerCrop"
-    android:layout_margin="4dp"
-    android:contentDescription="Imagen extraída" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="4dp">
+
+    <ImageView
+        android:id="@+id/gallery_image_view"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="Imagen extraída" />
+
+    <TextView
+        android:id="@+id/file_name_text"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textSize="12sp"
+        tools:text="P12345678-Hoja 1.png" />
+
+</LinearLayout>

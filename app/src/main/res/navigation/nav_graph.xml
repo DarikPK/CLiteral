@@ -37,7 +37,21 @@
     <fragment
         android:id="@+id/editingFragment"
         android:name="com.example.imageextractor.EditingFragment"
-        android:label="Módulo de Edición"
-        tools:layout="@layout/fragment_editing" />
+        android:label="Ver Extracciones"
+        tools:layout="@layout/fragment_editing">
+        <action
+            android:id="@+id/action_editingFragment_to_viewGalleryFragment"
+            app:destination="@id/viewGalleryFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/viewGalleryFragment"
+        android:name="com.example.imageextractor.ViewGalleryFragment"
+        android:label="Galería de Imágenes"
+        tools:layout="@layout/fragment_view_gallery">
+        <argument
+            android:name="imageUrls"
+            app:argType="string[]" />
+    </fragment>
 
 </navigation>

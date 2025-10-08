@@ -5,7 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentViewGalleryBinding
 
@@ -14,7 +15,7 @@ class ViewGalleryFragment : Fragment() {
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
-    private val sharedViewModel: SharedViewModel by activityViewModels()
+    private val args: ViewGalleryFragmentArgs by navArgs()
     private lateinit var imageAdapter: ImageAdapter
 
     override fun onCreateView(
@@ -28,7 +29,7 @@ class ViewGalleryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
-        observeViewModel()
+        displayImages()
     }
 
     private fun setupRecyclerView() {
@@ -39,10 +40,9 @@ class ViewGalleryFragment : Fragment() {
         }
     }
 
-    private fun observeViewModel() {
-        sharedViewModel.imageUrls.observe(viewLifecycleOwner) { urls ->
-            urls?.let { imageAdapter.updateImages(it) }
-        }
+    private fun displayImages() {
+        val imageUrls = args.imageUrls.toList()
+        imageAdapter.updateImages(imageUrls)
     }
 
     override fun onDestroyView() {

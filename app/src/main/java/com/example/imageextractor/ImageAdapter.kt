@@ -1,16 +1,13 @@
 package com.example.imageextractor
 
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.imageextractor.databinding.GalleryItemBinding
+import java.io.File
 
 class ImageAdapter(private var imageUrls: List<String>) : RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
-
-    private var colorFilter: ColorMatrixColorFilter? = null
 
     class ImageViewHolder(val binding: GalleryItemBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -21,30 +18,20 @@ class ImageAdapter(private var imageUrls: List<String>) : RecyclerView.Adapter<I
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         val imageUrl = imageUrls[position]
+
+        // Extraer y establecer el nombre del archivo
+        holder.binding.fileNameText.text = File(imageUrl).name
+
+        // Cargar la imagen de la miniatura
         Glide.with(holder.itemView.context)
             .load(imageUrl)
             .into(holder.binding.galleryImageView)
-
-        holder.binding.galleryImageView.colorFilter = colorFilter
     }
 
     override fun getItemCount() = imageUrls.size
 
     fun updateImages(newImageUrls: List<String>) {
         this.imageUrls = newImageUrls
-        notifyDataSetChanged()
-    }
-
-    fun applyFilter(brightness: Float, contrast: Float) {
-        val matrix = ColorMatrix().apply {
-            set(floatArrayOf(
-                contrast, 0f, 0f, 0f, brightness,
-                0f, contrast, 0f, 0f, brightness,
-                0f, 0f, contrast, 0f, brightness,
-                0f, 0f, 0f, 1f, 0f
-            ))
-        }
-        this.colorFilter = ColorMatrixColorFilter(matrix)
         notifyDataSetChanged()
     }
 }
