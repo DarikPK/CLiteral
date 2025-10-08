@@ -425,22 +425,22 @@ class ExtractionFragment : Fragment() {
         if (pageButtons.length > 0) {
             pageButtons.forEach((btn, pageIndex) => {
                 const btnText = (btn.innerText || '').trim();
-                let pageLabel = `Pág. \${pageIndex + 1}`;
+                let pageLabel = `Pág. ${'$'}{pageIndex + 1}`;
                 let pageNum = pageIndex;
                 const folioMatch = btnText.match(/Folio:\\s*(\\d+)/i) || btnText.match(/F:\\s*(\\d+)/i);
                 const pageMatch = btnText.match(/Página:\\s*(\\d+)/i) || btnText.match(/P:\\s*(\\d+)/i);
-                if (folioMatch) { pageLabel = `Folio \${folioMatch[1]}`; pageNum = parseInt(folioMatch[1], 10); }
-                else if(pageMatch) { pageLabel = `Página \${pageMatch[1]}`; pageNum = parseInt(pageMatch[1], 10); }
+                if (folioMatch) { pageLabel = `Folio ${'$'}{folioMatch[1]}`; pageNum = parseInt(folioMatch[1], 10); }
+                else if(pageMatch) { pageLabel = `Página ${'$'}{pageMatch[1]}`; pageNum = parseInt(pageMatch[1], 10); }
 
                 allPages.push({
                     element: btn, sectionHeader: header, isCollapsed: !section.classList.contains('ant-collapse-item-active'),
-                    sectionNum, pageNum, fullLabel: `\${type} \${asientoMatch || tomoMatch ? sectionNum : ''} - \${pageLabel}`
+                    sectionNum, pageNum, fullLabel: `${'$'}{type} ${'$'}{asientoMatch || tomoMatch ? sectionNum : ''} - ${'$'}{pageLabel}`
                 });
             });
         } else {
             allPages.push({
                 element: header, sectionHeader: header, isCollapsed: false,
-                sectionNum, pageNum: 0, fullLabel: `\${headerText} (Página única)`
+                sectionNum, pageNum: 0, fullLabel: `${'$'}{headerText} (Página única)`
             });
         }
     });
@@ -458,7 +458,7 @@ class ExtractionFragment : Fragment() {
     overlay.innerHTML = `
         <div id="sunarp-lista-panel" style="background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
             <div style="padding: 12px 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                <h3 id="sunarp-lista-total" style="margin: 0; font-size: 16px;">Total páginas: \${allPages.length}</h3>
+                <h3 id="sunarp-lista-total" style="margin: 0; font-size: 16px;">Total páginas: ${'$'}{allPages.length}</h3>
                 <button id="sunarp-lista-close" style="background: transparent; border: none; font-size: 24px; cursor: pointer; padding: 0 8px;">&times;</button>
             </div>
             <div id="sunarp-lista-items" style="overflow-y: auto; padding: 8px;"></div>
@@ -469,7 +469,7 @@ class ExtractionFragment : Fragment() {
     const listContainer = overlay.querySelector('#sunarp-lista-items');
     allPages.forEach((pageInfo, index) => {
         const itemDiv = document.createElement('div');
-        itemDiv.textContent = `Elemento \${index + 1}: \${pageInfo.fullLabel}`;
+        itemDiv.textContent = `Elemento ${'$'}{index + 1}: ${'$'}{pageInfo.fullLabel}`;
         Object.assign(itemDiv.style, { padding: '10px 16px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' });
         itemDiv.onmouseenter = () => itemDiv.style.backgroundColor = '#f7f7f7';
         itemDiv.onmouseleave = () => itemDiv.style.backgroundColor = 'transparent';
