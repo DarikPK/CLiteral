@@ -302,25 +302,25 @@ class ExtractionFragment : Fragment() {
                     const currentIndex = getCurrentItemIndex(items);
                     let targetIndex = -1;
 
-                    // DOM order: newer (index 0) to older (index length-1)
+                    // Corresponds to UI buttons: >> (last), > (next), << (first), < (previous)
                     switch (direction) {
-                        case 'first': // más reciente
+                        case 'last': // >> Go to most recent
                             targetIndex = 0;
                             break;
-                        case 'last': // más antiguo
-                            targetIndex = items.length - 1;
-                            break;
-                        case 'next': // hacia más reciente
+                        case 'next': // > Go one step to most recent
                             if (currentIndex > 0) targetIndex = currentIndex - 1;
                             break;
-                        case 'previous': // hacia más antiguo
+                        case 'first': // << Go to oldest
+                            targetIndex = items.length - 1;
+                            break;
+                        case 'previous': // < Go one step to oldest
                             if (currentIndex < items.length - 1) targetIndex = currentIndex + 1;
                             break;
                     }
 
                     if (targetIndex === -1) {
-                        const isFirst = (currentIndex === 0);
-                        const isLast = (currentIndex === items.length - 1);
+                        const isFirst = (currentIndex === items.length - 1); // Oldest
+                        const isLast = (currentIndex === 0); // Newest
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
                         return JSON.stringify({ success: true, message: "Ya estás en el extremo." });
                     }
@@ -349,8 +349,8 @@ class ExtractionFragment : Fragment() {
 
                     const finalItems = getNavigableItems();
                     const finalIndex = getCurrentItemIndex(finalItems);
-                    const isFirst = (finalIndex === finalItems.length - 1);
-                    const isLast = (finalIndex === 0);
+                    const isFirst = (finalIndex === finalItems.length - 1); // Oldest
+                    const isLast = (finalIndex === 0); // Newest
 
                     if (typeof AndroidBridge !== 'undefined') {
                         AndroidBridge.updateNavigationState(isFirst, isLast);
