@@ -268,7 +268,12 @@ class ExtractionFragment : Fragment() {
                             }
                             await sleep(200);
                         }
-                        if(!subtitleChanged) console.warn("No se confirmó el cambio de página, se continuará por timeout.");
+                        if(!subtitleChanged) {
+                           console.warn("No se confirmó el cambio de página, se continuará por timeout.");
+                        }
+
+                        await sleep(2000); // Pausa de 2 segundos después del cambio y antes de capturar.
+
                         const canvas = await waitForCanvas();
                         if (canvas) {
                             try {
@@ -277,7 +282,7 @@ class ExtractionFragment : Fragment() {
                                 const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-                                await sleep(500); // Pausa para no sobrecargar el sistema de descargas
+                                await sleep(3000); // Pausa de 3 segundos para no sobrecargar el sistema.
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{items.length - i}:`, e);
                             }
