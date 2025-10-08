@@ -97,6 +97,20 @@
         tools:visibility="visible"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_auto_capture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:contentDescription="Iniciar captura automática"
+        android:src="@drawable/ic_play_arrow"
+        app:backgroundTint="?attr/colorPrimary"
+        app:fabSize="mini"
+        app:layout_constraintBottom_toBottomOf="@id/fab_previous"
+        app:layout_constraintStart_toEndOf="@id/fab_previous"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_next"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -105,8 +119,8 @@
         android:src="@android:drawable/ic_media_next"
         android:contentDescription="Siguiente"
         app:backgroundTint="@color/fab_state_color"
-        app:layout_constraintBottom_toBottomOf="@id/fab_previous"
-        app:layout_constraintStart_toEndOf="@id/fab_previous"
+        app:layout_constraintBottom_toBottomOf="@id/fab_auto_capture"
+        app:layout_constraintStart_toEndOf="@id/fab_auto_capture"
         android:visibility="gone"
         tools:visibility="visible"/>
 

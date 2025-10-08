@@ -50,6 +50,19 @@ class ExtractionFragment : Fragment() {
                 binding.fabNext.isEnabled = !isLast
             }
         }
+
+        @JavascriptInterface
+        fun onAutoCaptureFinished(count: Int) {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                val message = when {
+                    count > 0 -> "Captura automática finalizada. Se guardaron $count imágenes."
+                    count == 0 -> "No se pudo capturar ninguna imagen."
+                    else -> "Ocurrió un error durante la captura automática."
+                }
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -175,6 +188,7 @@ class ExtractionFragment : Fragment() {
         binding.fabGoToLastItem.visibility = navigationVisible
         binding.fabPrevious.visibility = navigationVisible
         binding.fabNext.visibility = navigationVisible
+        binding.fabAutoCapture.visibility = navigationVisible
 
         binding.extractButton.visibility = View.GONE // Keep it hidden as per original logic
 
@@ -206,6 +220,123 @@ class ExtractionFragment : Fragment() {
         binding.fabGoToLastItem.setOnClickListener { navigateTo("last") }
         binding.fabPrevious.setOnClickListener { navigateTo("previous") }
         binding.fabNext.setOnClickListener { navigateTo("next") }
+
+        binding.fabAutoCapture.setOnClickListener {
+            startAutoCapture()
+        }
+    }
+
+    private fun startAutoCapture() {
+        val numeroPartida = sharedViewModel.config.value?.numeroPartida ?: "SIN_PARTIDA"
+        if (numeroPartida == "SIN_PARTIDA") {
+            Toast.makeText(context, "No se ha definido un número de partida.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(context, "Iniciando captura automática...", Toast.LENGTH_SHORT).show()
+
+        val script = """
+            (async (numeroPartida) => {
+                try {
+                    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+                    async function robustClick(element) {
+                        for (let i = 0; i < 3; i++) {
+                            try {
+                                if (!element || !document.body.contains(element)) return false;
+                                element.scrollIntoView({ block: 'center' });
+                                await sleep(150);
+                                element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                                return true;
+                            } catch (e) {
+                                console.warn(`Intento de clic ${'$'}{i + 1} fallido`, e);
+                                await sleep(200);
+                            }
+                        }
+                        return false;
+                    }
+
+                    async function waitForCanvas(timeout = 7000) {
+                        const startTime = Date.now();
+                        while (Date.now() - startTime < timeout) {
+                            const canvas = document.querySelector('canvas:not([style*="display: none"])');
+                            if (canvas && canvas.toDataURL().length > 100) { // Comprobación básica de que no está vacío
+                                await sleep(250); // Un respiro extra para el renderizado final
+                                return canvas;
+                            }
+                            await sleep(250);
+                        }
+                        return null;
+                    }
+
+                    function downloadDataUrl(dataUrl, filename) {
+                        const a = document.createElement("a");
+                        a.href = dataUrl;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
+
+                    const items = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
+                    if (items.length === 0) {
+                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
+                        return;
+                    }
+
+                    let captureCount = 0;
+                    // Iterar desde el más antiguo (final de la lista) al más reciente (inicio de la lista)
+                    for (let i = items.length - 1; i >= 0; i--) {
+                        const item = items[i];
+                        const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
+
+                        if (!await robustClick(item)) {
+                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{items.length - i}`);
+                            continue;
+                        }
+
+                        // Esperar a que la página cambie (basado en el subtítulo o un timeout)
+                        const pollStart = Date.now();
+                        let subtitleChanged = false;
+                        while(Date.now() - pollStart < 5000) {
+                            const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
+                            if(newSubtitle && newSubtitle !== originalSubtitle) {
+                                subtitleChanged = true;
+                                break;
+                            }
+                            await sleep(200);
+                        }
+                        if(!subtitleChanged) console.warn("No se confirmó el cambio de página, se continuará por timeout.");
+
+                        const canvas = await waitForCanvas();
+                        if (canvas) {
+                            try {
+                                const dataUrl = canvas.toDataURL("image/png");
+                                const hojaNumero = items.length - i;
+                                const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
+                                downloadDataUrl(dataUrl, filename);
+                                captureCount++;
+                                await sleep(500); // Pausa para no sobrecargar el sistema de descargas
+                            } catch (e) {
+                                console.error(`Error al capturar el canvas de la hoja ${'$'}{items.length - i}:`, e);
+                            }
+                        } else {
+                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{items.length - i}`);
+                        }
+                    }
+
+                    if (typeof AndroidBridge !== 'undefined') {
+                        AndroidBridge.onAutoCaptureFinished(captureCount);
+                    }
+
+                } catch (e) {
+                    console.error("Error en el script de captura automática:", e);
+                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1); // Indicar error
+                }
+            })('${'$'}{numeroPartida}');
+        """.trimIndent()
+
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun generarNombreArchivo(): String {
