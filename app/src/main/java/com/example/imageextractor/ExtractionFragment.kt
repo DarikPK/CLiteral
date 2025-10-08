@@ -270,95 +270,81 @@ class ExtractionFragment : Fragment() {
                         return false;
                     }
 
+                    // Obtiene una lista plana de todos los elementos de página navegables.
                     function getNavigableItems() {
                         return Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
                     }
 
-                    function getCurrentItemIndex(items) {
-                        const activeElement = document.querySelector('.boton-pagina-seleccionado');
-                        if (activeElement) {
-                            const index = items.findIndex(item => item === activeElement);
-                            if (index !== -1) return index;
-                        }
-
-                        const titleElement = document.querySelector('.visor-subtitle');
-                        if (!titleElement) return 0;
-                        const titleText = (titleElement.innerText || "").trim().toLowerCase();
-
-                        for (let i = 0; i < items.length; i++) {
-                            const itemText = (items[i].innerText || "").toLowerCase();
-                            if (titleText.includes(itemText) && itemText.length > 2) {
-                                return i;
-                            }
-                        }
-                        return 0;
-                    }
-
                     const items = getNavigableItems();
                     if (items.length === 0) {
-                        return JSON.stringify({ success: false, error: "No se encontraron botones de página." });
+                        // Si no hay items, deshabilita todos los botones de navegación.
+                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(true, true);
+                        return JSON.stringify({ success: false, error: "No se encontraron elementos de navegación." });
                     }
 
-                    const currentIndex = getCurrentItemIndex(items);
+                    // Se usa una propiedad en `window` para mantener el estado del índice actual.
+                    // Esto evita depender de elementos del DOM como subtítulos para saber dónde estamos.
+                    if (typeof window.__currentItemIndex === 'undefined' || window.__currentItemIndex === null || window.__currentItemIndex >= items.length) {
+                        const activeElement = document.querySelector('.boton-pagina-seleccionado');
+                        const index = activeElement ? items.findIndex(item => item === activeElement) : -1;
+                        // Si no se encuentra un elemento activo, se empieza por el primero de la lista (el más reciente).
+                        window.__currentItemIndex = (index !== -1) ? index : 0;
+                    }
+
+                    let currentIndex = window.__currentItemIndex;
                     let targetIndex = -1;
 
-                    // Corresponds to UI buttons: >> (last), > (next), << (first), < (previous)
+                    // La navegación corresponde a los botones de la UI: >> (último/reciente), > (siguiente), << (primero/antiguo), < (anterior)
+                    // La lista de 'items' está ordenada desde el más reciente (índice 0) al más antiguo (índice final).
                     switch (direction) {
-                        case 'last': // >> Go to most recent
+                        case 'last': // >> Ir al más reciente
                             targetIndex = 0;
                             break;
-                        case 'next': // > Go one step to most recent
+                        case 'next': // > Avanzar uno hacia el más reciente
                             if (currentIndex > 0) targetIndex = currentIndex - 1;
                             break;
-                        case 'first': // << Go to oldest
+                        case 'first': // << Ir al más antiguo
                             targetIndex = items.length - 1;
                             break;
-                        case 'previous': // < Go one step to oldest
+                        case 'previous': // < Retroceder uno hacia el más antiguo
                             if (currentIndex < items.length - 1) targetIndex = currentIndex + 1;
                             break;
                     }
 
-                    if (targetIndex === -1) {
-                        const isFirst = (currentIndex === items.length - 1); // Oldest
-                        const isLast = (currentIndex === 0); // Newest
-                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isFirst, isLast);
+                    // Si no hay a dónde moverse (ya estamos en el extremo), solo se actualiza la UI y se sale.
+                    if (targetIndex === -1 || targetIndex === currentIndex) {
+                        const isAtOldest = (currentIndex >= items.length - 1);
+                        const isAtNewest = (currentIndex <= 0);
+                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.updateNavigationState(isAtOldest, isAtNewest);
                         return JSON.stringify({ success: true, message: "Ya estás en el extremo." });
                     }
 
                     const targetItem = items[targetIndex];
-                    const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
-
                     if (!await robustClick(targetItem)) {
                         return JSON.stringify({ success: false, error: "El clic en el destino falló." });
                     }
 
-                    let confirmed = false;
-                    const pollingStart = Date.now();
-                    while (Date.now() - pollingStart < 5000) {
-                        const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
-                        if (newSubtitle && newSubtitle !== originalSubtitle) {
-                            confirmed = true;
-                            break;
-                        }
-                        await sleep(200);
-                    }
+                    // Tras un clic exitoso, se actualiza el índice actual.
+                    window.__currentItemIndex = targetIndex;
 
-                    if (!confirmed) {
-                        console.warn("No se pudo confirmar el cambio de subtítulo tras el clic.");
-                    }
+                    // Se espera un momento para que la página reaccione al clic.
+                    await sleep(300);
 
-                    const finalItems = getNavigableItems();
-                    const finalIndex = getCurrentItemIndex(finalItems);
-                    const isFirst = (finalIndex === finalItems.length - 1); // Oldest
-                    const isLast = (finalIndex === 0); // Newest
+                    // Se recalcula el estado final de los botones para la app nativa.
+                    const finalItems = getNavigableItems(); // Re-consultar por si el DOM cambió.
+                    const finalIndex = window.__currentItemIndex;
+
+                    const isAtOldest = (finalIndex >= finalItems.length - 1);
+                    const isAtNewest = (finalIndex <= 0);
 
                     if (typeof AndroidBridge !== 'undefined') {
-                        AndroidBridge.updateNavigationState(isFirst, isLast);
+                        AndroidBridge.updateNavigationState(isAtOldest, isAtNewest);
                     }
 
                     return JSON.stringify({ success: true });
 
                 } catch (e) {
+                    // En caso de un error inesperado, se notifica.
                     return JSON.stringify({ success: false, error: e.message });
                 }
             })('$direction');
