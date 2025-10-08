@@ -18,6 +18,7 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -35,12 +36,19 @@ class EditGalleryFragment : Fragment() {
 
     private lateinit var folderAdapter: FolderAdapter
 
+    private val storagePermission: String
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
                 loadFoldersFromStorage()
             } else {
-                if (!shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                if (!shouldShowRequestPermissionRationale(storagePermission)) {
                     // User has permanently denied the permission.
                     AlertDialog.Builder(requireContext())
                         .setTitle("Permiso Denegado")
@@ -90,25 +98,25 @@ class EditGalleryFragment : Fragment() {
         when {
             ContextCompat.checkSelfPermission(
                 requireContext(),
-                Manifest.permission.READ_EXTERNAL_STORAGE
+                storagePermission
             ) == PackageManager.PERMISSION_GRANTED -> {
                 // Permiso ya concedido, cargar las carpetas.
                 loadFoldersFromStorage()
             }
-            shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE) -> {
+            shouldShowRequestPermissionRationale(storagePermission) -> {
                 // El usuario ha denegado el permiso antes. Mostrar una explicación.
                 AlertDialog.Builder(requireContext())
                     .setTitle("Permiso Necesario")
                     .setMessage("Para mostrar las extracciones guardadas, la aplicación necesita permiso para leer los archivos de tu dispositivo.")
                     .setPositiveButton("Entendido") { _, _ ->
-                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                        requestPermissionLauncher.launch(storagePermission)
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
             }
             else -> {
                 // Pedir el permiso por primera vez o si el usuario marcó "No volver a preguntar".
-                requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                requestPermissionLauncher.launch(storagePermission)
             }
         }
     }
