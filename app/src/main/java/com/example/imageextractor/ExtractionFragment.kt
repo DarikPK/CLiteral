@@ -271,29 +271,7 @@ class ExtractionFragment : Fragment() {
                     }
 
                     function getNavigableItems() {
-                        const allItems = [];
-                        const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
-                        sections.forEach(section => {
-                            const header = section.querySelector('.ant-collapse-header');
-                            if (!header) return;
-
-                            const headerText = (header.innerText || "").toLowerCase();
-                            const isTomo = headerText.includes('tomo:');
-
-                            if (isTomo) {
-                                const subPages = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a'));
-                                if (subPages.length > 0) {
-                                    allItems.push(...subPages);
-                                } else {
-                                     // Tomo sin paginas visibles, se añade el header
-                                     allItems.push(header);
-                                }
-                            } else {
-                                // Asiento o Ficha, se añade el header
-                                allItems.push(header);
-                            }
-                        });
-                        return allItems;
+                        return Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
                     }
 
                     function getCurrentItemIndex(items) {
@@ -308,30 +286,40 @@ class ExtractionFragment : Fragment() {
                         const titleText = (titleElement.innerText || "").trim().toLowerCase();
 
                         for (let i = 0; i < items.length; i++) {
-                            const item = items[i];
-                            const itemText = (item.innerText || "").toLowerCase();
-                            if (titleText.includes(itemText) && itemText.length > 3) return i;
+                            const itemText = (items[i].innerText || "").toLowerCase();
+                            if (titleText.includes(itemText) && itemText.length > 2) {
+                                return i;
+                            }
                         }
                         return 0;
                     }
 
-                    function getExpectedSubtitle(item) {
-                        return (item.innerText || "").trim().toLowerCase();
-                    }
-
                     const items = getNavigableItems();
                     if (items.length === 0) {
-                        return JSON.stringify({ success: false, error: "No se encontraron elementos navegables." });
+                        return JSON.stringify({ success: false, error: "No se encontraron botones de página." });
                     }
 
                     const currentIndex = getCurrentItemIndex(items);
                     let targetIndex = -1;
 
+                    // DOM order: newer (index 0) to older (index length-1)
+                    // fab_go_to_first_item -> direction 'first' -> "más antiguo" -> index length-1
+                    // fab_go_to_last_item -> direction 'last' -> "más reciente" -> index 0
+                    // fab_previous -> direction 'previous' -> "anterior" (newer) -> index - 1
+                    // fab_next -> direction 'next' -> "siguiente" (older) -> index + 1
                     switch (direction) {
-                        case 'first': targetIndex = items.length - 1; break;
-                        case 'last': targetIndex = 0; break;
-                        case 'next': if (currentIndex > 0) targetIndex = currentIndex - 1; break;
-                        case 'previous': if (currentIndex < items.length - 1) targetIndex = currentIndex + 1; break;
+                        case 'first':
+                            targetIndex = items.length - 1;
+                            break;
+                        case 'last':
+                            targetIndex = 0;
+                            break;
+                        case 'previous':
+                            if (currentIndex > 0) targetIndex = currentIndex - 1;
+                            break;
+                        case 'next':
+                            if (currentIndex < items.length - 1) targetIndex = currentIndex + 1;
+                            break;
                     }
 
                     if (targetIndex === -1) {
@@ -348,7 +336,6 @@ class ExtractionFragment : Fragment() {
                         return JSON.stringify({ success: false, error: "El clic en el destino falló." });
                     }
 
-                    // Poll for subtitle change
                     let confirmed = false;
                     const pollingStart = Date.now();
                     while (Date.now() - pollingStart < 5000) {
@@ -364,7 +351,6 @@ class ExtractionFragment : Fragment() {
                         console.warn("No se pudo confirmar el cambio de subtítulo tras el clic.");
                     }
 
-                    // Recalculate index after navigation confirmation
                     const finalItems = getNavigableItems();
                     const finalIndex = getCurrentItemIndex(finalItems);
                     const isFirst = (finalIndex === finalItems.length - 1);
