@@ -1,13 +1,16 @@
 package com.example.imageextractor
+
+import android.Manifest
+import android.app.AlertDialog
 import android.content.ContentValues
-import android.graphics.Bitmap
-import android.graphics.Canvas
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Base64
-import android.util.Log
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,11 +18,12 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionBinding
-import org.json.JSONArray
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -27,6 +31,7 @@ import java.util.Date
 import java.util.Locale
 
 class ExtractionFragment : Fragment() {
+
     private inner class JsBridge {
         @JavascriptInterface
         fun notifyUrlChanged() {
@@ -61,6 +66,11 @@ class ExtractionFragment : Fragment() {
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             }
         }
+
+        @JavascriptInterface
+        fun setNextDownloadFilename(filename: String) {
+            nextDownloadFilename = filename
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -68,7 +78,10 @@ class ExtractionFragment : Fragment() {
     private var isViewDestroyed = false
     private val toastHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
     private var toastRunnable: Runnable? = null
+    private var nextDownloadFilename: String? = null
+
     private val sharedViewModel: SharedViewModel by activityViewModels()
+
     private val loginUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio"
     private val searchUrl = "https://conoce-aqui.sunarp.gob.pe/conoce-aqui/servicio/busqueda"
     private val resultsUrlSubstring = "/servicio/busqueda/visualizar-partida"
@@ -101,11 +114,13 @@ class ExtractionFragment : Fragment() {
                 injectSpaUrlWatcher()
             }
         }
+
         binding.webView.setDownloadListener { url, _, contentDisposition, mimeType, _ ->
             if (mimeType == "image/png" && url.startsWith("data:")) {
                 handleDataUrlDownload(url, contentDisposition)
             }
         }
+
         binding.webView.loadUrl(loginUrl)
     }
 
@@ -116,19 +131,27 @@ class ExtractionFragment : Fragment() {
                 "capturas_sunarp"
             )
             if (!downloadDir.exists()) downloadDir.mkdirs()
-            val fileName = contentDisposition
+
+            val fileName = nextDownloadFilename?.also {
+                nextDownloadFilename = null // Consume el nombre para que no se reutilice
+            } ?: contentDisposition
                 .substringAfter("filename=\"", "")
                 .substringBefore("\"")
                 .takeIf { it.isNotEmpty() } ?: generarNombreArchivo()
+
             val file = File(downloadDir, fileName)
+
             val base64EncodedString = url.substring(url.indexOf(",") + 1)
             val decodedBytes = Base64.decode(base64EncodedString, Base64.DEFAULT)
+
             FileOutputStream(file).use { it.write(decodedBytes) }
+
             toastRunnable?.let { toastHandler.removeCallbacks(it) }
             toastRunnable = Runnable {
                 Toast.makeText(context, "Captura(s) guardada(s) en Descargas/capturas_sunarp", Toast.LENGTH_LONG).show()
             }
             toastHandler.postDelayed(toastRunnable!!, 500)
+
         } catch (e: Exception) {
             Log.e("WebViewDownload", "Error al guardar captura desde data URL", e)
             Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_LONG).show()
@@ -162,19 +185,24 @@ class ExtractionFragment : Fragment() {
 
     private fun updateButtonStates(url: String?) {
         if (isViewDestroyed) return
+
         val onLoginPage = url == loginUrl
         val onSearchPage = isSearchPage(url)
         val onResultsPage = isResultsPage(url)
+
         binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
         binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabListButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
+
         val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToFirstItem.visibility = navigationVisible
         binding.fabGoToLastItem.visibility = navigationVisible
         binding.fabPrevious.visibility = navigationVisible
         binding.fabNext.visibility = navigationVisible
         binding.fabAutoCapture.visibility = navigationVisible
+
         binding.extractButton.visibility = View.GONE // Keep it hidden as per original logic
+
         if (onResultsPage) {
             // Reset navigation buttons to initial state when entering results page
             binding.fabGoToLastItem.isEnabled = false
@@ -185,10 +213,20 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.autofillButton.setOnClickListener { autofillCurrentPage() }
-        binding.fabListButton.setOnClickListener { showPageListOverlay() }
-        binding.captureButton.setOnClickListener { captureVisibleCanvas() }
+        binding.autofillButton.setOnClickListener {
+            autofillCurrentPage()
+        }
+
+        binding.fabListButton.setOnClickListener {
+            showPageListOverlay()
+        }
+
+        binding.captureButton.setOnClickListener {
+            captureVisibleCanvas()
+        }
+
         binding.extractButton.setOnClickListener { extractImagesFromPartida() }
+
         binding.fabGoToFirstItem.setOnClickListener { navigateTo("first") }
         binding.fabGoToLastItem.setOnClickListener { navigateTo("last") }
         binding.fabPrevious.setOnClickListener { navigateTo("previous") }
@@ -202,6 +240,9 @@ class ExtractionFragment : Fragment() {
             Toast.makeText(context, "No se ha definido un número de partida.", Toast.LENGTH_SHORT).show()
             return
         }
+
+        deleteExistingCaptures(numeroPartida)
+
         Toast.makeText(context, "Iniciando captura automática...", Toast.LENGTH_SHORT).show()
         val script = """
             (async (numeroPartida) => {
@@ -257,7 +298,6 @@ class ExtractionFragment : Fragment() {
                             continue;
                         }
 
-                        // Esperar a que la página cambie (basado en el subtítulo o un timeout)
                         const pollStart = Date.now();
                         let subtitleChanged = false;
                         while(Date.now() - pollStart < 5000) {
@@ -272,7 +312,7 @@ class ExtractionFragment : Fragment() {
                            console.warn("No se confirmó el cambio de página, se continuará por timeout.");
                         }
 
-                        await sleep(2000); // Pausa de 2 segundos después del cambio y antes de capturar.
+                        await sleep(2000);
 
                         const canvas = await waitForCanvas();
                         if (canvas) {
@@ -280,9 +320,12 @@ class ExtractionFragment : Fragment() {
                                 const dataUrl = canvas.toDataURL("image/png");
                                 const hojaNumero = items.length - i;
                                 const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
+                                if (typeof AndroidBridge !== 'undefined') {
+                                    AndroidBridge.setNextDownloadFilename(filename);
+                                }
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-                                await sleep(3000); // Pausa de 3 segundos para no sobrecargar el sistema.
+                                await sleep(3000);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{items.length - i}:`, e);
                             }
@@ -295,11 +338,29 @@ class ExtractionFragment : Fragment() {
                     }
                 } catch (e) {
                     console.error("Error en el script de captura automática:", e);
-                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1); // Indicar error
+                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1);
                 }
             })('${'$'}{numeroPartida}');
         """.trimIndent()
         binding.webView.evaluateJavascript(script, null)
+    }
+
+    private fun deleteExistingCaptures(partidaId: String) {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val imageDir = File(downloadsDir, "capturas_sunarp")
+
+        if (imageDir.exists() && imageDir.isDirectory) {
+            val filesToDelete = imageDir.listFiles { file ->
+                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png")
+            }
+            filesToDelete?.forEach { file ->
+                if (file.delete()) {
+                    Log.d("DeleteCaptures", "Archivo eliminado: ${file.name}")
+                } else {
+                    Log.e("DeleteCaptures", "No se pudo eliminar el archivo: ${file.name}")
+                }
+            }
+        }
     }
 
     private fun generarNombreArchivo(): String {
