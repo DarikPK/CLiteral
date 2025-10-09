@@ -25,7 +25,7 @@ class FolderAdapter(private val onClick: (ImageFolder) -> Unit) :
 
         fun bind(folder: ImageFolder) {
             currentFolder = folder
-            binding.partidaIdText.text = "Partida: ${folder.partidaId}"
+            binding.partidaIdText.text = folder.partidaId
             val imageCount = folder.imagePaths.size
             binding.imageCountText.text = "$imageCount ${if (imageCount == 1) "imagen" else "imágenes"}"
         }
