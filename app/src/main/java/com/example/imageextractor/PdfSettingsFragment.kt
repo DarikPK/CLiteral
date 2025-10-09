@@ -23,8 +23,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
-data class ImageFolder(val partidaId: String, val imagePaths: List<String>)
-
 class PdfSettingsFragment : Fragment() {
 
     private var _binding: FragmentPdfSettingsBinding? = null

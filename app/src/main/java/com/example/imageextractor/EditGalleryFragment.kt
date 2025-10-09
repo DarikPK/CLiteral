@@ -21,8 +21,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 import java.io.File
 
-data class ImageFolder(val partidaId: String, val imagePaths: List<String>)
-
 class EditGalleryFragment : Fragment() {
 
     private var _binding: FragmentEditGalleryBinding? = null
