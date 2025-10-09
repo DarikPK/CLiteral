@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ViewGalleryFragment">
+    tools:context=".ImagePreviewFragment">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
@@ -20,12 +20,12 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/gallery_recycler_view"
+    <ImageView
+        android:id="@+id/preview_image_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="4dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        tools:listitem="@layout/gallery_item" />
+        android:scaleType="fitCenter"
+        android:contentDescription="Vista previa de la imagen"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

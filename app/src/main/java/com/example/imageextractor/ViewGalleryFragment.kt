@@ -1,19 +1,33 @@
 package com.example.imageextractor
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.imageextractor.databinding.FragmentViewGalleryBinding
 
 class ViewGalleryFragment : Fragment() {
 
+    private enum class ViewMode { DETAIL, ICON }
+
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var imageAdapter: ImageAdapter
+    private val args: ViewGalleryFragmentArgs by navArgs()
+    private lateinit var detailAdapter: ImageDetailAdapter
+    private lateinit var iconAdapter: ImageIconAdapter
+
+    private var currentViewMode = ViewMode.DETAIL
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -25,21 +39,75 @@ class ViewGalleryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupToolbar()
+        setupAdapters()
         setupRecyclerView()
         displayImages()
     }
 
-    private fun setupRecyclerView() {
-        imageAdapter = ImageAdapter(emptyList())
-        binding.galleryRecyclerView.apply {
-            layoutManager = GridLayoutManager(context, 3) // 3 columnas
-            adapter = imageAdapter
+    private fun setupToolbar() {
+        (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
+        (activity as? AppCompatActivity)?.supportActionBar?.title = "Galería"
+        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.setNavigationOnClickListener {
+            findNavController().popBackStack()
         }
     }
 
+    private fun setupAdapters() {
+        val onImageClick: (String) -> Unit = { imagePath ->
+            val action = ViewGalleryFragmentDirections.actionViewGalleryFragmentToImagePreviewFragment(imagePath)
+            findNavController().navigate(action)
+        }
+        detailAdapter = ImageDetailAdapter(onImageClick)
+        iconAdapter = ImageIconAdapter(onImageClick)
+    }
+
+    private fun setupRecyclerView() {
+        setViewMode(currentViewMode, true)
+    }
+
+    private fun setViewMode(mode: ViewMode, isInitialSetup: Boolean = false) {
+        if (!isInitialSetup && currentViewMode == mode) return
+
+        currentViewMode = mode
+        when (mode) {
+            ViewMode.DETAIL -> {
+                binding.galleryRecyclerView.layoutManager = LinearLayoutManager(context)
+                binding.galleryRecyclerView.adapter = detailAdapter
+            }
+            ViewMode.ICON -> {
+                binding.galleryRecyclerView.layoutManager = GridLayoutManager(context, 3)
+                binding.galleryRecyclerView.adapter = iconAdapter
+            }
+        }
+        // Submit list to the new adapter
+        displayImages()
+    }
+
     private fun displayImages() {
-        val imageUrls = arguments?.getStringArray("imageUrls")?.toList() ?: emptyList()
-        imageAdapter.updateImages(imageUrls)
+        val imageUrls = args.imageUrls.toList()
+        detailAdapter.submitList(imageUrls)
+        iconAdapter.submitList(imageUrls)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.view_gallery_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_view_details -> {
+                setViewMode(ViewMode.DETAIL)
+                true
+            }
+            R.id.action_view_icons -> {
+                setViewMode(ViewMode.ICON)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onDestroyView() {

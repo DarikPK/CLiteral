@@ -52,6 +52,19 @@
         <argument
             android:name="imageUrls"
             app:argType="string[]" />
+        <action
+            android:id="@+id/action_viewGalleryFragment_to_imagePreviewFragment"
+            app:destination="@id/imagePreviewFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/imagePreviewFragment"
+        android:name="com.example.imageextractor.ImagePreviewFragment"
+        android:label="Vista Previa"
+        tools:layout="@layout/fragment_image_preview">
+        <argument
+            android:name="imagePath"
+            app:argType="string" />
     </fragment>
 
 </navigation>
