@@ -82,10 +82,13 @@ class EditGalleryFragment : Fragment() {
     private fun setupRecyclerView() {
         folderAdapter = FolderAdapter(
             onClick = { folder ->
-                val action = EditingFragmentDirections.actionEditingFragmentToViewGalleryFragment(
-                    imageUrls = folder.imagePaths.toTypedArray()
-                )
-                findNavController().navigate(action)
+                val bundle = Bundle().apply {
+                    putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+                }
+                // The action ID needs to be found in the navigation graph.
+                // It should be the action from EditingFragment to ViewGalleryFragment.
+                // I will assume the ID based on previous exploration.
+                findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
             },
             onDelete = { folder ->
                 showDeleteConfirmationDialog(folder)

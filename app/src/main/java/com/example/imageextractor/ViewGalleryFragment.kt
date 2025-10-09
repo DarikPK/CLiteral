@@ -5,10 +5,8 @@ import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.imageextractor.databinding.FragmentViewGalleryBinding
 
 class ViewGalleryFragment : Fragment() {
@@ -18,15 +16,16 @@ class ViewGalleryFragment : Fragment() {
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
-    private val args: ViewGalleryFragmentArgs by navArgs()
     private lateinit var detailAdapter: ImageDetailAdapter
     private lateinit var iconAdapter: ImageIconAdapter
+    private var imageUrls: List<String> = emptyList()
 
     private var currentViewMode = ViewMode.DETAIL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+        imageUrls = requireArguments().getStringArray("imageUrls")?.toList() ?: emptyList()
     }
 
     override fun onCreateView(
@@ -42,7 +41,6 @@ class ViewGalleryFragment : Fragment() {
         setupToolbar()
         setupAdapters()
         setupRecyclerView()
-        displayImages()
     }
 
     private fun setupToolbar() {
@@ -56,8 +54,10 @@ class ViewGalleryFragment : Fragment() {
 
     private fun setupAdapters() {
         val onImageClick: (String) -> Unit = { imagePath ->
-            val action = ViewGalleryFragmentDirections.actionViewGalleryFragmentToImagePreviewFragment(imagePath)
-            findNavController().navigate(action)
+            val bundle = Bundle().apply {
+                putString("imagePath", imagePath)
+            }
+            findNavController().navigate(R.id.action_viewGalleryFragment_to_imagePreviewFragment, bundle)
         }
         detailAdapter = ImageDetailAdapter(onImageClick)
         iconAdapter = ImageIconAdapter(onImageClick)
@@ -82,11 +82,6 @@ class ViewGalleryFragment : Fragment() {
             }
         }
         // Submit list to the new adapter
-        displayImages()
-    }
-
-    private fun displayImages() {
-        val imageUrls = args.imageUrls.toList()
         detailAdapter.submitList(imageUrls)
         iconAdapter.submitList(imageUrls)
     }

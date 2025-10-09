@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import com.example.imageextractor.databinding.FragmentImagePreviewBinding
 import java.io.File
 
@@ -16,7 +15,6 @@ class ImagePreviewFragment : Fragment() {
 
     private var _binding: FragmentImagePreviewBinding? = null
     private val binding get() = _binding!!
-    private val args: ImagePreviewFragmentArgs by navArgs()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -41,11 +39,13 @@ class ImagePreviewFragment : Fragment() {
     }
 
     private fun loadImage() {
-        val imagePath = args.imagePath
-        val imageFile = File(imagePath)
-        if (imageFile.exists()) {
-            binding.previewImageView.setImageURI(Uri.fromFile(imageFile))
-            (activity as? AppCompatActivity)?.supportActionBar?.title = imageFile.name
+        val imagePath = requireArguments().getString("imagePath")
+        if (imagePath != null) {
+            val imageFile = File(imagePath)
+            if (imageFile.exists()) {
+                binding.previewImageView.setImageURI(Uri.fromFile(imageFile))
+                (activity as? AppCompatActivity)?.supportActionBar?.title = imageFile.name
+            }
         }
     }
 
