@@ -37,7 +37,7 @@
     <fragment
         android:id="@+id/editingFragment"
         android:name="com.example.imageextractor.EditingFragment"
-        android:label="Ver Extracciones"
+        android:label="Partidas Capturadas"
         tools:layout="@layout/fragment_editing">
         <action
             android:id="@+id/action_editingFragment_to_viewGalleryFragment"
