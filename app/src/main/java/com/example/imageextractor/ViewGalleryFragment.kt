@@ -19,6 +19,7 @@ class ViewGalleryFragment : Fragment() {
     private lateinit var detailAdapter: ImageDetailAdapter
     private lateinit var iconAdapter: ImageIconAdapter
     private var imageUrls: List<String> = emptyList()
+    private var partidaId: String? = null
 
     private var currentViewMode = ViewMode.DETAIL
 
@@ -27,7 +28,10 @@ class ViewGalleryFragment : Fragment() {
         setHasOptionsMenu(true)
         // Use arguments? to safely access arguments, which might be null
         // when the fragment is first created by the ViewPager.
-        imageUrls = arguments?.getStringArray("imageUrls")?.toList() ?: emptyList()
+        arguments?.let {
+            imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
+            partidaId = it.getString("partidaId")
+        }
     }
 
     override fun onCreateView(
@@ -47,7 +51,7 @@ class ViewGalleryFragment : Fragment() {
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
-        (activity as? AppCompatActivity)?.supportActionBar?.title = "Galería"
+        (activity as? AppCompatActivity)?.supportActionBar?.title = partidaId ?: "Galería"
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()

@@ -52,6 +52,9 @@
         <argument
             android:name="imageUrls"
             app:argType="string[]" />
+        <argument
+            android:name="partidaId"
+            app:argType="string" />
         <action
             android:id="@+id/action_viewGalleryFragment_to_imagePreviewFragment"
             app:destination="@id/imagePreviewFragment" />

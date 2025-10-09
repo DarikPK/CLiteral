@@ -84,6 +84,7 @@ class EditGalleryFragment : Fragment() {
             onClick = { folder ->
                 val bundle = Bundle().apply {
                     putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+                    putString("partidaId", folder.partidaId)
                 }
                 // The action ID needs to be found in the navigation graph.
                 // It should be the action from EditingFragment to ViewGalleryFragment.
