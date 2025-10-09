@@ -25,7 +25,9 @@ class ViewGalleryFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
-        imageUrls = requireArguments().getStringArray("imageUrls")?.toList() ?: emptyList()
+        // Use arguments? to safely access arguments, which might be null
+        // when the fragment is first created by the ViewPager.
+        imageUrls = arguments?.getStringArray("imageUrls")?.toList() ?: emptyList()
     }
 
     override fun onCreateView(
