@@ -4,4 +4,8 @@
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
+
+    <style name="Theme.ImageExtractor.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 </resources>
