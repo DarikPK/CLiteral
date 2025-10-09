@@ -230,12 +230,9 @@ class PdfSettingsFragment : Fragment() {
         for ((index, imagePath) in imagesToProcess.withIndex()) {
             val pageWidth = 595
             val pageHeight = 842
-            val pageInfo = PdfDocument.PageInfo.Builder(pageWidth / 3, pageHeight / 3, index + 1).create()
+            val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
             val canvas = page.canvas
-
-            // Scale the canvas to counteract the system's unexpected scaling.
-            canvas.scale(1f / 3f, 1f / 3f)
 
             val bitmap = BitmapFactory.decodeFile(imagePath)
             val paint = Paint()
