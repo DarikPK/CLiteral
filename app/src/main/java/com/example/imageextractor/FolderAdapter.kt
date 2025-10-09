@@ -7,19 +7,26 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.imageextractor.databinding.FolderItemBinding
 
-class FolderAdapter(private val onClick: (ImageFolder) -> Unit) :
-    ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
+class FolderAdapter(
+    private val onClick: (ImageFolder) -> Unit,
+    private val onDelete: (ImageFolder) -> Unit
+) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
-    class FolderViewHolder(private val binding: FolderItemBinding, val onClick: (ImageFolder) -> Unit) :
-        RecyclerView.ViewHolder(binding.root) {
+    class FolderViewHolder(
+        private val binding: FolderItemBinding,
+        private val onClick: (ImageFolder) -> Unit,
+        private val onDelete: (ImageFolder) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         private var currentFolder: ImageFolder? = null
 
         init {
             itemView.setOnClickListener {
-                currentFolder?.let {
-                    onClick(it)
-                }
+                currentFolder?.let(onClick)
+            }
+            itemView.setOnLongClickListener {
+                currentFolder?.let(onDelete)
+                true // Consume el evento
             }
         }
 
@@ -33,7 +40,7 @@ class FolderAdapter(private val onClick: (ImageFolder) -> Unit) :
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
         val binding = FolderItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return FolderViewHolder(binding, onClick)
+        return FolderViewHolder(binding, onClick, onDelete)
     }
 
     override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {

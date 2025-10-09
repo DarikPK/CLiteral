@@ -80,16 +80,51 @@ class EditGalleryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        folderAdapter = FolderAdapter { folder ->
-            val bundle = Bundle().apply {
-                putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+        folderAdapter = FolderAdapter(
+            onClick = { folder ->
+                val bundle = Bundle().apply {
+                    putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+                }
+                findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
+            },
+            onDelete = { folder ->
+                showDeleteConfirmationDialog(folder)
             }
-            findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
-        }
+        )
         binding.editGalleryRecyclerView.apply {
             layoutManager = GridLayoutManager(context, 2)
             adapter = folderAdapter
         }
+    }
+
+    private fun showDeleteConfirmationDialog(folder: ImageFolder) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirmar Eliminación")
+            .setMessage("¿Estás seguro de que deseas eliminar la partida '${folder.partidaId}' y todas sus imágenes? Esta acción no se puede deshacer.")
+            .setPositiveButton("Eliminar") { _, _ ->
+                deleteFolderContents(folder)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun deleteFolderContents(folder: ImageFolder) {
+        var deletedCount = 0
+        folder.imagePaths.forEach { path ->
+            val file = File(path)
+            if (file.exists() && file.delete()) {
+                deletedCount++
+            }
+        }
+
+        if (deletedCount > 0) {
+            val message = "Se eliminaron $deletedCount ${if (deletedCount == 1) "imagen" else "imágenes"}."
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "No se pudieron eliminar las imágenes.", Toast.LENGTH_SHORT).show()
+        }
+
+        loadFoldersFromStorage()
     }
 
     private fun checkAndRequestPermission() {
