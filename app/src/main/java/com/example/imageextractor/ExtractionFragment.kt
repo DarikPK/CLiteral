@@ -248,7 +248,8 @@ class ExtractionFragment : Fragment() {
 
         Toast.makeText(context, "Iniciando captura automática...", Toast.LENGTH_SHORT).show()
         val script = """
-            (async (numeroPartida) => {
+            (async () => {
+                const numeroPartida = "$numeroPartida";
                 try {
                     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
                     async function robustClick(element) {
@@ -322,7 +323,7 @@ class ExtractionFragment : Fragment() {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
                                 const hojaNumero = items.length - i;
-                                const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
+                                const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
                                 }
@@ -344,7 +345,7 @@ class ExtractionFragment : Fragment() {
                     console.error("Error en el script de captura automática:", e);
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1);
                 }
-            })('${'$'}{numeroPartida}');
+            })();
         """.trimIndent()
         binding.webView.evaluateJavascript(script, null)
     }
