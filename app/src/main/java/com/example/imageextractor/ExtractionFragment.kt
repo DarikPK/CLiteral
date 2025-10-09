@@ -326,6 +326,7 @@ class ExtractionFragment : Fragment() {
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
                                 }
+                                await sleep(100); // Pausa para evitar condición de carrera con el listener.
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
                                 await sleep(3000);

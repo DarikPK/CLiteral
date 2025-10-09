@@ -72,6 +72,10 @@ class EditGalleryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
+    }
+
+    override fun onResume() {
+        super.onResume()
         checkAndRequestPermission()
     }
 
