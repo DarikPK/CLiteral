@@ -238,9 +238,9 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun startAutoCapture() {
-        val numeroPartida = sharedViewModel.config.value?.numeroPartida ?: "SIN_PARTIDA"
-        if (numeroPartida == "SIN_PARTIDA") {
-            Toast.makeText(context, "No se ha definido un número de partida.", Toast.LENGTH_SHORT).show()
+        val numeroPartida = sharedViewModel.config.value?.numeroPartida
+        if (numeroPartida == null) {
+            Toast.makeText(context, "Error: No se encontró la configuración de la partida.", Toast.LENGTH_SHORT).show()
             return
         }
 

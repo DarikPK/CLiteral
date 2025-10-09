@@ -88,31 +88,35 @@ class ExtractionConfigFragment : Fragment() {
 
     private fun setupContinueButton() {
         binding.continueButton.setOnClickListener {
+            val numeroPartida = binding.partidaEditText.text?.toString()?.trim() ?: ""
+            if (numeroPartida.isBlank()) {
+                Toast.makeText(context, "Por favor, ingrese el número de partida", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             val loginData = if (binding.radioManual.isChecked) {
-                LoginData(
-                    dni = binding.dniEditText.text.toString(),
-                    digito = binding.digitoEditText.text.toString(),
-                    fechaEmision = binding.fechaEmisionEditText.text.toString()
-                )
+                val dni = binding.dniEditText.text.toString()
+                val digito = binding.digitoEditText.text.toString()
+                val fechaEmision = binding.fechaEmisionEditText.text.toString()
+                if (dni.isBlank() || digito.isBlank() || fechaEmision.isBlank()) {
+                    Toast.makeText(context, "Por favor, complete todos los campos requeridos", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                LoginData(dni, digito, fechaEmision)
             } else {
                 sharedViewModel.getRandomLoginData()
             }
 
-            var numeroPartida = binding.partidaEditText.text.toString()
+            var finalNumeroPartida = numeroPartida
             if (binding.prefixPCheckbox.isChecked) {
-                numeroPartida = "P$numeroPartida"
-            }
-
-            if ((binding.radioManual.isChecked && (loginData.dni.isBlank() || loginData.digito.isBlank() || loginData.fechaEmision.isBlank())) || numeroPartida.isBlank()) {
-                Toast.makeText(context, "Por favor, complete todos los campos requeridos", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+                finalNumeroPartida = "P$finalNumeroPartida"
             }
 
             val config = ExtractionConfig(
                 loginData = loginData,
                 oficina = binding.oficinaDropdown.text.toString(),
                 areaRegistral = binding.areaDropdown.text.toString(),
-                numeroPartida = numeroPartida
+                numeroPartida = finalNumeroPartida
             )
             sharedViewModel.setExtractionConfig(config)
 
