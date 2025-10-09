@@ -16,7 +16,16 @@
         <action
             android:id="@+id/action_mainMenuFragment_to_editingFragment"
             app:destination="@id/editingFragment" />
+        <action
+            android:id="@+id/action_mainMenuFragment_to_pdfSettingsFragment"
+            app:destination="@id/pdfSettingsFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/pdfSettingsFragment"
+        android:name="com.example.imageextractor.PdfSettingsFragment"
+        android:label="Ajustes de PDF"
+        tools:layout="@layout/fragment_pdf_settings" />
 
     <fragment
         android:id="@+id/extractionConfigFragment"

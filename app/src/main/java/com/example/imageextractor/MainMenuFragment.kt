@@ -31,6 +31,10 @@ class MainMenuFragment : Fragment() {
         binding.buttonToEditing.setOnClickListener {
             findNavController().navigate(R.id.action_mainMenuFragment_to_editingFragment)
         }
+
+        binding.buttonToPdf.setOnClickListener {
+            findNavController().navigate(R.id.action_mainMenuFragment_to_pdfSettingsFragment)
+        }
     }
 
     override fun onDestroyView() {
