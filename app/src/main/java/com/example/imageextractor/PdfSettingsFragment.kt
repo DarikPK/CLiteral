@@ -18,6 +18,7 @@ import androidx.core.content.FileProvider
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentPdfSettingsBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
