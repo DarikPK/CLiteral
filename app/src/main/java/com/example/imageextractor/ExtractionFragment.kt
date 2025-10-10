@@ -287,33 +287,18 @@ class ExtractionFragment : Fragment() {
                         a.click();
                         document.body.removeChild(a);
                     }
-
-                    // --- LÓGICA DE AGRUPACIÓN POR .columna-lista ---
-                    const columnas = document.querySelectorAll('.columna-lista');
-                    let items = [];
-                    columnas.forEach(columna => {
-                        const pageButtons = Array.from(columna.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                        if (pageButtons.length > 1) {
-                            items.push(...pageButtons.reverse());
-                        } else {
-                            items.push(...pageButtons);
-                        }
-                    });
-                    const N = items.length;
-                    // --- FIN DE LA LÓGICA ---
-
-                    if (N <= 0) {
+                    const items = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
+                    if (items.length === 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
                     let captureCount = 0;
-                    // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
-                    for (let i = 0; i < N; i++) {
+                    // Iterar desde el más antiguo (final de la lista) al más reciente (inicio de la lista)
+                    for (let i = items.length - 1; i >= 0; i--) {
                         const item = items[i];
-
                         const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
                         if (!await robustClick(item)) {
-                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{N - i}`);
+                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{items.length - i}`);
                             continue;
                         }
 
@@ -337,7 +322,7 @@ class ExtractionFragment : Fragment() {
                         if (canvas) {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
-                                const hojaNumero = N - i;
+                                const hojaNumero = items.length - i;
                                 const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
@@ -347,10 +332,10 @@ class ExtractionFragment : Fragment() {
                                 captureCount++;
                                 await sleep(3000);
                             } catch (e) {
-                                console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
+                                console.error(`Error al capturar el canvas de la hoja ${'$'}{items.length - i}:`, e);
                             }
                         } else {
-                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{N - i}`);
+                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{items.length - i}`);
                         }
                     }
                     if (typeof AndroidBridge !== 'undefined') {
@@ -682,7 +667,34 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillLoginForm(loginData: LoginData) {
         val jsScript = """
-            (function() {
+            (async function() {
+                function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+                function waitForElement(sel, t=8000, scope=document){
+                    return new Promise((res,rej)=>{
+                        const ts = Date.now();
+                        const it = setInterval(()=>{
+                            const el = scope.querySelector(sel);
+                            if (el && el.offsetParent !== null) { clearInterval(it); res(el); }
+                            else if (Date.now()-ts>t){ clearInterval(it); rej(new Error("No se encontró "+sel)); }
+                        },100);
+                    });
+                }
+                async function robustClick(element, timeout = 5000) {
+                    const start = Date.now();
+                    while (Date.now() - start < timeout) {
+                        if (element && element.offsetParent !== null && !element.disabled) {
+                            element.scrollIntoView({block: 'center'});
+                            await sleep(200);
+                            element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                            element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                            element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                            return true;
+                        }
+                        await sleep(100);
+                    }
+                    throw new Error('No se pudo hacer clic en el elemento de forma robusta.');
+                }
+
                 document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
                 document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
                 document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
@@ -690,6 +702,27 @@ class ExtractionFragment : Fragment() {
                     document.querySelectorAll('input').forEach(input => input.dispatchEvent(new Event(eventName, { bubbles: true })));
                 });
                 document.querySelector('button[class*="btn-sunarp-green"]').click();
+
+                // Esperar y hacer clic en el botón "Sí Acepto" con reintentos
+                let acceptSuccess = false;
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    try {
+                        const acceptBtn = await waitForElement('button.accept-button', 10000);
+                        if (acceptBtn) {
+                            await robustClick(acceptBtn);
+                            await sleep(500);
+                            console.log("Clic en 'Sí Acepto' exitoso (intento " + attempt + ")");
+                            acceptSuccess = true;
+                            break;
+                        }
+                    } catch(e) {
+                        console.warn("Intento " + attempt + " fallido al buscar 'Sí Acepto':", e);
+                        await sleep(1000);
+                    }
+                }
+                if (!acceptSuccess) {
+                    console.warn("No se pudo hacer clic en 'Sí Acepto' después de 3 intentos.");
+                }
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
