@@ -221,7 +221,7 @@ class ExtractionFragment : Fragment() {
         }
 
         binding.fabListButton.setOnClickListener {
-            showPageListOverlay()
+            findNavController().popBackStack(R.id.mainMenuFragment, false)
         }
 
         binding.captureButton.setOnClickListener {
