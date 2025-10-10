@@ -288,17 +288,18 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
                     const items = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
-                    if (items.length === 0) {
+                    const N = items.length;
+                    if (N <= 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
                     let captureCount = 0;
-                    // Iterar desde el más antiguo (final de la lista) al más reciente (inicio de la lista)
-                    for (let i = items.length - 1; i >= 0; i--) {
+                    // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
+                    for (let i = 0; i < N; i++) {
                         const item = items[i];
                         const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
                         if (!await robustClick(item)) {
-                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{items.length - i}`);
+                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{N - i}`);
                             continue;
                         }
 
@@ -322,7 +323,7 @@ class ExtractionFragment : Fragment() {
                         if (canvas) {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
-                                const hojaNumero = items.length - i;
+                                const hojaNumero = N - i;
                                 const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
@@ -332,10 +333,10 @@ class ExtractionFragment : Fragment() {
                                 captureCount++;
                                 await sleep(3000);
                             } catch (e) {
-                                console.error(`Error al capturar el canvas de la hoja ${'$'}{items.length - i}:`, e);
+                                console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
                         } else {
-                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{items.length - i}`);
+                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{N - i}`);
                         }
                     }
                     if (typeof AndroidBridge !== 'undefined') {
