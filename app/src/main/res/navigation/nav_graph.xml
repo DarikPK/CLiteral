@@ -25,7 +25,24 @@
         android:id="@+id/pdfSettingsFragment"
         android:name="com.example.imageextractor.PdfSettingsFragment"
         android:label="Ajustes de PDF"
-        tools:layout="@layout/fragment_pdf_settings" />
+        tools:layout="@layout/fragment_pdf_settings">
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_pdfPreviewFragment"
+            app:destination="@id/pdfPreviewFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/pdfPreviewFragment"
+        android:name="com.example.imageextractor.PdfPreviewFragment"
+        android:label="Previsualización de PDF"
+        tools:layout="@layout/fragment_pdf_preview">
+        <argument
+            android:name="pdfPath"
+            app:argType="string" />
+        <argument
+            android:name="partidaId"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/extractionConfigFragment"

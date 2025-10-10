@@ -84,7 +84,7 @@ class PdfSettingsFragment : Fragment() {
     private fun loadSettings() {
         val prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         binding.brightnessEditText.setText(prefs.getInt(KEY_BRIGHTNESS, 0).toString())
-        binding.contrastEditText.setText(prefs.getInt(KEY_CONTRAST, 0).toString())
+        binding.contrastEditText.setText(prefs.getInt(KEY_CONTRAST, 100).toString())
         binding.marginTopEditText.setText(prefs.getInt(KEY_MARGIN_TOP, 20).toString())
         binding.marginBottomEditText.setText(prefs.getInt(KEY_MARGIN_BOTTOM, 20).toString())
         binding.marginLeftEditText.setText(prefs.getInt(KEY_MARGIN_LEFT, 20).toString())
@@ -153,19 +153,12 @@ class PdfSettingsFragment : Fragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val pdfFile = createPdf(folder, isPreview = true)
-                val fileUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
-
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(fileUri, "application/pdf")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-
                 withContext(Dispatchers.Main) {
-                    try {
-                        startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        Toast.makeText(context, "No se encontró una aplicación para abrir archivos PDF.", Toast.LENGTH_LONG).show()
+                    val bundle = Bundle().apply {
+                        putString("pdfPath", pdfFile.absolutePath)
+                        putString("partidaId", folder.partidaId)
                     }
+                    findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -218,14 +211,15 @@ class PdfSettingsFragment : Fragment() {
 
     private fun createPdf(folder: ImageFolder, isPreview: Boolean): File {
         val brightness = binding.brightnessEditText.text.toString().toIntOrNull() ?: 0
-        val contrast = binding.contrastEditText.text.toString().toIntOrNull() ?: 0
+        val contrast = binding.contrastEditText.text.toString().toIntOrNull() ?: 100
         val marginTop = binding.marginTopEditText.text.toString().toIntOrNull() ?: 20
         val marginBottom = binding.marginBottomEditText.text.toString().toIntOrNull() ?: 20
         val marginLeft = binding.marginLeftEditText.text.toString().toIntOrNull() ?: 20
         val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
 
         val pdfDocument = PdfDocument()
-        val imagesToProcess = if (isPreview) folder.imagePaths.take(1) else folder.imagePaths
+        // Both preview and final generation will process all images.
+        val imagesToProcess = folder.imagePaths
 
         for ((index, imagePath) in imagesToProcess.withIndex()) {
             val pageWidth = 595
