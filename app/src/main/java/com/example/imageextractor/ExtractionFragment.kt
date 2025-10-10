@@ -287,8 +287,21 @@ class ExtractionFragment : Fragment() {
                         a.click();
                         document.body.removeChild(a);
                     }
-                    const items = Array.from(document.querySelectorAll('.columna-lista .pagina .boton-pagina, .columna-lista .pagina a, a.boton-pagina'));
+
+                    // --- NUEVA LÓGICA DE ORDENACIÓN ---
+                    const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                    let items = [];
+                    sections.forEach(section => {
+                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        if (pageButtons.length > 1) {
+                            items.push(...pageButtons.reverse());
+                        } else {
+                            items.push(...pageButtons);
+                        }
+                    });
                     const N = items.length;
+                    // --- FIN DE LA NUEVA LÓGICA ---
+
                     if (N <= 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
@@ -297,6 +310,17 @@ class ExtractionFragment : Fragment() {
                     // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
                     for (let i = 0; i < N; i++) {
                         const item = items[i];
+
+                        // Asegurarse de que la sección esté expandida
+                        const sectionContainer = item.closest('.ant-collapse-item');
+                        if (sectionContainer && !sectionContainer.classList.contains('ant-collapse-item-active')) {
+                            const header = sectionContainer.querySelector('.ant-collapse-header');
+                            if (header) {
+                                await robustClick(header);
+                                await sleep(500); // Esperar a la animación de despliegue
+                            }
+                        }
+
                         const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
                         if (!await robustClick(item)) {
                             console.warn(`No se pudo hacer clic en la hoja ${'$'}{N - i}`);
