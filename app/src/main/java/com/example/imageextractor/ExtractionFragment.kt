@@ -288,11 +288,11 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- LÓGICA DE AGRUPACIÓN POR ASIENTO (SIN ACORDEÓN) ---
-                    const asientos = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                    // --- LÓGICA DE AGRUPACIÓN POR .columna-lista ---
+                    const columnas = document.querySelectorAll('.columna-lista');
                     let items = [];
-                    asientos.forEach(asiento => {
-                        const pageButtons = Array.from(asiento.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                    columnas.forEach(columna => {
+                        const pageButtons = Array.from(columna.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
                         if (pageButtons.length > 1) {
                             items.push(...pageButtons.reverse());
                         } else {
