@@ -345,7 +345,7 @@ class ExtractionFragment : Fragment() {
                                 await sleep(100); // Pausa para evitar condición de carrera con el listener.
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-                                await sleep(3000);
+                                await sleep(10);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
