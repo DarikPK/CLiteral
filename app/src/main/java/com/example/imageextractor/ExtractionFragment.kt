@@ -288,11 +288,11 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- NUEVA LÓGICA DE ORDENACIÓN ---
-                    const sections = document.querySelectorAll('.columna-lista .ant-collapse-item');
+                    // --- LÓGICA DE AGRUPACIÓN POR ASIENTO (SIN ACORDEÓN) ---
+                    const asientos = document.querySelectorAll('.columna-lista .ant-collapse-item');
                     let items = [];
-                    sections.forEach(section => {
-                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                    asientos.forEach(asiento => {
+                        const pageButtons = Array.from(asiento.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
                         if (pageButtons.length > 1) {
                             items.push(...pageButtons.reverse());
                         } else {
@@ -300,7 +300,7 @@ class ExtractionFragment : Fragment() {
                         }
                     });
                     const N = items.length;
-                    // --- FIN DE LA NUEVA LÓGICA ---
+                    // --- FIN DE LA LÓGICA ---
 
                     if (N <= 0) {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
@@ -310,16 +310,6 @@ class ExtractionFragment : Fragment() {
                     // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
                     for (let i = 0; i < N; i++) {
                         const item = items[i];
-
-                        // Asegurarse de que la sección esté expandida
-                        const sectionContainer = item.closest('.ant-collapse-item');
-                        if (sectionContainer && !sectionContainer.classList.contains('ant-collapse-item-active')) {
-                            const header = sectionContainer.querySelector('.ant-collapse-header');
-                            if (header) {
-                                await robustClick(header);
-                                await sleep(500); // Esperar a la animación de despliegue
-                            }
-                        }
 
                         const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
                         if (!await robustClick(item)) {
