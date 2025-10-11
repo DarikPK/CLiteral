@@ -31,6 +31,20 @@
 
     <!-- Right-aligned action buttons -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_toggle_visibility"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_visibility_on"
+        app:backgroundTint="?attr/colorButtonNormal"
+        android:contentDescription="Alternar visibilidad de la web"
+        app:layout_constraintBottom_toTopOf="@id/autofill_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:visibility="visible"
+        tools:visibility="visible"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/autofill_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
