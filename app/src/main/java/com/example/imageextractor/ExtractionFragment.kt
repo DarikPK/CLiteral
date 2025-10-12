@@ -822,56 +822,61 @@ class ExtractionFragment : Fragment() {
         val jsScript = """
             (function() {
                 try {
-                    const iframe = document.querySelector('iframe#cf-chl-widget-jazup');
-                    if (!iframe) {
-                        console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile (#cf-chl-widget-jazup).");
+                    // Eliminar overlay previo si existe
+                    const old = document.getElementById('turnstile-overlay');
+                    if (old) old.remove();
+
+                    // Buscar el contenedor principal del captcha
+                    const cloudcaptcha = document.querySelector('cloudcaptcha, ngx-turnstile, iframe#cf-chl-widget-jazup');
+                    if (!cloudcaptcha) {
+                        console.warn("⚠️ No se encontró el contenedor del captcha.");
                         return;
                     }
 
-                    // Obtener posición exacta y tamaño del iframe en la pantalla
-                    const rect = iframe.getBoundingClientRect();
+                    // Obtener su posición aproximada en pantalla
+                    const rect = cloudcaptcha.getBoundingClientRect();
+                    if (!rect || rect.width === 0 || rect.height === 0) {
+                        console.warn("⚠️ No se pudo calcular la posición del captcha.");
+                        return;
+                    }
 
-                    // Crear un overlay transparente con borde rojo
+                    // Crear overlay con borde rojo del tamaño del checkbox (~65px)
                     const overlay = document.createElement('div');
                     overlay.id = 'turnstile-overlay';
                     overlay.style.position = 'fixed';
-                    overlay.style.left = rect.left + 'px';
-                    overlay.style.top = rect.top + 'px';
-                    overlay.style.width = rect.width + 'px';
-                    overlay.style.height = rect.height + 'px';
-                    overlay.style.zIndex = '999999';
-                    overlay.style.background = 'rgba(255,255,255,0.02)'; // casi invisible
-                    overlay.style.border = '2px solid red';
+                    overlay.style.left = (rect.left + 10) + 'px';
+                    overlay.style.top = (rect.top + 5) + 'px';
+                    overlay.style.width = '65px';
+                    overlay.style.height = '65px';
+                    overlay.style.border = '3px solid red';
                     overlay.style.borderRadius = '6px';
-                    overlay.style.boxSizing = 'border-box';
+                    overlay.style.background = 'rgba(255,255,255,0.02)';
+                    overlay.style.zIndex = '999999';
                     overlay.style.cursor = 'pointer';
                     overlay.style.pointerEvents = 'auto';
+                    overlay.style.boxSizing = 'border-box';
 
-                    // Acción al tocar el overlay
                     overlay.onclick = () => {
-                        console.log("🟢 Overlay clickeado: el toque será transmitido al iframe.");
+                        console.log("🟢 Overlay clickeado. Toque transmitido al checkbox del captcha.");
                         overlay.remove();
                     };
 
-                    // Evitar que interfiera con cualquier otro elemento fuera de su área
+                    // Evitar interferencia con otros elementos
                     overlay.addEventListener('touchstart', e => e.stopPropagation(), true);
                     overlay.addEventListener('click', e => e.stopPropagation(), true);
 
-                    // Insertar overlay en el DOM
                     document.body.appendChild(overlay);
 
-                    // Alinear visualmente en caso de desplazamiento
-                    iframe.scrollIntoView({ block: 'center', behavior: 'smooth' });
-
-                    console.log("✅ Overlay con borde rojo colocado sobre el captcha. Toca el recuadro blanco para validarlo manualmente.");
+                    cloudcaptcha.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    console.log("✅ Overlay rojo colocado sobre el cuadro del captcha.");
                 } catch (e) {
-                    console.error("❌ Error al crear overlay sobre el captcha:", e);
+                    console.error("❌ Error al crear overlay del captcha:", e);
                 }
             })();
         """.trimIndent()
 
         binding.webView.evaluateJavascript(jsScript, null)
-        Toast.makeText(requireContext(), "Toca el recuadro rojo para validar el captcha.", Toast.LENGTH_LONG).show()
+        Toast.makeText(requireContext(), "Toca el recuadro rojo (sobre el captcha).", Toast.LENGTH_LONG).show()
     }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
