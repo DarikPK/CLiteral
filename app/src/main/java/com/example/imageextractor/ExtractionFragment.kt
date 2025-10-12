@@ -715,16 +715,22 @@ class ExtractionFragment : Fragment() {
                     const start = Date.now();
                     while (Date.now() - start < timeout) {
                         if (element && element.offsetParent !== null && !element.disabled) {
-                            element.scrollIntoView({block: 'center'});
-                            await sleep(200);
-                            element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                            element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-                            element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                            return true;
+                            try {
+                                element.scrollIntoView({block: 'center'});
+                                await sleep(150);
+                                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+                                await sleep(50);
+                                element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+                                await sleep(50);
+                                element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                                return true;
+                            } catch (e) {
+                                console.warn("robustClick falló, reintentando...", e);
+                            }
                         }
                         await sleep(100);
                     }
-                    throw new Error('No se pudo hacer clic en el elemento de forma robusta.');
+                    return false;
                 }
 
                 document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
@@ -735,25 +741,46 @@ class ExtractionFragment : Fragment() {
                 });
                 document.querySelector('button[class*="btn-sunarp-green"]').click();
 
-                // Esperar y hacer clic en el botón "Sí Acepto" con reintentos
-                let acceptSuccess = false;
-                for (let attempt = 1; attempt <= 3; attempt++) {
-                    try {
-                        const acceptBtn = await waitForElement('button.accept-button', 10000);
-                        if (acceptBtn) {
-                            await robustClick(acceptBtn);
-                            await sleep(500);
-                            console.log("Clic en 'Sí Acepto' exitoso (intento " + attempt + ")");
-                            acceptSuccess = true;
-                            break;
+                // --- Lógica mejorada para el modal "Sí Acepto" ---
+                try {
+                    // 1. Esperar a que aparezca el modal
+                    let modalFound = false;
+                    for (let i = 0; i < 3 && !modalFound; i++) {
+                        const modal = await waitForElement('div.ant-modal-content', 10000);
+                        if (modal) {
+                            modalFound = true;
+                        } else {
+                            await sleep(800);
                         }
-                    } catch(e) {
-                        console.warn("Intento " + attempt + " fallido al buscar 'Sí Acepto':", e);
-                        await sleep(1000);
                     }
-                }
-                if (!acceptSuccess) {
-                    console.warn("No se pudo hacer clic en 'Sí Acepto' después de 3 intentos.");
+                    if (!modalFound) throw new Error("Modal de términos y condiciones no encontrado.");
+
+                    // 2. Localizar el botón y hacer clic robusto
+                    const acceptBtn = await waitForElement('div.ant-modal-footer button.accept-button', 5000);
+                    if (!acceptBtn || acceptBtn.offsetParent === null) throw new Error("Botón 'Sí Acepto' no encontrado o no visible.");
+
+                    let clickSuccess = false;
+                    for (let i = 0; i < 3 && !clickSuccess; i++) {
+                         if (await robustClick(acceptBtn)) {
+                            clickSuccess = true;
+                         } else {
+                            await sleep(300);
+                         }
+                    }
+                    if (!clickSuccess) throw new Error("El clic en 'Sí Acepto' falló repetidamente.");
+
+                    // 3. Confirmar que el modal desapareció
+                    const startTime = Date.now();
+                    while(document.querySelector('div.ant-modal-content') && (Date.now() - startTime < 5000)) {
+                        await sleep(200);
+                    }
+                    if (document.querySelector('div.ant-modal-content')) {
+                        console.warn("El modal de 'Sí Acepto' no desapareció después del clic.");
+                    } else {
+                        console.log("Modal 'Sí Acepto' gestionado exitosamente.");
+                    }
+                } catch (e) {
+                    console.warn("No se pudo gestionar el modal de 'Sí Acepto':", e.message);
                 }
             })();
         """.trimIndent()
