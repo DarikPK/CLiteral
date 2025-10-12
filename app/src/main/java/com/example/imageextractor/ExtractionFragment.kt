@@ -700,39 +700,65 @@ class ExtractionFragment : Fragment() {
     private fun autofillLoginForm(loginData: LoginData) {
         val jsScript = """
             (async function() {
-                function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-                function waitForElement(sel, t=8000, scope=document){
-                    return new Promise((res,rej)=>{
-                        const ts = Date.now();
-                        const it = setInterval(()=>{
-                            const el = scope.querySelector(sel);
-                            if (el && el.offsetParent !== null) { clearInterval(it); res(el); }
-                            else if (Date.now()-ts>t){ clearInterval(it); rej(new Error("No se encontró "+sel)); }
-                        },100);
-                    });
-                }
-                async function robustClick(element, timeout = 5000) {
-                    const start = Date.now();
-                    while (Date.now() - start < timeout) {
-                        if (element && element.offsetParent !== null && !element.disabled) {
-                            try {
-                                element.scrollIntoView({block: 'center'});
-                                await sleep(150);
-                                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-                                await sleep(50);
-                                element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-                                await sleep(50);
-                                element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-                                return true;
-                            } catch (e) {
-                                console.warn("robustClick falló, reintentando...", e);
-                            }
-                        }
-                        await sleep(100);
+                // --- Funciones de ayuda robustas ---
+                async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+                async function waitForModal(timeout = 10000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                    const modal = document.querySelector('div.ant-modal, div[nz-modal-footer], div.ant-modal-footer, .cdk-overlay-container div.ant-modal');
+                    if (modal && modal.offsetParent !== null && modal.getBoundingClientRect().width > 0) {
+                      console.log("🟢 Modal detectado");
+                      return modal;
                     }
-                    return false;
+                    await sleep(300);
+                  }
+                  console.warn("⏰ No se detectó el modal de 'Sí Acepto' en el tiempo esperado");
+                  return null;
                 }
 
+                async function findAcceptButton() {
+                  let btn = document.querySelector('button.accept-button');
+                  if (!btn) {
+                    const allBtns = Array.from(document.querySelectorAll('.cdk-overlay-container button, div.ant-modal button, button'));
+                    btn = allBtns.find(b => /sí\s*acepto/i.test(b.innerText || ''));
+                  }
+                  return btn && btn.offsetParent !== null && getComputedStyle(btn).pointerEvents !== 'none' ? btn : null;
+                }
+
+                async function robustClickButton(button, retries = 5) {
+                  for (let i = 0; i < retries; i++) {
+                    try {
+                      if (!button || !document.body.contains(button)) return false;
+                      button.scrollIntoView({ block: 'center' });
+                      await sleep(150);
+                      ['mousedown', 'mouseup', 'click'].forEach(evt =>
+                        button.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
+                      );
+                      console.log(`✅ Clic ejecutado en intento ${'$'}{i + 1}`);
+                      return true;
+                    } catch (e) {
+                      console.warn(`⚠️ Error al hacer clic (intento ${'$'}{i + 1}):`, e);
+                      await sleep(400);
+                    }
+                  }
+                  return false;
+                }
+
+                async function confirmModalClosed(timeout = 7000) {
+                  const start = Date.now();
+                  while (Date.now() - start < timeout) {
+                    if (!document.querySelector('div.ant-modal, div.ant-modal-footer, .cdk-overlay-container div.ant-modal')) {
+                      console.log("✅ Modal cerrado correctamente");
+                      return true;
+                    }
+                    await sleep(250);
+                  }
+                  console.warn("⚠️ El modal de 'Sí Acepto' no desapareció después del clic");
+                  return false;
+                }
+
+                // --- Flujo principal de autologin ---
                 document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
                 document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
                 document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
@@ -741,46 +767,25 @@ class ExtractionFragment : Fragment() {
                 });
                 document.querySelector('button[class*="btn-sunarp-green"]').click();
 
-                // --- Lógica mejorada para el modal "Sí Acepto" ---
+                // --- Manejo del modal ---
                 try {
-                    // 1. Esperar a que aparezca el modal
-                    let modalFound = false;
-                    for (let i = 0; i < 3 && !modalFound; i++) {
-                        const modal = await waitForElement('div.ant-modal-content', 10000);
-                        if (modal) {
-                            modalFound = true;
-                        } else {
-                            await sleep(800);
-                        }
-                    }
-                    if (!modalFound) throw new Error("Modal de términos y condiciones no encontrado.");
-
-                    // 2. Localizar el botón y hacer clic robusto
-                    const acceptBtn = await waitForElement('div.ant-modal-footer button.accept-button', 5000);
-                    if (!acceptBtn || acceptBtn.offsetParent === null) throw new Error("Botón 'Sí Acepto' no encontrado o no visible.");
-
-                    let clickSuccess = false;
-                    for (let i = 0; i < 3 && !clickSuccess; i++) {
-                         if (await robustClick(acceptBtn)) {
-                            clickSuccess = true;
-                         } else {
-                            await sleep(300);
-                         }
-                    }
-                    if (!clickSuccess) throw new Error("El clic en 'Sí Acepto' falló repetidamente.");
-
-                    // 3. Confirmar que el modal desapareció
-                    const startTime = Date.now();
-                    while(document.querySelector('div.ant-modal-content') && (Date.now() - startTime < 5000)) {
-                        await sleep(200);
-                    }
-                    if (document.querySelector('div.ant-modal-content')) {
-                        console.warn("El modal de 'Sí Acepto' no desapareció después del clic.");
+                  const modal = await waitForModal(10000);
+                  if (modal) {
+                    const acceptBtn = await findAcceptButton();
+                    if (acceptBtn) {
+                      const clicked = await robustClickButton(acceptBtn, 5);
+                      if (clicked) {
+                        await confirmModalClosed(7000);
+                        console.log("[Autologin] Flujo del modal completado");
+                      } else {
+                        console.warn("❌ Falló el clic en 'Sí Acepto'");
+                      }
                     } else {
-                        console.log("Modal 'Sí Acepto' gestionado exitosamente.");
+                      console.warn("❌ No se encontró el botón 'Sí Acepto'");
                     }
+                  }
                 } catch (e) {
-                    console.warn("No se pudo gestionar el modal de 'Sí Acepto':", e.message);
+                  console.error("❌ Error en la secuencia del modal:", e);
                 }
             })();
         """.trimIndent()
