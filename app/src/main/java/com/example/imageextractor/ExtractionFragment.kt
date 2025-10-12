@@ -820,27 +820,35 @@ class ExtractionFragment : Fragment() {
 
     private fun testCloudflareClick() {
         val jsScript = """
-            (function() {
+            (async function() {
                 try {
-                    // Eliminar overlay previo si existe
+                    // 🔹 Eliminar overlay previo si existe
                     const old = document.getElementById('turnstile-overlay');
                     if (old) old.remove();
 
-                    // Buscar el contenedor principal del captcha
-                    const cloudcaptcha = document.querySelector('cloudcaptcha, ngx-turnstile, iframe#cf-chl-widget-jazup');
-                    if (!cloudcaptcha) {
+                    function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+                    // 🔹 Buscar el contenedor visible del captcha (evita shadowroot)
+                    const container = document.querySelector('cloudcaptcha, ngx-turnstile, iframe#cf-chl-widget-jazup');
+                    if (!container) {
                         console.warn("⚠️ No se encontró el contenedor del captcha.");
                         return;
                     }
 
-                    // Obtener su posición aproximada en pantalla
-                    const rect = cloudcaptcha.getBoundingClientRect();
+                    const rect = container.getBoundingClientRect();
                     if (!rect || rect.width === 0 || rect.height === 0) {
                         console.warn("⚠️ No se pudo calcular la posición del captcha.");
                         return;
                     }
 
-                    // Crear overlay con borde rojo del tamaño del checkbox (~65px)
+                    // 🔹 Verificar si ya está visible en pantalla antes de scrollear
+                    const visible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+                    if (!visible) {
+                        container.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        await sleep(400);
+                    }
+
+                    // 🔹 Crear overlay del tamaño del checkbox (~65x65 px)
                     const overlay = document.createElement('div');
                     overlay.id = 'turnstile-overlay';
                     overlay.style.position = 'fixed';
@@ -848,35 +856,80 @@ class ExtractionFragment : Fragment() {
                     overlay.style.top = (rect.top + 5) + 'px';
                     overlay.style.width = '65px';
                     overlay.style.height = '65px';
-                    overlay.style.border = '3px solid red';
+                    overlay.style.border = '2px solid red';
                     overlay.style.borderRadius = '6px';
-                    overlay.style.background = 'rgba(255,255,255,0.02)';
                     overlay.style.zIndex = '999999';
-                    overlay.style.cursor = 'pointer';
-                    overlay.style.pointerEvents = 'auto';
-                    overlay.style.boxSizing = 'border-box';
+                    overlay.style.pointerEvents = 'none'; // ⚠️ Permite que el clic atraviese
+                    overlay.style.background = 'rgba(255,0,0,0.08)';
 
-                    overlay.onclick = () => {
-                        console.log("🟢 Overlay clickeado. Toque transmitido al checkbox del captcha.");
-                        overlay.remove();
-                    };
-
-                    // Evitar interferencia con otros elementos
-                    overlay.addEventListener('touchstart', e => e.stopPropagation(), true);
-                    overlay.addEventListener('click', e => e.stopPropagation(), true);
-
+                    // 🔹 Añadir overlay visual, pero NO bloquear eventos
                     document.body.appendChild(overlay);
 
-                    cloudcaptcha.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    console.log("✅ Overlay rojo colocado sobre el cuadro del captcha.");
+                    // 🔹 Intentar clic automático robusto en el área real o su vecina
+                    async function robustClickRightOfBox() {
+                        const x = rect.left + rect.width + 20; // derecha del cuadro
+                        const y = rect.top + rect.height / 2;
+                        const el = document.elementFromPoint(x, y);
+                        if (!el) {
+                            console.warn("⚠️ No se encontró elemento en la posición derecha del captcha.");
+                            return false;
+                        }
+                        for (let i = 0; i < 3; i++) {
+                            try {
+                                el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+                                await sleep(50);
+                                el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+                                await sleep(50);
+                                el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+                                console.log("✅ Clic simulado a la derecha del captcha (fallback).");
+                                return true;
+                            } catch (err) {
+                                console.warn("Intento fallido de clic derecho del captcha:", err);
+                                await sleep(200);
+                            }
+                        }
+                        return false;
+                    }
+
+                    // 🔹 Intentar clic dentro del área del captcha primero
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const target = document.elementFromPoint(centerX, centerY);
+
+                    let clicked = false;
+                    if (target) {
+                        for (let i = 0; i < 3; i++) {
+                            try {
+                                target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: centerX, clientY: centerY }));
+                                await sleep(50);
+                                target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, clientX: centerX, clientY: centerY }));
+                                await sleep(50);
+                                target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: centerX, clientY: centerY }));
+                                console.log("✅ Clic simulado dentro del cuadro del captcha.");
+                                clicked = true;
+                                break;
+                            } catch (err) {
+                                console.warn("Intento de clic dentro del cuadro falló:", err);
+                                await sleep(200);
+                            }
+                        }
+                    }
+
+                    // 🔹 Si no respondió, probar clic al lado derecho (fallback)
+                    if (!clicked) {
+                        console.warn("➡️ Intentando clic de respaldo a la derecha del cuadro...");
+                        await robustClickRightOfBox();
+                    }
+
+                    console.log("🟢 Overlay visible (sin bloquear clics). Esperando validación...");
                 } catch (e) {
-                    console.error("❌ Error al crear overlay del captcha:", e);
+                    console.error("❌ Error al crear o ejecutar overlay del captcha:", e);
                 }
             })();
         """.trimIndent()
 
         binding.webView.evaluateJavascript(jsScript, null)
-        Toast.makeText(requireContext(), "Toca el recuadro rojo (sobre el captcha).", Toast.LENGTH_LONG).show()
+        Toast.makeText(requireContext(), "Intentando validar captcha... revisa el recuadro rojo.", Toast.LENGTH_SHORT).show()
     }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
