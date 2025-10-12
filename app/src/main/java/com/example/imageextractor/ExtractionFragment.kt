@@ -771,17 +771,52 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillLoginForm(loginData: LoginData) {
         val jsScript = """
-            (function() {
+            (async function() {
+                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
                 console.log("Autocompletando formulario de login...");
                 document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
                 document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
                 document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
                 ['input', 'blur'].forEach(e => document.querySelectorAll('input').forEach(i => i.dispatchEvent(new Event(e, { bubbles: true }))));
 
-                const loginBtn = document.querySelector('button[class*="btn-sunarp-green"]');
-                if(loginBtn) {
-                    loginBtn.click();
-                    console.log("Clic en botón de login ejecutado.");
+                // Esperar a que Cloudflare Turnstile se valide
+                console.log("Esperando Cloudflare Turnstile...");
+                const turnstileFrame = document.querySelector('iframe#cf-chl-widget-jazup');
+                if (turnstileFrame) {
+                    const responseInput = document.querySelector('input#cf-chl-widget-jazup_response');
+                    if (responseInput) {
+                        let tokenFound = false;
+                        const pollStart = Date.now();
+                        while (Date.now() - pollStart < 20000) { // 20 segundos de tiempo de espera
+                            if (responseInput.value && responseInput.value.length > 0) {
+                                console.log("🟢 Cloudflare Turnstile validado.");
+                                tokenFound = true;
+                                break;
+                            }
+                            await sleep(500);
+                        }
+                        if (!tokenFound) {
+                            console.warn("⚠️ Cloudflare Turnstile no completó a tiempo.");
+                        }
+                    }
+                } else {
+                    console.warn("No se encontró el iframe de Cloudflare Turnstile.");
+                }
+
+                // Clic robusto en el botón de validar/login
+                const loginBtn = document.querySelector('button.btn-sunarp-green');
+                if (loginBtn) {
+                    try {
+                        loginBtn.scrollIntoView({ block: 'center' });
+                        await sleep(150);
+                        ['mousedown', 'mouseup', 'click'].forEach(evt =>
+                            loginBtn.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
+                        );
+                        console.log("✅ Clic ejecutado en botón 'Validar'.");
+                    } catch (e) {
+                        console.error("Error al hacer clic en el botón de validar:", e);
+                    }
                 }
             })();
         """.trimIndent()
