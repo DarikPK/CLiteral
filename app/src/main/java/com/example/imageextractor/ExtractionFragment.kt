@@ -700,11 +700,11 @@ class ExtractionFragment : Fragment() {
     private fun autofillLoginForm(loginData: LoginData) {
         val jsScript = """
             (async function() {
-                // --- Funciones de ayuda robustas ---
-                async function sleep(ms){ return new Promise(r => setTimeout(r,ms)); }
+                // --- Funciones de Ayuda ---
+                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-                async function waitForModal(timeout = 10000) {
-                    console.log("Buscando modal...");
+                async function waitForModal(timeout = 8000) {
+                    console.log("Esperando modal de 'Sí Acepto'...");
                     const start = Date.now();
                     while (Date.now() - start < timeout) {
                         const modal = document.querySelector('.cdk-overlay-container div.ant-modal, div.ant-modal-content');
@@ -714,51 +714,46 @@ class ExtractionFragment : Fragment() {
                         }
                         await sleep(300);
                     }
-                    console.warn("⏰ No se detectó el modal en el tiempo esperado.");
+                    console.log("⚠️ Modal no detectado en el tiempo esperado, continuando...");
                     return null;
                 }
 
                 async function findAcceptButton(modalScope) {
-                    console.log("Buscando botón 'Sí Acepto'...");
                     const buttons = Array.from(modalScope.querySelectorAll('button'));
                     const acceptBtn = buttons.find(b => /sí\s*acepto/i.test(b.innerText || ''));
-                    if (acceptBtn && acceptBtn.offsetParent !== null) {
-                        console.log("🟢 Botón 'Sí Acepto' encontrado.");
+                    if (acceptBtn) {
+                        console.log("✅ Botón 'Sí Acepto' encontrado.");
                         return acceptBtn;
                     }
-                    console.warn("❌ No se encontró el botón 'Sí Acepto'.");
                     return null;
                 }
 
-                async function robustClick(button, retries = 3) {
-                    for (let i = 0; i < retries; i++) {
-                        try {
-                            if (!button || !document.body.contains(button)) {
-                                console.warn("El botón ya no está en el DOM.");
-                                return false;
-                            }
-                            button.scrollIntoView({ block: 'center' });
-                            await sleep(100);
-                            button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-                            await sleep(50);
-                            button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-                            await sleep(50);
-                            button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-                            console.log(`✅ Clic ejecutado en intento ${'$'}{i + 1}`);
-                            return true;
-                        } catch (e) {
-                            console.warn(`⚠️ Error en clic (intento ${'$'}{i + 1}):`, e);
-                            await sleep(300);
+                async function robustClick(button) {
+                    try {
+                        if (!button || !document.body.contains(button)) return false;
+                        button.scrollIntoView({ block: 'center' });
+                        await sleep(150);
+                        const rect = button.getBoundingClientRect();
+                        const elementAtCenter = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                        if (!elementAtCenter || !button.contains(elementAtCenter)) {
+                             console.warn("El botón está tapado.");
+                             return false;
                         }
+                        ['mousedown', 'mouseup', 'click'].forEach(evt =>
+                            button.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
+                        );
+                        console.log("✅ Clic ejecutado.");
+                        return true;
+                    } catch (e) {
+                        console.error("Error en robustClick:", e);
+                        return false;
                     }
-                    return false;
                 }
 
                 async function confirmModalClosed(timeout = 5000) {
-                    console.log("Confirmando cierre del modal...");
                     const start = Date.now();
                     while (Date.now() - start < timeout) {
-                        if (!document.querySelector('.cdk-overlay-container div.ant-modal, div.ant-modal-content')) {
+                        if (!document.querySelector('.cdk-overlay-container div.ant-modal')) {
                             console.log("✅ Modal cerrado correctamente.");
                             return true;
                         }
@@ -768,18 +763,13 @@ class ExtractionFragment : Fragment() {
                     return false;
                 }
 
-                // --- Flujo Principal ---
+                // --- Flujo Principal de Autologin ---
                 if (window.location.href !== 'https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio') {
+                    console.log("No es la página de inicio, omitiendo autologin.");
                     return;
                 }
 
-                document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
-                document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
-                document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
-                ['input', 'blur'].forEach(e => document.querySelectorAll('input').forEach(i => i.dispatchEvent(new Event(e, { bubbles: true }))));
-
-                document.querySelector('button[class*="btn-sunarp-green"]').click();
-
+                // 1. Manejar el modal primero
                 try {
                     const modal = await waitForModal();
                     if (modal) {
@@ -787,14 +777,23 @@ class ExtractionFragment : Fragment() {
                         if (acceptBtn) {
                             if (await robustClick(acceptBtn)) {
                                 await confirmModalClosed();
-                            } else {
-                                console.error("❌ Falló el clic en 'Sí Acepto' después de varios intentos.");
                             }
                         }
                     }
                 } catch (e) {
-                    console.error("❌ Error en la secuencia del modal:", e);
+                    console.error("Error manejando el modal inicial:", e);
                 }
+
+                // 2. Continuar con el autocompletado del formulario
+                document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
+                document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
+                document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
+                ['input', 'blur'].forEach(e => document.querySelectorAll('input').forEach(i => i.dispatchEvent(new Event(e, { bubbles: true }))));
+
+                // 3. Clic final en el botón de login
+                const loginBtn = document.querySelector('button[class*="btn-sunarp-green"]');
+                if(loginBtn) loginBtn.click();
+
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
