@@ -286,7 +286,6 @@ class ExtractionFragment : Fragment() {
         binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
         binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabListButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
-        binding.fabTestCloudflareClick.visibility = if (onLoginPage) View.VISIBLE else View.GONE
 
         val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToFirstItem.visibility = navigationVisible
