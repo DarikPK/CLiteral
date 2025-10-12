@@ -820,36 +820,58 @@ class ExtractionFragment : Fragment() {
 
     private fun testCloudflareClick() {
         val jsScript = """
-            (async function() {
-                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-                console.log("Intentando hacer clic en el iframe del captcha...");
-                const turnstileFrame = document.querySelector('iframe#cf-chl-widget-jazup');
-
-                if (turnstileFrame) {
-                    try {
-                        turnstileFrame.scrollIntoView({ block: 'center', inline: 'center' });
-                        await sleep(200);
-
-                        const rect = turnstileFrame.getBoundingClientRect();
-                        const x = rect.left + (rect.width / 2);
-                        const y = rect.top + (rect.height / 2);
-
-                        turnstileFrame.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: x, clientY: y }));
-                        await sleep(50);
-                        turnstileFrame.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: x, clientY: y }));
-                        await sleep(50);
-                        turnstileFrame.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
-
-                        console.log("✅ Clic de prueba simulado en el iframe del captcha.");
-                    } catch(e) {
-                        console.error("❌ Error al intentar hacer clic de prueba en el iframe:", e);
+            (function() {
+                try {
+                    const iframe = document.querySelector('iframe#cf-chl-widget-jazup');
+                    if (!iframe) {
+                        console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile (#cf-chl-widget-jazup).");
+                        return;
                     }
-                } else {
-                    console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile para la prueba.");
+
+                    // Obtener posición exacta y tamaño del iframe en la pantalla
+                    const rect = iframe.getBoundingClientRect();
+
+                    // Crear un overlay transparente con borde rojo
+                    const overlay = document.createElement('div');
+                    overlay.id = 'turnstile-overlay';
+                    overlay.style.position = 'fixed';
+                    overlay.style.left = rect.left + 'px';
+                    overlay.style.top = rect.top + 'px';
+                    overlay.style.width = rect.width + 'px';
+                    overlay.style.height = rect.height + 'px';
+                    overlay.style.zIndex = '999999';
+                    overlay.style.background = 'rgba(255,255,255,0.02)'; // casi invisible
+                    overlay.style.border = '2px solid red';
+                    overlay.style.borderRadius = '6px';
+                    overlay.style.boxSizing = 'border-box';
+                    overlay.style.cursor = 'pointer';
+                    overlay.style.pointerEvents = 'auto';
+
+                    // Acción al tocar el overlay
+                    overlay.onclick = () => {
+                        console.log("🟢 Overlay clickeado: el toque será transmitido al iframe.");
+                        overlay.remove();
+                    };
+
+                    // Evitar que interfiera con cualquier otro elemento fuera de su área
+                    overlay.addEventListener('touchstart', e => e.stopPropagation(), true);
+                    overlay.addEventListener('click', e => e.stopPropagation(), true);
+
+                    // Insertar overlay en el DOM
+                    document.body.appendChild(overlay);
+
+                    // Alinear visualmente en caso de desplazamiento
+                    iframe.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+                    console.log("✅ Overlay con borde rojo colocado sobre el captcha. Toca el recuadro blanco para validarlo manualmente.");
+                } catch (e) {
+                    console.error("❌ Error al crear overlay sobre el captcha:", e);
                 }
             })();
         """.trimIndent()
+
         binding.webView.evaluateJavascript(jsScript, null)
+        Toast.makeText(requireContext(), "Toca el recuadro rojo para validar el captcha.", Toast.LENGTH_LONG).show()
     }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
