@@ -828,60 +828,77 @@ class ExtractionFragment : Fragment() {
     private fun testCloudflareClick() {
         val jsScript = """
             (async function() {
-                const existingOverlay = document.getElementById('turnstile-overlay');
+                function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-                if (existingOverlay) {
-                    // Si el overlay existe, ejecuta el clic remoto
+                const overlay = document.getElementById('turnstile-overlay');
+                if (overlay) {
                     console.log("🎯 Overlay ya existe. Ejecutando clic remoto...");
-                    const rect = existingOverlay.getBoundingClientRect();
+
+                    const rect = overlay.getBoundingClientRect();
                     const centerX = rect.left + rect.width / 2;
                     const centerY = rect.top + rect.height / 2;
-                    const targetElement = document.elementFromPoint(centerX, centerY);
+                    const element = document.elementFromPoint(centerX, centerY);
 
-                    if (targetElement) {
+                    if (element) {
+                        overlay.style.outline = '3px dashed lime';
+                        console.log("🟢 Elemento encontrado en el centro, simulando clic...");
                         try {
-                            await new Promise(r => setTimeout(r, 100));
-                            targetElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-                            await new Promise(r => setTimeout(r, 100));
-                            targetElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-                            await new Promise(r => setTimeout(r, 100));
-                            targetElement.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                            ['mousedown','mouseup','click'].forEach((type,i) => {
+                                setTimeout(()=> {
+                                    element.dispatchEvent(new MouseEvent(type, {
+                                        bubbles: true,
+                                        cancelable: true,
+                                        clientX: centerX,
+                                        clientY: centerY,
+                                        view: window
+                                    }));
+                                }, i*120);
+                            });
                             AndroidBridge.showToast("🖱️ Clic remoto ejecutado en captcha");
-                            console.log("🎯 Clic remoto ejecutado en overlay");
-                            existingOverlay.remove();
-                        } catch(e) {
-                            console.error("❌ Error durante el clic remoto:", e);
-                            existingOverlay.remove();
+                            console.log("✅ Clic remoto ejecutado con éxito.");
+                        } catch(e){
+                            console.error("❌ Error al ejecutar el clic remoto:", e);
                         }
                     } else {
-                        console.warn("⚠️ No se encontró elemento bajo el overlay para el clic remoto.");
-                        existingOverlay.remove();
+                        console.warn("⚠️ No se encontró ningún elemento en el punto central.");
                     }
-                } else {
-                    // Si no existe, crea el overlay
-                    console.log("✅ Creando overlay sobre el captcha...");
-                    const iframe = document.querySelector('iframe#cf-chl-widget-jazup');
-                    if (!iframe) {
-                        console.warn("⚠️ No se encontró el iframe de Cloudflare.");
-                        return;
-                    }
-                    const rect = iframe.getBoundingClientRect();
-                    const overlay = document.createElement('div');
-                    overlay.id = 'turnstile-overlay';
-                    overlay.style.position = 'fixed';
-                    overlay.style.left = rect.left + 'px';
-                    overlay.style.top = rect.top + 'px';
-                    overlay.style.width = rect.width + 'px';
-                    overlay.style.height = rect.height + 'px';
-                    overlay.style.zIndex = '999999';
-                    overlay.style.border = '2px solid red';
-                    overlay.style.pointerEvents = 'none'; // Clics atraviesan
-                    document.body.appendChild(overlay);
-                    AndroidBridge.showToast("Overlay creado. Vuelve a pulsar para un clic remoto.");
-                    console.log("✅ Overlay creado");
+                    return;
                 }
+
+                // --- Crear overlay si no existe ---
+                console.log("🔎 Buscando iframe de Cloudflare...");
+                const iframe = document.querySelector('iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"]');
+                if (!iframe) {
+                    console.warn("⚠️ No se encontró iframe de Cloudflare Turnstile.");
+                    return;
+                }
+
+                const rect = iframe.getBoundingClientRect();
+                if (!rect.width || !rect.height) {
+                    console.warn("⚠️ El iframe de captcha no tiene dimensiones válidas aún.");
+                    return;
+                }
+
+                const newOverlay = document.createElement('div');
+                newOverlay.id = 'turnstile-overlay';
+                Object.assign(newOverlay.style, {
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    border: '2px solid red',
+                    background: 'rgba(255,0,0,0.05)',
+                    borderRadius: '6px',
+                    zIndex: '999999',
+                    pointerEvents: 'none'
+                });
+                document.body.appendChild(newOverlay);
+                AndroidBridge.showToast("🟥 Overlay creado sobre captcha (presiona de nuevo para clic remoto)");
+                console.log("✅ Overlay creado correctamente.");
             })();
         """.trimIndent()
+
         binding.webView.evaluateJavascript(jsScript, null)
     }
 
