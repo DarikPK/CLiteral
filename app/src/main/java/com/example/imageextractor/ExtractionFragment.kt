@@ -828,38 +828,48 @@ class ExtractionFragment : Fragment() {
 private fun testCloudflareClick() {
     val jsScript = """
         (async function() {
-            function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+            function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
             const OVERLAY_ID = 'cf-test-overlay';
-            const BUTTON_ID = 'cf-test-click-button';
+            const REMOTE_BUTTON_ID = 'cf-remote-click-button';
 
-            // Limpiar restos anteriores
-            document.getElementById(OVERLAY_ID)?.remove();
-            document.getElementById(BUTTON_ID)?.remove();
+            console.log("⏳ Buscando captcha Cloudflare...");
 
-            // Esperar a que el iframe exista
-            let iframe = null;
-            for (let i = 0; i < 20; i++) {
-                iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]');
-                if (iframe) break;
+            // Buscar el iframe o su contenedor visible
+            let captchaArea = null;
+            for (let i = 0; i < 40; i++) {
+                captchaArea = document.querySelector(
+                    'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"], cloudcaptcha, ngx-turnstile, div[title*="Cloudflare"], div[style*="300px"][style*="65px"]'
+                );
+                if (captchaArea) break;
                 await sleep(250);
             }
 
-            if (!iframe) {
-                AndroidBridge.showToast("⚠️ No se encontró el iframe de Cloudflare Turnstile.");
-                console.warn("⚠️ No se encontró iframe de Cloudflare Turnstile.");
+            if (!captchaArea) {
+                AndroidBridge.showToast("⚠️ Captcha no encontrado todavía.");
+                console.warn("⚠️ No se encontró captcha.");
                 return;
             }
 
-            const rect = iframe.getBoundingClientRect();
-            if (!rect.width || !rect.height) {
-                AndroidBridge.showToast("⚠️ El iframe no tiene dimensiones válidas.");
+            // Esperar a que tenga tamaño visible
+            let rect;
+            for (let i = 0; i < 20; i++) {
+                rect = captchaArea.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) break;
+                await sleep(300);
+            }
+            if (!rect || rect.width === 0 || rect.height === 0) {
+                AndroidBridge.showToast("⚠️ Captcha detectado, pero aún no visible.");
                 return;
             }
 
-            // Crear overlay rojo
-            const overlay = document.createElement('div');
-            overlay.id = OVERLAY_ID;
+            // Crear o actualizar overlay
+            let overlay = document.getElementById(OVERLAY_ID);
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = OVERLAY_ID;
+                document.body.appendChild(overlay);
+            }
             Object.assign(overlay.style, {
                 position: 'fixed',
                 left: rect.left + 'px',
@@ -868,40 +878,44 @@ private fun testCloudflareClick() {
                 height: rect.height + 'px',
                 border: '2px solid red',
                 borderRadius: '6px',
-                zIndex: '2147483640',
+                zIndex: '2147483639',
                 pointerEvents: 'none'
             });
-            document.body.appendChild(overlay);
 
-            // Crear botón arriba del overlay
-            const remoteButton = document.createElement('button');
-            remoteButton.id = BUTTON_ID;
-            remoteButton.textContent = 'Clic Remoto';
+            // Crear o posicionar el botón “Clic Remoto” como FAB dentro del WebView
+            let remoteButton = document.getElementById(REMOTE_BUTTON_ID);
+            if (!remoteButton) {
+                remoteButton = document.createElement('button');
+                remoteButton.id = REMOTE_BUTTON_ID;
+                remoteButton.textContent = 'Clic Remoto';
+                document.body.appendChild(remoteButton);
+            }
+
             Object.assign(remoteButton.style, {
                 position: 'fixed',
-                left: (rect.left + rect.width / 2) + 'px',
-                top: (rect.top - 45) + 'px',
-                transform: 'translate(-50%, 0)',
+                right: '24px',
+                bottom: '24px',
                 zIndex: '2147483641',
-                padding: '8px 14px',
-                fontSize: '13px',
-                border: '1px solid #bbb',
-                background: '#fff',
+                padding: '12px 18px',
+                fontSize: '14px',
+                border: 'none',
+                background: '#ffffff',
                 color: '#000',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.25)'
+                borderRadius: '50px',
+                boxShadow: '0 3px 6px rgba(0,0,0,0.3)',
+                cursor: 'pointer'
             });
 
+            // Acción del botón: clic simulado sobre el captcha
             remoteButton.onclick = async () => {
-                const overlayRect = overlay.getBoundingClientRect();
-                const centerX = overlayRect.left + overlayRect.width / 2;
-                const centerY = overlayRect.top + overlayRect.height / 2;
-                const element = document.elementFromPoint(centerX, centerY);
+                const rectNow = captchaArea.getBoundingClientRect();
+                const centerX = rectNow.left + rectNow.width / 2;
+                const centerY = rectNow.top + rectNow.height / 2;
 
+                const element = document.elementFromPoint(centerX, centerY);
                 if (!element) {
-                    AndroidBridge.showToast("⚠️ No se encontró elemento en el centro.");
-                    console.warn("⚠️ Ningún elemento bajo el punto.");
+                    AndroidBridge.showToast("⚠️ No se encontró elemento bajo el punto.");
+                    console.warn("⚠️ Ningún elemento bajo el centro del captcha.");
                     return;
                 }
 
@@ -909,18 +923,22 @@ private fun testCloudflareClick() {
                 console.log("🎯 Elemento bajo el centro:", element);
 
                 ['mousedown', 'mouseup', 'click'].forEach((type,i) =>
-                    setTimeout(() =>
-                        element.dispatchEvent(new MouseEvent(type, {
-                            bubbles: true, cancelable: true,
-                            clientX: centerX, clientY: centerY, view: window
-                        })), i*100)
+                    setTimeout(() => element.dispatchEvent(new MouseEvent(type, {
+                        bubbles: true, cancelable: true,
+                        clientX: centerX, clientY: centerY, view: window
+                    })), i*100)
                 );
 
-                console.log("✅ Clic remoto ejecutado.");
+                overlay.style.transition = "box-shadow 0.3s ease";
+                overlay.style.boxShadow = "0 0 20px 5px rgba(255,0,0,0.6)";
+                await sleep(300);
+                overlay.style.boxShadow = "none";
+
+                console.log("✅ Clic remoto ejecutado correctamente.");
             };
 
-            document.body.appendChild(remoteButton);
-            AndroidBridge.showToast("🟥 Overlay y botón 'Clic Remoto' creados.");
+            AndroidBridge.showToast("🟥 Overlay generado y botón 'Clic Remoto' creado encima del botón principal.");
+            console.log("✅ Overlay y botón 'Clic Remoto' listos.");
         })();
     """.trimIndent()
 
