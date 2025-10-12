@@ -278,6 +278,7 @@ class ExtractionFragment : Fragment() {
         binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
         binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabListButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
+        binding.fabTestCloudflareClick.visibility = if (onLoginPage) View.VISIBLE else View.GONE
 
         val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabGoToFirstItem.visibility = navigationVisible
@@ -323,6 +324,10 @@ class ExtractionFragment : Fragment() {
             val isVisible = sharedViewModel.isWebViewVisible.value ?: false
             val message = if (!isVisible) "🔒 Modo oculto activado" else "👁️ Modo visible activado"
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+
+        binding.fabTestCloudflareClick.setOnClickListener {
+            testCloudflareClick()
         }
     }
 
@@ -807,6 +812,40 @@ class ExtractionFragment : Fragment() {
                     }
                 } else {
                     console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile.");
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsScript, null)
+    }
+
+    private fun testCloudflareClick() {
+        val jsScript = """
+            (async function() {
+                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+                console.log("Intentando hacer clic en el iframe del captcha...");
+                const turnstileFrame = document.querySelector('iframe#cf-chl-widget-jazup');
+
+                if (turnstileFrame) {
+                    try {
+                        turnstileFrame.scrollIntoView({ block: 'center', inline: 'center' });
+                        await sleep(200);
+
+                        const rect = turnstileFrame.getBoundingClientRect();
+                        const x = rect.left + (rect.width / 2);
+                        const y = rect.top + (rect.height / 2);
+
+                        turnstileFrame.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: x, clientY: y }));
+                        await sleep(50);
+                        turnstileFrame.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: x, clientY: y }));
+                        await sleep(50);
+                        turnstileFrame.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+
+                        console.log("✅ Clic de prueba simulado en el iframe del captcha.");
+                    } catch(e) {
+                        console.error("❌ Error al intentar hacer clic de prueba en el iframe:", e);
+                    }
+                } else {
+                    console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile para la prueba.");
                 }
             })();
         """.trimIndent()
