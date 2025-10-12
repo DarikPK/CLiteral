@@ -16,30 +16,15 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_toggle_visibility"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:src="@drawable/ic_visibility_on"
-        app:backgroundTint="?attr/colorButtonNormal"
-        android:contentDescription="Alternar visibilidad de la web"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="6dp"
-        android:visibility="visible"
-        tools:visibility="visible"/>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_list_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:src="@drawable/ic_list"
-        android:contentDescription="Mostrar lista de páginas"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_menu_revert"
+        android:contentDescription="Regresar al menú principal"
         app:fabSize="mini"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         android:visibility="gone"
         tools:visibility="visible"/>
 
