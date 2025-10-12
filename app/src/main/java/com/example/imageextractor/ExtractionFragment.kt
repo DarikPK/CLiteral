@@ -125,6 +125,10 @@ class ExtractionFragment : Fragment() {
                 currentPageUrl = url
                 updateButtonStates(url)
                 injectSpaUrlWatcher()
+
+                if (url == loginUrl) {
+                    injectModalHandlerScript()
+                }
             }
         }
 
@@ -169,6 +173,74 @@ class ExtractionFragment : Fragment() {
             Log.e("WebViewDownload", "Error al guardar captura desde data URL", e)
             Toast.makeText(context, "Error al guardar la captura.", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun injectModalHandlerScript() {
+        val script = """
+            (async function() {
+                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+                console.log("Iniciando detector de modal de bienvenida...");
+
+                const modal = await (async () => {
+                    const start = Date.now();
+                    while (Date.now() - start < 8000) {
+                        const m = document.querySelector('.cdk-overlay-container div.ant-modal, div.ant-modal-content');
+                        if (m && m.offsetParent !== null) {
+                            console.log("🟢 Modal detectado");
+                            return m;
+                        }
+                        await sleep(300);
+                    }
+                    return null;
+                })();
+
+                if (!modal) {
+                    console.log("⚠️ Modal no apareció dentro del tiempo esperado.");
+                    return;
+                }
+
+                const acceptBtn = (() => {
+                    const buttons = Array.from(modal.querySelectorAll('button'));
+                    return buttons.find(b => /sí\s*acepto/i.test(b.innerText || ''));
+                })();
+
+                if (!acceptBtn) {
+                    console.warn("Botón 'Sí Acepto' no encontrado en el modal.");
+                    return;
+                }
+                console.log("✅ Botón 'Sí Acepto' encontrado");
+
+                try {
+                    acceptBtn.scrollIntoView({block:'center'});
+                    await sleep(150);
+                    acceptBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                    acceptBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                    acceptBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    console.log("✅ Clic ejecutado");
+                } catch(e) {
+                    console.error("Error al intentar hacer clic:", e);
+                }
+
+                // Confirmar cierre
+                let closed = false;
+                const start = Date.now();
+                while(Date.now() - start < 5000) {
+                    if (!document.querySelector('.cdk-overlay-container div.ant-modal')) {
+                        closed = true;
+                        break;
+                    }
+                    await sleep(200);
+                }
+
+                if(closed) {
+                    console.log("✅ Modal cerrado correctamente.");
+                } else {
+                    console.warn("⚠️ El modal no se cerró después del clic.");
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun injectSpaUrlWatcher() {
@@ -699,101 +771,18 @@ class ExtractionFragment : Fragment() {
 
     private fun autofillLoginForm(loginData: LoginData) {
         val jsScript = """
-            (async function() {
-                // --- Funciones de Ayuda ---
-                async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-                async function waitForModal(timeout = 8000) {
-                    console.log("Esperando modal de 'Sí Acepto'...");
-                    const start = Date.now();
-                    while (Date.now() - start < timeout) {
-                        const modal = document.querySelector('.cdk-overlay-container div.ant-modal, div.ant-modal-content');
-                        if (modal && modal.offsetParent !== null && modal.getBoundingClientRect().width > 0) {
-                            console.log("🟢 Modal detectado.");
-                            return modal;
-                        }
-                        await sleep(300);
-                    }
-                    console.log("⚠️ Modal no detectado en el tiempo esperado, continuando...");
-                    return null;
-                }
-
-                async function findAcceptButton(modalScope) {
-                    const buttons = Array.from(modalScope.querySelectorAll('button'));
-                    const acceptBtn = buttons.find(b => /sí\s*acepto/i.test(b.innerText || ''));
-                    if (acceptBtn) {
-                        console.log("✅ Botón 'Sí Acepto' encontrado.");
-                        return acceptBtn;
-                    }
-                    return null;
-                }
-
-                async function robustClick(button) {
-                    try {
-                        if (!button || !document.body.contains(button)) return false;
-                        button.scrollIntoView({ block: 'center' });
-                        await sleep(150);
-                        const rect = button.getBoundingClientRect();
-                        const elementAtCenter = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-                        if (!elementAtCenter || !button.contains(elementAtCenter)) {
-                             console.warn("El botón está tapado.");
-                             return false;
-                        }
-                        ['mousedown', 'mouseup', 'click'].forEach(evt =>
-                            button.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
-                        );
-                        console.log("✅ Clic ejecutado.");
-                        return true;
-                    } catch (e) {
-                        console.error("Error en robustClick:", e);
-                        return false;
-                    }
-                }
-
-                async function confirmModalClosed(timeout = 5000) {
-                    const start = Date.now();
-                    while (Date.now() - start < timeout) {
-                        if (!document.querySelector('.cdk-overlay-container div.ant-modal')) {
-                            console.log("✅ Modal cerrado correctamente.");
-                            return true;
-                        }
-                        await sleep(200);
-                    }
-                    console.warn("⚠️ El modal no desapareció después del clic.");
-                    return false;
-                }
-
-                // --- Flujo Principal de Autologin ---
-                if (window.location.href !== 'https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio') {
-                    console.log("No es la página de inicio, omitiendo autologin.");
-                    return;
-                }
-
-                // 1. Manejar el modal primero
-                try {
-                    const modal = await waitForModal();
-                    if (modal) {
-                        const acceptBtn = await findAcceptButton(modal);
-                        if (acceptBtn) {
-                            if (await robustClick(acceptBtn)) {
-                                await confirmModalClosed();
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error manejando el modal inicial:", e);
-                }
-
-                // 2. Continuar con el autocompletado del formulario
+            (function() {
+                console.log("Autocompletando formulario de login...");
                 document.querySelector('input[formcontrolname="numeroDocumento"]').value = '${loginData.dni}';
                 document.querySelector('input[formcontrolname="digito"]').value = '${loginData.digito}';
                 document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
                 ['input', 'blur'].forEach(e => document.querySelectorAll('input').forEach(i => i.dispatchEvent(new Event(e, { bubbles: true }))));
 
-                // 3. Clic final en el botón de login
                 const loginBtn = document.querySelector('button[class*="btn-sunarp-green"]');
-                if(loginBtn) loginBtn.click();
-
+                if(loginBtn) {
+                    loginBtn.click();
+                    console.log("Clic en botón de login ejecutado.");
+                }
             })();
         """.trimIndent()
         binding.webView.evaluateJavascript(jsScript, null)
