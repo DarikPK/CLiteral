@@ -34,13 +34,13 @@
         android:id="@+id/fab_toggle_visibility"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
+        android:layout_margin="16dp"
         android:src="@drawable/ic_visibility_on"
         app:backgroundTint="?attr/colorButtonNormal"
         android:contentDescription="Alternar visibilidad de la web"
-        app:layout_constraintBottom_toTopOf="@id/autofill_button"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        android:elevation="6dp"
         android:visibility="visible"
         tools:visibility="visible"/>
 
@@ -51,18 +51,6 @@
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_menu_edit"
         android:contentDescription="Autocompletar Datos"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"
-        tools:visibility="visible"/>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/capture_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:src="@android:drawable/ic_menu_camera"
-        android:contentDescription="Capturar Pantalla"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:visibility="gone"

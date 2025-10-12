@@ -104,6 +104,7 @@ class ExtractionFragment : Fragment() {
         setupWebView()
         setupButtons()
         observeViewModel()
+        binding.fabToggleVisibility.bringToFront()
     }
 
     private fun observeViewModel() {
@@ -203,7 +204,6 @@ class ExtractionFragment : Fragment() {
         val onResultsPage = isResultsPage(url)
 
         binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
-        binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabListButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
 
         val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
@@ -231,10 +231,6 @@ class ExtractionFragment : Fragment() {
 
         binding.fabListButton.setOnClickListener {
             findNavController().popBackStack(R.id.mainMenuFragment, false)
-        }
-
-        binding.captureButton.setOnClickListener {
-            captureVisibleCanvas()
         }
 
         binding.extractButton.setOnClickListener { extractImagesFromPartida() }
@@ -403,33 +399,6 @@ class ExtractionFragment : Fragment() {
         val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val timestamp = sdf.format(Date())
         return "captura_sunarp_$timestamp.png"
-    }
-
-    private fun captureVisibleCanvas() {
-        val script = """
-            (function() {
-          const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');
-          if (!canvases.length) {
-            console.log("No hay canvas para capturar");
-            return;
-          }
-          canvases.forEach((canvas, i) => {
-            try {
-              const dataUrl = canvas.toDataURL("image/png");
-              const a = document.createElement("a");
-              a.href = dataUrl;
-              a.download = "captura_" + Date.now() + "_" + (i+1) + ".png";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            } catch (e) {
-              console.error("Error al capturar canvas: ", e);
-            }
-          });
-        })();
-        """.trimIndent()
-        // loadUrl is compatible with all API levels for this fire-and-forget script.
-        binding.webView.loadUrl("javascript:$script")
     }
 
     private fun navigateTo(direction: String) {
