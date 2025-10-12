@@ -135,6 +135,7 @@ class ExtractionFragment : Fragment() {
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
+                    injectCaptchaOverlayScript()
                 }
             }
         }
@@ -331,10 +332,6 @@ class ExtractionFragment : Fragment() {
             val isVisible = sharedViewModel.isWebViewVisible.value ?: false
             val message = if (!isVisible) "🔒 Modo oculto activado" else "👁️ Modo visible activado"
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
-
-        binding.fabTestCloudflareClick.setOnClickListener {
-            testCloudflareClick()
         }
     }
 
@@ -825,15 +822,14 @@ class ExtractionFragment : Fragment() {
         binding.webView.evaluateJavascript(jsScript, null)
     }
 
-private fun testCloudflareClick() {
+private fun injectCaptchaOverlayScript() {
     val jsScript = """
         (async function() {
             function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
             const OVERLAY_ID = 'cf-test-overlay';
-            const REMOTE_BUTTON_ID = 'cf-remote-click-button';
 
-            console.log("⏳ Buscando captcha Cloudflare...");
+            console.log("⏳ Buscando captcha Cloudflare para overlay...");
 
             // Buscar el iframe o su contenedor visible
             let captchaArea = null;
@@ -846,8 +842,7 @@ private fun testCloudflareClick() {
             }
 
             if (!captchaArea) {
-                AndroidBridge.showToast("⚠️ Captcha no encontrado todavía.");
-                console.warn("⚠️ No se encontró captcha.");
+                console.warn("⚠️ No se encontró captcha para dibujar overlay.");
                 return;
             }
 
@@ -859,7 +854,7 @@ private fun testCloudflareClick() {
                 await sleep(300);
             }
             if (!rect || rect.width === 0 || rect.height === 0) {
-                AndroidBridge.showToast("⚠️ Captcha detectado, pero aún no visible.");
+                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para overlay.");
                 return;
             }
 
@@ -882,66 +877,10 @@ private fun testCloudflareClick() {
                 pointerEvents: 'none'
             });
 
-            // Crear o posicionar el botón “Clic Remoto” como FAB dentro del WebView
-            let remoteButton = document.getElementById(REMOTE_BUTTON_ID);
-            if (!remoteButton) {
-                remoteButton = document.createElement('button');
-                remoteButton.id = REMOTE_BUTTON_ID;
-                remoteButton.textContent = 'Clic Remoto';
-                document.body.appendChild(remoteButton);
-            }
-
-            Object.assign(remoteButton.style, {
-                position: 'fixed',
-                right: '24px',
-                bottom: '24px',
-                zIndex: '2147483641',
-                padding: '12px 18px',
-                fontSize: '14px',
-                border: 'none',
-                background: '#ffffff',
-                color: '#000',
-                borderRadius: '50px',
-                boxShadow: '0 3px 6px rgba(0,0,0,0.3)',
-                cursor: 'pointer'
-            });
-
-            // Acción del botón: clic simulado sobre el captcha
-            remoteButton.onclick = async () => {
-                const rectNow = captchaArea.getBoundingClientRect();
-                const centerX = rectNow.left + rectNow.width / 2;
-                const centerY = rectNow.top + rectNow.height / 2;
-
-                const element = document.elementFromPoint(centerX, centerY);
-                if (!element) {
-                    AndroidBridge.showToast("⚠️ No se encontró elemento bajo el punto.");
-                    console.warn("⚠️ Ningún elemento bajo el centro del captcha.");
-                    return;
-                }
-
-                AndroidBridge.showToast("🤖 Ejecutando clic remoto...");
-                console.log("🎯 Elemento bajo el centro:", element);
-
-                ['mousedown', 'mouseup', 'click'].forEach((type,i) =>
-                    setTimeout(() => element.dispatchEvent(new MouseEvent(type, {
-                        bubbles: true, cancelable: true,
-                        clientX: centerX, clientY: centerY, view: window
-                    })), i*100)
-                );
-
-                overlay.style.transition = "box-shadow 0.3s ease";
-                overlay.style.boxShadow = "0 0 20px 5px rgba(255,0,0,0.6)";
-                await sleep(300);
-                overlay.style.boxShadow = "none";
-
-                console.log("✅ Clic remoto ejecutado correctamente.");
-            };
-
-            AndroidBridge.showToast("🟥 Overlay generado y botón 'Clic Remoto' creado encima del botón principal.");
-            console.log("✅ Overlay y botón 'Clic Remoto' listos.");
+            console.log("✅ Overlay de captcha dibujado.");
         })();
     """.trimIndent()
-
+    if (isViewDestroyed) return
     binding.webView.evaluateJavascript(jsScript, null)
 }
 

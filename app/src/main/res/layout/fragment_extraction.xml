@@ -68,19 +68,6 @@
         tools:visibility="visible"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_test_cloudflare_click"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:src="@android:drawable/ic_menu_send"
-        android:contentDescription="Probar Clic Cloudflare"
-        app:layout_constraintBottom_toTopOf="@id/autofill_button"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="gone"
-        tools:visibility="visible"/>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/extract_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -88,7 +75,7 @@
         android:layout_marginBottom="16dp"
         android:src="@android:drawable/ic_menu_search"
         android:contentDescription="Extraer Imágenes"
-        app:layout_constraintBottom_toTopOf="@id/fab_test_cloudflare_click"
+        app:layout_constraintBottom_toTopOf="@id/autofill_button"
         app:layout_constraintEnd_toEndOf="parent"
         android:visibility="gone"
         tools:visibility="visible"/>
