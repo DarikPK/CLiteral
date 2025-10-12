@@ -81,6 +81,14 @@ class ExtractionFragment : Fragment() {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
+
+        @JavascriptInterface
+        fun notifyClick() {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                Toast.makeText(context, "Clic recibido por el WebView", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -132,6 +140,7 @@ class ExtractionFragment : Fragment() {
                 currentPageUrl = url
                 updateButtonStates(url)
                 injectSpaUrlWatcher()
+                injectClickDetectorScript()
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
@@ -881,6 +890,27 @@ private fun injectCaptchaOverlayScript() {
     """.trimIndent()
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(jsScript, null)
+}
+
+private fun injectClickDetectorScript() {
+    val script = """
+        (function() {
+            // Asegurarse de que el listener no se añada múltiples veces
+            if (window.isClickDetectorAttached) {
+                return;
+            }
+            window.isClickDetectorAttached = true;
+
+            document.body.addEventListener('click', function() {
+                console.log('Clic detectado en el body del WebView.');
+                if (typeof AndroidBridge !== 'undefined') {
+                    AndroidBridge.notifyClick();
+                }
+            }, true); // Usar captura para registrar el clic lo antes posible
+        })();
+    """.trimIndent()
+    if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(script, null)
 }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
