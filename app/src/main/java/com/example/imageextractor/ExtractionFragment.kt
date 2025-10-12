@@ -825,109 +825,107 @@ class ExtractionFragment : Fragment() {
         binding.webView.evaluateJavascript(jsScript, null)
     }
 
-    private fun testCloudflareClick() {
-        val jsScript = """
-            (async function() {
-                const OVERLAY_ID = 'cf-test-overlay';
-                const BUTTON_ID = 'cf-test-click-button';
+private fun testCloudflareClick() {
+    val jsScript = """
+        (async function() {
+            function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-                // 1. Limpiar elementos previos
-                document.getElementById(OVERLAY_ID)?.remove();
-                document.getElementById(BUTTON_ID)?.remove();
+            const OVERLAY_ID = 'cf-test-overlay';
+            const BUTTON_ID = 'cf-test-click-button';
 
-                // 2. Encontrar el iframe
-                const iframe = document.querySelector('iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"]');
-                if (!iframe) {
-                    AndroidBridge.showToast("⚠️ No se encontró el iframe de Cloudflare.");
-                    console.warn("⚠️ No se encontró el iframe de Cloudflare.");
+            // Limpiar restos anteriores
+            document.getElementById(OVERLAY_ID)?.remove();
+            document.getElementById(BUTTON_ID)?.remove();
+
+            // Esperar a que el iframe exista
+            let iframe = null;
+            for (let i = 0; i < 20; i++) {
+                iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]');
+                if (iframe) break;
+                await sleep(250);
+            }
+
+            if (!iframe) {
+                AndroidBridge.showToast("⚠️ No se encontró el iframe de Cloudflare Turnstile.");
+                console.warn("⚠️ No se encontró iframe de Cloudflare Turnstile.");
+                return;
+            }
+
+            const rect = iframe.getBoundingClientRect();
+            if (!rect.width || !rect.height) {
+                AndroidBridge.showToast("⚠️ El iframe no tiene dimensiones válidas.");
+                return;
+            }
+
+            // Crear overlay rojo
+            const overlay = document.createElement('div');
+            overlay.id = OVERLAY_ID;
+            Object.assign(overlay.style, {
+                position: 'fixed',
+                left: rect.left + 'px',
+                top: rect.top + 'px',
+                width: rect.width + 'px',
+                height: rect.height + 'px',
+                border: '2px solid red',
+                borderRadius: '6px',
+                zIndex: '2147483640',
+                pointerEvents: 'none'
+            });
+            document.body.appendChild(overlay);
+
+            // Crear botón arriba del overlay
+            const remoteButton = document.createElement('button');
+            remoteButton.id = BUTTON_ID;
+            remoteButton.textContent = 'Clic Remoto';
+            Object.assign(remoteButton.style, {
+                position: 'fixed',
+                left: (rect.left + rect.width / 2) + 'px',
+                top: (rect.top - 45) + 'px',
+                transform: 'translate(-50%, 0)',
+                zIndex: '2147483641',
+                padding: '8px 14px',
+                fontSize: '13px',
+                border: '1px solid #bbb',
+                background: '#fff',
+                color: '#000',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.25)'
+            });
+
+            remoteButton.onclick = async () => {
+                const overlayRect = overlay.getBoundingClientRect();
+                const centerX = overlayRect.left + overlayRect.width / 2;
+                const centerY = overlayRect.top + overlayRect.height / 2;
+                const element = document.elementFromPoint(centerX, centerY);
+
+                if (!element) {
+                    AndroidBridge.showToast("⚠️ No se encontró elemento en el centro.");
+                    console.warn("⚠️ Ningún elemento bajo el punto.");
                     return;
                 }
 
-                const rect = iframe.getBoundingClientRect();
-                if (!rect.width || !rect.height) {
-                    AndroidBridge.showToast("⚠️ El iframe de captcha no es visible.");
-                    console.warn("⚠️ El iframe de captcha no tiene dimensiones válidas aún.");
-                    return;
-                }
+                AndroidBridge.showToast("🤖 Ejecutando clic remoto...");
+                console.log("🎯 Elemento bajo el centro:", element);
 
-                // 3. Crear el overlay
-                const overlay = document.createElement('div');
-                overlay.id = OVERLAY_ID;
-                Object.assign(overlay.style, {
-                    position: 'fixed',
-                    left: rect.left + 'px',
-                    top: rect.top + 'px',
-                    width: rect.width + 'px',
-                    height: rect.height + 'px',
-                    border: '3px solid red',
-                    borderRadius: '6px',
-                    zIndex: '2147483640',
-                    pointerEvents: 'none'
-                });
-                document.body.appendChild(overlay);
+                ['mousedown', 'mouseup', 'click'].forEach((type,i) =>
+                    setTimeout(() =>
+                        element.dispatchEvent(new MouseEvent(type, {
+                            bubbles: true, cancelable: true,
+                            clientX: centerX, clientY: centerY, view: window
+                        })), i*100)
+                );
 
-                // 4. Crear el botón de clic remoto
-                const remoteButton = document.createElement('button');
-                remoteButton.id = BUTTON_ID;
-                remoteButton.textContent = 'Click Remoto';
-                Object.assign(remoteButton.style, {
-                    position: 'fixed',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: '2147483641',
-                    padding: '10px 15px',
-                    border: '1px solid #ccc',
-                    background: 'white',
-                    color: 'black',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                });
+                console.log("✅ Clic remoto ejecutado.");
+            };
 
-                remoteButton.style.left = (rect.left + rect.width / 2) + 'px';
-                remoteButton.style.top = (rect.top + rect.height / 2) + 'px';
+            document.body.appendChild(remoteButton);
+            AndroidBridge.showToast("🟥 Overlay y botón 'Clic Remoto' creados.");
+        })();
+    """.trimIndent()
 
-                // 5. Asignar la lógica de clic al botón
-                remoteButton.onclick = function() {
-                    console.log("🖱️ Botón de clic remoto presionado.");
-                    const overlayRect = overlay.getBoundingClientRect();
-                    const centerX = overlayRect.left + overlayRect.width / 2;
-                    const centerY = overlayRect.top + overlayRect.height / 2;
-
-                    remoteButton.style.display = 'none';
-                    overlay.style.display = 'none';
-
-                    const elementToClick = document.elementFromPoint(centerX, centerY);
-
-                    if (elementToClick) {
-                        console.log("🎯 Elemento a clickear:", elementToClick);
-                        AndroidBridge.showToast("Ejecutando clic remoto...");
-                        try {
-                            ['mousedown', 'mouseup', 'click'].forEach(type => {
-                                elementToClick.dispatchEvent(new MouseEvent(type, {
-                                    bubbles: true, cancelable: true, clientX: centerX, clientY: centerY, view: window
-                                }));
-                            });
-                            console.log("✅ Clic remoto ejecutado.");
-                        } catch(e) {
-                            console.error("❌ Error durante el despacho del evento de clic:", e);
-                            AndroidBridge.showToast("❌ Error en clic remoto.");
-                        }
-                    } else {
-                        console.warn("⚠️ No se encontró ningún elemento en el centro para hacer clic.");
-                        AndroidBridge.showToast("⚠️ No se encontró elemento en el centro.");
-                    }
-
-                    overlay.remove();
-                    remoteButton.remove();
-                };
-
-                document.body.appendChild(remoteButton);
-                AndroidBridge.showToast("🟥 Overlay creado. Presiona 'Click Remoto'.");
-                console.log("✅ Overlay y botón de clic remoto creados.");
-            })();
-        """.trimIndent()
-        binding.webView.evaluateJavascript(jsScript, null)
-    }
+    binding.webView.evaluateJavascript(jsScript, null)
+}
 
     private fun autofillSearchForm(config: ExtractionConfig) {
         val jsScript = """
