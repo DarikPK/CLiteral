@@ -780,43 +780,33 @@ class ExtractionFragment : Fragment() {
                 document.querySelector('input[formcontrolname="fechaEmision"]').value = '${loginData.fechaEmision}';
                 ['input', 'blur'].forEach(e => document.querySelectorAll('input').forEach(i => i.dispatchEvent(new Event(e, { bubbles: true }))));
 
-                // Esperar a que Cloudflare Turnstile se valide
-                console.log("Esperando Cloudflare Turnstile...");
+                await sleep(500); // Pequeña pausa para que la UI reaccione al llenado
+
+                console.log("Intentando hacer clic en el iframe del captcha...");
                 const turnstileFrame = document.querySelector('iframe#cf-chl-widget-jazup');
+
                 if (turnstileFrame) {
-                    const responseInput = document.querySelector('input#cf-chl-widget-jazup_response');
-                    if (responseInput) {
-                        let tokenFound = false;
-                        const pollStart = Date.now();
-                        while (Date.now() - pollStart < 20000) { // 20 segundos de tiempo de espera
-                            if (responseInput.value && responseInput.value.length > 0) {
-                                console.log("🟢 Cloudflare Turnstile validado.");
-                                tokenFound = true;
-                                break;
-                            }
-                            await sleep(500);
-                        }
-                        if (!tokenFound) {
-                            console.warn("⚠️ Cloudflare Turnstile no completó a tiempo.");
-                        }
+                    try {
+                        turnstileFrame.scrollIntoView({ block: 'center', inline: 'center' });
+                        await sleep(200);
+
+                        // Simular clic en el centro del iframe
+                        const rect = turnstileFrame.getBoundingClientRect();
+                        const x = rect.left + (rect.width / 2);
+                        const y = rect.top + (rect.height / 2);
+
+                        turnstileFrame.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: x, clientY: y }));
+                        await sleep(50);
+                        turnstileFrame.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: x, clientY: y }));
+                        await sleep(50);
+                        turnstileFrame.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+
+                        console.log("✅ Clic simulado en el iframe del captcha.");
+                    } catch(e) {
+                        console.error("❌ Error al intentar hacer clic en el iframe:", e);
                     }
                 } else {
-                    console.warn("No se encontró el iframe de Cloudflare Turnstile.");
-                }
-
-                // Clic robusto en el botón de validar/login
-                const loginBtn = document.querySelector('button.btn-sunarp-green');
-                if (loginBtn) {
-                    try {
-                        loginBtn.scrollIntoView({ block: 'center' });
-                        await sleep(150);
-                        ['mousedown', 'mouseup', 'click'].forEach(evt =>
-                            loginBtn.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }))
-                        );
-                        console.log("✅ Clic ejecutado en botón 'Validar'.");
-                    } catch (e) {
-                        console.error("Error al hacer clic en el botón de validar:", e);
-                    }
+                    console.warn("⚠️ No se encontró el iframe de Cloudflare Turnstile.");
                 }
             })();
         """.trimIndent()
