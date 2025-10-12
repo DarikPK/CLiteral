@@ -204,6 +204,7 @@ class ExtractionFragment : Fragment() {
         val onResultsPage = isResultsPage(url)
 
         binding.autofillButton.visibility = if (onLoginPage || onSearchPage) View.VISIBLE else View.GONE
+        binding.captureButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
         binding.fabListButton.visibility = if (onResultsPage) View.VISIBLE else View.GONE
 
         val navigationVisible = if (onResultsPage) View.VISIBLE else View.GONE
@@ -230,7 +231,11 @@ class ExtractionFragment : Fragment() {
         }
 
         binding.fabListButton.setOnClickListener {
-            findNavController().popBackStack(R.id.mainMenuFragment, false)
+            showPageListOverlay()
+        }
+
+        binding.captureButton.setOnClickListener {
+            captureVisibleCanvas()
         }
 
         binding.extractButton.setOnClickListener { extractImagesFromPartida() }
@@ -357,7 +362,7 @@ class ExtractionFragment : Fragment() {
                                 await sleep(100); // Pausa para evitar condición de carrera con el listener.
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-                                await sleep(10);
+                                await sleep(3000);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
@@ -399,6 +404,33 @@ class ExtractionFragment : Fragment() {
         val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
         val timestamp = sdf.format(Date())
         return "captura_sunarp_$timestamp.png"
+    }
+
+    private fun captureVisibleCanvas() {
+        val script = """
+            (function() {
+          const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');
+          if (!canvases.length) {
+            console.log("No hay canvas para capturar");
+            return;
+          }
+          canvases.forEach((canvas, i) => {
+            try {
+              const dataUrl = canvas.toDataURL("image/png");
+              const a = document.createElement("a");
+              a.href = dataUrl;
+              a.download = "captura_" + Date.now() + "_" + (i+1) + ".png";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            } catch (e) {
+              console.error("Error al capturar canvas: ", e);
+            }
+          });
+        })();
+        """.trimIndent()
+        // loadUrl is compatible with all API levels for this fire-and-forget script.
+        binding.webView.loadUrl("javascript:$script")
     }
 
     private fun navigateTo(direction: String) {
