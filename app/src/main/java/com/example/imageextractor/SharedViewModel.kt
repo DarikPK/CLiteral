@@ -34,6 +34,14 @@ class SharedViewModel : ViewModel() {
         _imageUrls.value = urls
     }
 
+    // --- Estado de Visibilidad de WebView ---
+    private val _isWebViewVisible = MutableLiveData(true)
+    val isWebViewVisible: LiveData<Boolean> = _isWebViewVisible
+
+    fun toggleWebViewVisibility() {
+        _isWebViewVisible.value = !(_isWebViewVisible.value ?: true)
+    }
+
     // --- Base de Datos para Login Aleatorio ---
     private val randomLoginDatabase = listOf(
         LoginData("46736604", "7", "16/04/2025"),
