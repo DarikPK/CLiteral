@@ -124,7 +124,11 @@ class ExtractionFragment : Fragment() {
 
     private fun observeViewModel() {
         sharedViewModel.isWebViewVisible.observe(viewLifecycleOwner) { isVisible ->
-            binding.webView.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
+            // Asegurarse de que la vista siempre esté "visible" para el sistema de vistas
+            binding.webView.visibility = View.VISIBLE
+            // Cambiar la opacidad (alpha) para ocultarla o mostrarla visualmente
+            binding.webView.alpha = if (isVisible) 1.0f else 0.01f
+
             val iconRes = if (isVisible) R.drawable.ic_visibility_on else R.drawable.ic_visibility_off
             binding.fabToggleVisibility.setImageResource(iconRes)
         }
