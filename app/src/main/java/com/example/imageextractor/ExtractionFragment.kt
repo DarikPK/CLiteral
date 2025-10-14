@@ -872,12 +872,19 @@ class ExtractionFragment : Fragment() {
     }
 
 private fun injectCaptchaOverlayScript() {
+    // Solo inyecta el script si el switch está activado
+    if (sharedViewModel.isManualStartButtonVisible.value != true) {
+        // Si está desactivado, nos aseguramos de que cualquier instancia anterior del botón se elimine
+        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
+        binding.webView.evaluateJavascript(removeScript, null)
+        return
+    }
+
     val jsScript = """
         (async function() {
             function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
             const OVERLAY_ID = 'cf-test-overlay';
-            // Eliminar instancia anterior si existiera, para asegurar un estado limpio
             document.getElementById(OVERLAY_ID)?.remove();
 
             console.log("⏳ Buscando captcha Cloudflare para botón Iniciar...");
@@ -899,7 +906,7 @@ private fun injectCaptchaOverlayScript() {
             let rect;
             for (let i = 0; i < 20; i++) {
                 rect = captchaArea.getBoundingClientRect();
-                if (rect.width > 50 && rect.height > 20) break; // Asegurar un tamaño mínimo
+                if (rect.width > 50 && rect.height > 20) break;
                 await sleep(300);
             }
             if (!rect || rect.width <= 50 || rect.height <= 20) {
@@ -917,7 +924,7 @@ private fun injectCaptchaOverlayScript() {
                 top: rect.top + 'px',
                 width: rect.width + 'px',
                 height: rect.height + 'px',
-                backgroundColor: '#2196F3', // Azul estándar de Material Design
+                backgroundColor: '#6200EE', // Color primario de Material Design (similar al botón Continuar)
                 color: 'white',
                 borderRadius: '8px',
                 display: 'flex',
@@ -929,7 +936,7 @@ private fun injectCaptchaOverlayScript() {
                 zIndex: '2147483639',
                 pointerEvents: 'none',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.05)',
-                border: '1px solid #1976D2' // Borde ligeramente más oscuro para profundidad
+                border: '1px solid #3700B3'
             });
 
             document.body.appendChild(button);

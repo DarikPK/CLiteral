@@ -42,6 +42,14 @@ class SharedViewModel : ViewModel() {
         _isWebViewVisible.value = !(_isWebViewVisible.value ?: true)
     }
 
+    // --- Estado de Visibilidad del Botón de Inicio Manual ---
+    private val _isManualStartButtonVisible = MutableLiveData(true)
+    val isManualStartButtonVisible: LiveData<Boolean> = _isManualStartButtonVisible
+
+    fun toggleManualStartButtonVisibility() {
+        _isManualStartButtonVisible.value = !(_isManualStartButtonVisible.value ?: true)
+    }
+
     // --- Base de Datos para Login Aleatorio ---
     private val randomLoginDatabase = listOf(
         LoginData("46736604", "7", "16/04/2025"),

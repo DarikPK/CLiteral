@@ -37,6 +37,23 @@ class ExtractionConfigFragment : Fragment() {
         setupLoginModeSelector()
         setupContinueButton()
         setupVisibilitySwitch()
+        setupManualStartButtonSwitch()
+    }
+
+    private fun setupManualStartButtonSwitch() {
+        // Sincroniza el switch con el estado actual del ViewModel
+        sharedViewModel.isManualStartButtonVisible.observe(viewLifecycleOwner) { isVisible ->
+            if (binding.manualStartButtonSwitch.isChecked != isVisible) {
+                binding.manualStartButtonSwitch.isChecked = isVisible
+            }
+        }
+
+        // Notifica al ViewModel cuando el usuario cambia el switch
+        binding.manualStartButtonSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (sharedViewModel.isManualStartButtonVisible.value != isChecked) {
+                sharedViewModel.toggleManualStartButtonVisibility()
+            }
+        }
     }
 
     private fun setupVisibilitySwitch() {
