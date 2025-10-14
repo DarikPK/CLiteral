@@ -122,7 +122,19 @@ class ExtractionFragment : Fragment() {
                         })();
                     """.trimIndent()
                     binding.webView.evaluateJavascript(script, null)
+
+                    // Inyecta el watcher para el error de RENIEC justo después de intentar validar
+                    injectReniecErrorWatcher()
                 }
+            }
+        }
+
+        @JavascriptInterface
+        fun onReniecErrorHandled() {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                Log.d("ReniecWatcher", "Error de RENIEC manejado, reiniciando watcher de captcha.")
+                injectCaptchaHybridWatcher()
             }
         }
     }
@@ -945,6 +957,88 @@ private fun injectCaptchaOverlayScript() {
     """.trimIndent()
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(jsScript, null)
+}
+
+private fun injectReniecErrorWatcher() {
+    val script = """
+        (function() {
+            // Evita inyectar el watcher si ya hay uno activo.
+            if (window.reniecErrorWatcherActive) {
+                console.log("ReniecWatcher: Ya hay un watcher activo.");
+                return;
+            }
+            window.reniecErrorWatcherActive = true;
+            console.log("ReniecWatcher: Activado. Esperando modal de error.");
+
+            const cleanup = () => {
+                if (window.reniecErrorWatcherActive) {
+                    observer.disconnect();
+                    window.reniecErrorWatcherActive = false;
+                    console.log("ReniecWatcher: Desactivado.");
+                }
+            };
+
+            const observer = new MutationObserver((mutations, obs) => {
+                if (!window.location.href.includes('/inicio')) {
+                    cleanup();
+                    return;
+                }
+
+                for (let mutation of mutations) {
+                    for (let node of mutation.addedNodes) {
+                        if (node.nodeType === 1 && node.matches('.cdk-overlay-container .ant-modal-content')) {
+                            const modalText = node.innerText || "";
+                            if (modalText.includes("no coincide con su dni") || modalText.includes("dígito validador no coincide")) {
+                                console.log("ReniecWatcher: Modal de error detectado.");
+                                cleanup(); // Desactiva el observer para no actuar múltiples veces.
+
+                                (async () => {
+                                    await new Promise(r => setTimeout(r, 700)); // Espera para renderizado.
+
+                                    const acceptButton = Array.from(node.querySelectorAll('button')).find(b => b.innerText.toLowerCase().trim() === 'aceptar');
+                                    if (acceptButton) {
+                                        console.log("ReniecWatcher: Botón 'Aceptar' encontrado. Haciendo clic...");
+                                        acceptButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                                        await new Promise(r => setTimeout(r, 50));
+                                        acceptButton.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                                        await new Promise(r => setTimeout(r, 50));
+                                        acceptButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+                                        // Verificar que el modal se cerró
+                                        let modalClosed = false;
+                                        for(let i=0; i<10; i++) {
+                                            if (!document.body.contains(node)) {
+                                                modalClosed = true;
+                                                break;
+                                            }
+                                            await new Promise(r => setTimeout(r, 200));
+                                        }
+
+                                        if (modalClosed) {
+                                            console.log("ReniecWatcher: Modal cerrado correctamente.");
+                                            AndroidBridge.showToast("El dígito validador no coincide con el DNI.");
+                                            AndroidBridge.onReniecErrorHandled();
+                                        } else {
+                                            console.warn("ReniecWatcher: El modal no se cerró después del clic.");
+                                        }
+                                    } else {
+                                        console.warn("ReniecWatcher: No se encontró el botón 'Aceptar'.");
+                                    }
+                                })();
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // Timeout de seguridad para autodesactivar el watcher después de 15 segundos si no pasa nada.
+            setTimeout(cleanup, 15000);
+        })();
+    """.trimIndent()
+    binding.webView.evaluateJavascript(script, null)
 }
 
 private fun injectScrollLockScript() {
