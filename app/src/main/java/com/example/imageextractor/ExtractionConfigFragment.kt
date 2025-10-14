@@ -36,6 +36,24 @@ class ExtractionConfigFragment : Fragment() {
         setupDropdowns()
         setupLoginModeSelector()
         setupContinueButton()
+        setupVisibilitySwitch()
+    }
+
+    private fun setupVisibilitySwitch() {
+        // Sincroniza el switch con el estado actual del ViewModel
+        sharedViewModel.isWebViewVisible.observe(viewLifecycleOwner) { isVisible ->
+            if (binding.webviewVisibilitySwitch.isChecked != isVisible) {
+                binding.webviewVisibilitySwitch.isChecked = isVisible
+            }
+        }
+
+        // Notifica al ViewModel cuando el usuario cambia el switch
+        binding.webviewVisibilitySwitch.setOnCheckedChangeListener { _, isChecked ->
+            // Solo actualiza si el estado realmente cambió para evitar bucles
+            if (sharedViewModel.isWebViewVisible.value != isChecked) {
+                sharedViewModel.toggleWebViewVisibility()
+            }
+        }
     }
 
     private fun setupAutofillHighlight() {

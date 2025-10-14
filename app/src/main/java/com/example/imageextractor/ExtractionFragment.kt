@@ -142,7 +142,6 @@ class ExtractionFragment : Fragment() {
         setupWebView()
         setupButtons()
         observeViewModel()
-        binding.fabToggleVisibility.bringToFront()
     }
 
     private fun observeViewModel() {
@@ -151,9 +150,6 @@ class ExtractionFragment : Fragment() {
             binding.webView.visibility = View.VISIBLE
             // Cambiar la opacidad (alpha) para ocultarla o mostrarla visualmente
             binding.webView.alpha = if (isVisible) 1.0f else 0.01f
-
-            val iconRes = if (isVisible) R.drawable.ic_visibility_on else R.drawable.ic_visibility_off
-            binding.fabToggleVisibility.setImageResource(iconRes)
         }
     }
 
@@ -373,13 +369,6 @@ class ExtractionFragment : Fragment() {
         binding.fabPrevious.setOnClickListener { navigateTo("previous") }
         binding.fabNext.setOnClickListener { navigateTo("next") }
         binding.fabAutoCapture.setOnClickListener { startAutoCapture() }
-
-        binding.fabToggleVisibility.setOnClickListener {
-            sharedViewModel.toggleWebViewVisibility()
-            val isVisible = sharedViewModel.isWebViewVisible.value ?: false
-            val message = if (!isVisible) "🔒 Modo oculto activado" else "👁️ Modo visible activado"
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun startAutoCapture() {

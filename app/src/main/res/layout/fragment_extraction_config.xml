@@ -131,6 +131,14 @@
             android:text="Iniciar con 'P'"
             android:layout_marginTop="8dp"/>
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/webview_visibility_switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mostrar WebView (Depuración)"
+            android:checked="true"
+            android:layout_marginTop="16dp"/>
+
         <Button
             android:id="@+id/continue_button"
             android:layout_width="match_parent"
