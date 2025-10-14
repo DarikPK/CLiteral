@@ -62,7 +62,6 @@ class ExtractionFragment : Fragment() {
                         """.trimIndent()
                         binding.webView.evaluateJavascript(cleanupScript, null)
 
-                        injectCaptchaOverlayScript()
                         injectCaptchaHybridWatcher()
                     }
                 }
@@ -169,7 +168,6 @@ class ExtractionFragment : Fragment() {
                 binding.webView.evaluateJavascript(cleanupScript, null)
 
                 // 🔁 Reinicia los scripts del captcha
-                injectCaptchaOverlayScript()
                 injectCaptchaHybridWatcher()
             }
         }
@@ -227,7 +225,6 @@ class ExtractionFragment : Fragment() {
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
-                    injectCaptchaOverlayScript()
                     injectCaptchaHybridWatcher() // aquí
                 }
             }
@@ -374,6 +371,9 @@ class ExtractionFragment : Fragment() {
 
         val onLoginPage = url == loginUrl
 
+        // Controla la visibilidad del nuevo botón nativo "Iniciar".
+        binding.nativeStartButton.visibility = if (url?.contains("inicio") == true) View.VISIBLE else View.GONE
+
         // Si no estamos en la página de login, nos aseguramos de que el overlay se elimine.
         if (!onLoginPage) {
             val jsRemoveOverlay = """
@@ -412,6 +412,11 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun setupButtons() {
+        binding.nativeStartButton.setOnClickListener {
+            // Al hacer clic, simplemente mostramos la WebView para que el usuario pueda interactuar.
+            sharedViewModel.setIsWebViewVisible(true)
+        }
+
         binding.autofillButton.setOnClickListener {
             autofillCurrentPage()
         }
@@ -925,83 +930,9 @@ class ExtractionFragment : Fragment() {
     }
 
 private fun injectCaptchaOverlayScript() {
-    // Si la URL actual no es la de inicio, elimina el botón si existe y sale del método.
-    if (binding.webView.url?.contains("inicio") == false) {
-        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
-        binding.webView.evaluateJavascript(removeScript, null)
-        return
-    }
-
-    val jsScript = """
-        (async function() {
-            function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-            const OVERLAY_ID = 'cf-test-overlay';
-            document.getElementById(OVERLAY_ID)?.remove();
-
-            console.log("⏳ Buscando captcha Cloudflare para botón Iniciar...");
-
-            let captchaArea = null;
-            for (let i = 0; i < 40; i++) {
-                captchaArea = document.querySelector(
-                    'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"], cloudcaptcha, ngx-turnstile, div[title*="Cloudflare"], div[style*="300px"][style*="65px"]'
-                );
-                if (captchaArea) break;
-                await sleep(250);
-            }
-
-            if (!captchaArea) {
-                console.warn("⚠️ No se encontró captcha para dibujar el botón.");
-                return;
-            }
-
-            let rect;
-            for (let i = 0; i < 20; i++) {
-                rect = captchaArea.getBoundingClientRect();
-                if (rect.width > 50 && rect.height > 20) break;
-                await sleep(300);
-            }
-            if (!rect || rect.width <= 50 || rect.height <= 20) {
-                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para el botón.");
-                return;
-            }
-
-            const button = document.createElement('div');
-            button.id = OVERLAY_ID;
-            button.textContent = 'Iniciar';
-
-            const newWidth = rect.width * 0.8;
-            const newHeight = rect.height * 0.8;
-            const newLeft = rect.left + (rect.width * 0.1);
-            const newTop = rect.top + (rect.height * 0.1);
-
-            Object.assign(button.style, {
-                position: 'fixed',
-                left: newLeft + 'px',
-                top: newTop + 'px',
-                width: newWidth + 'px',
-                height: newHeight + 'px',
-                backgroundColor: '#6200EE', // Color primario de Material Design (similar al botón Continuar)
-                color: 'white',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                fontFamily: 'sans-serif',
-                zIndex: '2147483639',
-                pointerEvents: 'none',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.05)',
-                border: '1px solid #3700B3'
-            });
-
-            document.body.appendChild(button);
-            console.log("✅ Botón 'Iniciar' dibujado sobre el captcha.");
-        })();
-    """.trimIndent()
-    if (isViewDestroyed) return
-    binding.webView.evaluateJavascript(jsScript, null)
+    // Este método se deja vacío intencionadamente.
+    // El botón "Iniciar" ahora es un componente nativo de Android y
+    // este script ya no es necesario.
 }
 
 private fun injectReniecErrorWatcher() {
