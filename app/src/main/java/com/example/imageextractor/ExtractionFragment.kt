@@ -962,77 +962,65 @@ private fun injectCaptchaOverlayScript() {
 private fun injectReniecErrorWatcher() {
     val script = """
         (function() {
-            if (window.reniecErrorWatcherActive) {
-                console.log("ReniecWatcher: Ya activo.");
-                return;
-            }
+            if (window.reniecErrorWatcherActive) return;
             window.reniecErrorWatcherActive = true;
-            console.log("🧩 ReniecWatcher activado (modo SweetAlert2).");
+            console.log("🧩 ReniecWatcher activado (modo SweetAlert2 mejorado)");
 
             const cleanup = () => {
-                if (window.reniecErrorWatcherActive) {
-                    observer.disconnect();
-                    window.reniecErrorWatcherActive = false;
-                    console.log("ReniecWatcher: Desactivado.");
-                }
+                observer.disconnect();
+                window.reniecErrorWatcherActive = false;
+                console.log("ReniecWatcher: Desactivado.");
             };
 
-            const observer = new MutationObserver((mutations) => {
-                for (const mutation of mutations) {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1 && node.matches('.swal2-popup.swal2-modal')) {
-                            const title = node.querySelector('#swal2-title');
-                            const text = title ? title.innerText.toLowerCase() : '';
-                            if (text.includes('no coincide') || text.includes('dígito validador')) {
-                                console.log("ReniecWatcher: Modal SweetAlert2 detectado.");
+            const checkNode = (node) => {
+                try {
+                    if (!node || node.nodeType !== 1) return;
+                    const modal = node.matches('.swal2-popup.swal2-modal') ? node : node.querySelector('.swal2-popup.swal2-modal');
+                    if (!modal) return;
 
-                                (async () => {
-                                    await new Promise(r => setTimeout(r, 700));
-                                    const btn = node.querySelector('button.swal2-confirm.swal2-styled, button.swal2-confirm.swal2-styled.swal2-default-outline');
-                                    if (btn) {
-                                        console.log("ReniecWatcher: Botón 'Aceptar' encontrado, haciendo clic...");
-                                        btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                                        await new Promise(r => setTimeout(r, 50));
-                                        btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-                                        await new Promise(r => setTimeout(r, 50));
-                                        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                    const titleEl = modal.querySelector('#swal2-title');
+                    const text = (titleEl?.innerText || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                    if (text.includes('no coincide') || text.includes('digito validador')) {
+                        console.log("ReniecWatcher: Modal detectado con texto de error.");
 
-                                        // Esperar a que el modal desaparezca
-                                        let closed = false;
-                                        for (let i = 0; i < 15; i++) {
-                                            if (!document.body.contains(node)) {
-                                                closed = true;
-                                                break;
-                                            }
-                                            await new Promise(r => setTimeout(r, 200));
-                                        }
+                        (async () => {
+                            await new Promise(r => setTimeout(r, 700));
+                            const btn = modal.querySelector('button.swal2-confirm.swal2-styled');
+                            if (!btn) { console.warn("ReniecWatcher: No se encontró botón Aceptar."); cleanup(); return; }
 
-                                        if (closed) {
-                                            console.log("ReniecWatcher: Modal cerrado correctamente.");
-                                            AndroidBridge.showToast("El dígito validador no coincide con el DNI.");
-                                            AndroidBridge.onReniecErrorHandled();
-                                        } else {
-                                            console.warn("ReniecWatcher: El modal no se cerró después del clic.");
-                                        }
-                                    } else {
-                                        console.warn("ReniecWatcher: No se encontró el botón 'Aceptar'.");
-                                    }
+                            ['mousedown','mouseup','click'].forEach((evt,i)=>
+                                setTimeout(()=>btn.dispatchEvent(new MouseEvent(evt,{bubbles:true})),i*50)
+                            );
+
+                            for (let i=0;i<20;i++){
+                                if(!document.body.contains(modal)){
+                                    console.log("✅ Modal cerrado correctamente.");
+                                    AndroidBridge.showToast("El dígito validador no coincide con el DNI.");
+                                    AndroidBridge.onReniecErrorHandled();
                                     cleanup();
-                                })();
-                                return;
+                                    return;
+                                }
+                                await new Promise(r=>setTimeout(r,200));
                             }
-                        }
+                            console.warn("⚠️ Modal no se cerró tras clic.");
+                            cleanup();
+                        })();
                     }
-                }
-            });
+                } catch(e){ console.error("ReniecWatcher error interno:",e); }
+            };
 
-            observer.observe(document.body, { childList: true, subtree: true });
+            const observer = new MutationObserver((mutations)=>mutations.forEach(m=>{
+                m.addedNodes.forEach(checkNode);
+                checkNode(m.target); // por si el modal ya existía
+            }));
+            observer.observe(document.body,{childList:true,subtree:true});
 
-            // Timeout de seguridad: 15 segundos
-            setTimeout(cleanup, 15000);
+            // Escaneo inicial por si ya está visible
+            document.querySelectorAll('.swal2-popup.swal2-modal').forEach(checkNode);
+
+            setTimeout(cleanup,15000);
         })();
     """.trimIndent()
-
     binding.webView.evaluateJavascript(script, null)
 }
 
