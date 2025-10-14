@@ -40,7 +40,12 @@ class ExtractionFragment : Fragment() {
         fun notifyUrlChanged() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
-                binding.webView?.url?.let {
+
+                // Control de visibilidad del botón nativo "Iniciar"
+                val currentUrl = binding.webView?.url
+                binding.nativeStartButton.visibility = if (currentUrl?.contains("inicio") == true) View.VISIBLE else View.GONE
+
+                currentUrl?.let {
                     updateButtonStates(it)
                     injectScrollLockScript()
 
@@ -371,9 +376,6 @@ class ExtractionFragment : Fragment() {
 
         val onLoginPage = url == loginUrl
 
-        // Controla la visibilidad del nuevo botón nativo "Iniciar".
-        binding.nativeStartButton.visibility = if (url?.contains("inicio") == true) View.VISIBLE else View.GONE
-
         // Si no estamos en la página de login, nos aseguramos de que el overlay se elimine.
         if (!onLoginPage) {
             val jsRemoveOverlay = """
@@ -412,11 +414,6 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.nativeStartButton.setOnClickListener {
-            // Al hacer clic, simplemente mostramos la WebView para que el usuario pueda interactuar.
-            sharedViewModel.toggleWebViewVisibility()
-        }
-
         binding.autofillButton.setOnClickListener {
             autofillCurrentPage()
         }
