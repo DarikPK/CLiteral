@@ -44,6 +44,12 @@ class ExtractionFragment : Fragment() {
                     updateButtonStates(it)
                     injectScrollLockScript()
 
+                    // Si la URL no es la de inicio, elimina el botón por si acaso existe.
+                    if (!it.contains("inicio")) {
+                        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
+                        binding.webView.evaluateJavascript(removeScript, null)
+                    }
+
                     if (it == loginUrl) {
                         // ♻️ Reinicia watcher y overlay del captcha al volver al login
                         val cleanupScript = """
