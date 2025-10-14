@@ -930,45 +930,117 @@ private fun injectScrollLockScript() {
 private fun injectCaptchaSolvedWatcher() {
     val script = """
         (function() {
-            const SUCCESS_IDS = ['success', 'success-text'];
-
-            function isVisible(el) {
-                if (!el) return false;
-                const style = window.getComputedStyle(el);
-                return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+            // Evitar múltiples registros si se inyecta más de una vez
+            if (window.__captchaSolvedWatcherInstalled) {
+                console.log('[CaptchaWatcher] Ya instalado');
+                return;
             }
+            window.__captchaSolvedWatcherInstalled = true;
 
-            function checkNow() {
-                for (const id of SUCCESS_IDS) {
-                    const el = document.getElementById(id);
-                    if (el && isVisible(el) && (el.textContent || '').includes('Operación exitosa')) {
-                        console.log('✅ Captcha Turnstile resuelto detectado');
-                        try { AndroidBridge.onCaptchaSolved(); } catch(e) { console.error(e); }
-                        return true;
-                    }
+            // Guard que evita notificar más de una vez
+            function notifySolvedOnce() {
+                if (window.__captchaSolvedNotified) return false;
+                window.__captchaSolvedNotified = true;
+                try {
+                    console.log('✅ [CaptchaWatcher] Captcha resuelto: notificando a Android...');
+                    AndroidBridge && AndroidBridge.onCaptchaSolved();
+                } catch (e) {
+                    console.error('[CaptchaWatcher] Error notificando a Android:', e);
                 }
-                return false;
+                return true;
             }
 
-            if (checkNow()) return;
+            // 1) Heurística principal: desaparición/ocultamiento del iframe de Turnstile
+            const IFRAME_SEL = 'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"]';
 
-            const observer = new MutationObserver((mutations) => {
-                for (const m of mutations) {
-                    if (checkNow()) {
-                        observer.disconnect();
-                        return;
-                    }
+            function iframeCurrentlyVisible() {
+                const iframe = document.querySelector(IFRAME_SEL);
+                if (!iframe) return false; // No está => probablemente resuelto o no renderizado aún
+                const rect = iframe.getBoundingClientRect();
+                const style = window.getComputedStyle(iframe);
+                const visibleByBox = rect.width > 0 && rect.height > 0 && iframe.offsetParent !== null;
+                const visibleByStyle = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                return visibleByBox && visibleByStyle;
+            }
+
+            // 2) Heurística de respaldo: habilitación de botones del flujo (si aplica)
+            //    No referenciamos IDs frágiles; buscamos botones típicos de acción.
+            const ACTION_BTNS_SEL = 'button[type="submit"], button.btn-buscar-partida, button.btn-search';
+
+            function anyActionButtonEnabled() {
+                const btns = Array.from(document.querySelectorAll(ACTION_BTNS_SEL));
+                return btns.some(b => !b.disabled);
+            }
+
+            // Comprobación inmediata: si ya está resuelto al cargar el watcher
+            if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
+                if (notifySolvedOnce()) return;
+            }
+
+            // Observadores: DOM y atributos para detectar cambios de visibilidad/habilitación
+            const domObserver = new MutationObserver(() => {
+                if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
+                    domObserver.disconnect();
+                    attrObserver.disconnect();
+                    notifySolvedOnce();
                 }
             });
 
-            observer.observe(document.body, {
+            // Observa el DOM global (aparece/desaparece iframe; cambios de clases/estilos)
+            domObserver.observe(document.documentElement, {
                 childList: true,
                 subtree: true,
                 attributes: true,
                 attributeFilter: ['style', 'class']
             });
 
-            console.log('👁️ Observando cambios de visibilidad en #success / #success-text...');
+            // Observa cambios de 'disabled' en botones de acción
+            const attrObserver = new MutationObserver((mutList) => {
+                for (const m of mutList) {
+                    if (m.type === 'attributes' && m.attributeName === 'disabled') {
+                        if (anyActionButtonEnabled()) {
+                            domObserver.disconnect();
+                            attrObserver.disconnect();
+                            notifySolvedOnce();
+                            break;
+                        }
+                    }
+                }
+            });
+
+            // Inicializa listeners de atributo en los botones ya presentes
+            Array.from(document.querySelectorAll(ACTION_BTNS_SEL)).forEach(btn => {
+                attrObserver.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+            });
+
+            // Reintentos suaves: si los botones aparecen más tarde
+            let retries = 30; // ~15s si usamos 500ms
+            const rehookTimer = setInterval(() => {
+                if (window.__captchaSolvedNotified) {
+                    clearInterval(rehookTimer);
+                    return;
+                }
+                const btns = Array.from(document.querySelectorAll(ACTION_BTNS_SEL));
+                btns.forEach(btn => {
+                    // Evitar observar dos veces el mismo nodo
+                    if (!btn.__captchaAttrObserved) {
+                        btn.__captchaAttrObserved = true;
+                        attrObserver.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+                    }
+                });
+                if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
+                    clearInterval(rehookTimer);
+                    domObserver.disconnect();
+                    attrObserver.disconnect();
+                    notifySolvedOnce();
+                } else if (--retries <= 0) {
+                    clearInterval(rehookTimer);
+                    // No notificamos nada; dejamos que el usuario intervenga si el captcha requiere acción humana
+                    console.log('[CaptchaWatcher] Timeout de espera sin resolver captcha.');
+                }
+            }, 500);
+
+            console.log('👁️ [CaptchaWatcher] Observando estado del captcha Turnstile (iframe + habilitación de acciones)...');
         })();
     """.trimIndent()
     if (isViewDestroyed) return
