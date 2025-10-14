@@ -964,12 +964,17 @@ private fun injectCaptchaOverlayScript() {
             button.id = OVERLAY_ID;
             button.textContent = 'Iniciar';
 
+            const newWidth = rect.width * 0.8;
+            const newHeight = rect.height * 0.8;
+            const newLeft = rect.left + (rect.width * 0.1);
+            const newTop = rect.top + (rect.height * 0.1);
+
             Object.assign(button.style, {
                 position: 'fixed',
-                left: rect.left + 'px',
-                top: rect.top + 'px',
-                width: rect.width + 'px',
-                height: rect.height + 'px',
+                left: newLeft + 'px',
+                top: newTop + 'px',
+                width: newWidth + 'px',
+                height: newHeight + 'px',
                 backgroundColor: '#6200EE', // Color primario de Material Design (similar al botón Continuar)
                 color: 'white',
                 borderRadius: '8px',
