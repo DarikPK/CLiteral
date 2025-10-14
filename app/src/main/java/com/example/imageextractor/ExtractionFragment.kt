@@ -82,6 +82,15 @@ class ExtractionFragment : Fragment() {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
+
+        @JavascriptInterface
+        fun onCaptchaSolved() {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                // Llama a la misma lógica del botón de autorrelleno
+                binding.autofillButton.performClick()
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -141,6 +150,7 @@ class ExtractionFragment : Fragment() {
                 if (url == loginUrl) {
                     injectModalHandlerScript()
                     injectCaptchaOverlayScript()
+                    injectCaptchaSolvedWatcher()
                 }
             }
         }
@@ -911,6 +921,44 @@ private fun injectScrollLockScript() {
                 document.body.style.overflow = '';
                 console.log("🌀 Scroll habilitado fuera de la página de inicio");
             }
+        })();
+    """.trimIndent()
+    if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(script, null)
+}
+
+private fun injectCaptchaSolvedWatcher() {
+    val script = """
+        (function() {
+            const SUCCESS_ID = 'success-text';
+            const TARGET_TEXT = '¡Operación exitosa!';
+
+            function checkCaptchaSolved() {
+                const el = document.getElementById(SUCCESS_ID);
+                return el && el.textContent.trim() === TARGET_TEXT && el.offsetParent !== null;
+            }
+
+            function notifySolved() {
+                console.log("✅ Captcha Turnstile resuelto, ejecutando autofill automático...");
+                try { AndroidBridge && AndroidBridge.onCaptchaSolved(); } catch(e) {
+                    console.error("Error notificando a Android:", e);
+                }
+            }
+
+            if (checkCaptchaSolved()) {
+                notifySolved();
+                return;
+            }
+
+            const observer = new MutationObserver(() => {
+                if (checkCaptchaSolved()) {
+                    observer.disconnect();
+                    notifySolved();
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+            console.log("👁️ Observando estado del captcha Turnstile...");
         })();
     """.trimIndent()
     if (isViewDestroyed) return
