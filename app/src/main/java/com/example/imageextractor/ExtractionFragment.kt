@@ -89,6 +89,27 @@ class ExtractionFragment : Fragment() {
                 if (isViewDestroyed) return@runOnUiThread
                 // Llama a la misma lógica del botón de autorrelleno
                 binding.autofillButton.performClick()
+
+                if (binding.webView.url == loginUrl) {
+                    val script = """
+                        (async function() {
+                            const selector = 'button.ant-btn.btn-sunarp-green.login-form-button';
+                            const maxAttempts = 15;
+                            for (let i = 0; i < maxAttempts; i++) {
+                                const btn = document.querySelector(selector);
+                                if (btn && !btn.disabled && btn.offsetParent !== null) {
+                                    console.log('✅ Botón "Validar" encontrado y listo. Haciendo clic...');
+                                    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                                    return;
+                                }
+                                await new Promise(r => setTimeout(r, 300));
+                            }
+                            console.warn('⚠️ No se encontró el botón Validar después de varios intentos.');
+                            AndroidBridge.showToast('⚠️ No se encontró el botón Validar.');
+                        })();
+                    """.trimIndent()
+                    binding.webView.evaluateJavascript(script, null)
+                }
             }
         }
     }
