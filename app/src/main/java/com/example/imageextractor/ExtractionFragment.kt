@@ -930,35 +930,45 @@ private fun injectScrollLockScript() {
 private fun injectCaptchaSolvedWatcher() {
     val script = """
         (function() {
-            const SUCCESS_ID = 'success-text';
-            const TARGET_TEXT = '¡Operación exitosa!';
+            const SUCCESS_IDS = ['success', 'success-text'];
 
-            function checkCaptchaSolved() {
-                const el = document.getElementById(SUCCESS_ID);
-                return el && el.textContent.trim() === TARGET_TEXT && el.offsetParent !== null;
+            function isVisible(el) {
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
             }
 
-            function notifySolved() {
-                console.log("✅ Captcha Turnstile resuelto, ejecutando autofill automático...");
-                try { AndroidBridge && AndroidBridge.onCaptchaSolved(); } catch(e) {
-                    console.error("Error notificando a Android:", e);
+            function checkNow() {
+                for (const id of SUCCESS_IDS) {
+                    const el = document.getElementById(id);
+                    if (el && isVisible(el) && (el.textContent || '').includes('Operación exitosa')) {
+                        console.log('✅ Captcha Turnstile resuelto detectado');
+                        try { AndroidBridge.onCaptchaSolved(); } catch(e) { console.error(e); }
+                        return true;
+                    }
                 }
+                return false;
             }
 
-            if (checkCaptchaSolved()) {
-                notifySolved();
-                return;
-            }
+            if (checkNow()) return;
 
-            const observer = new MutationObserver(() => {
-                if (checkCaptchaSolved()) {
-                    observer.disconnect();
-                    notifySolved();
+            const observer = new MutationObserver((mutations) => {
+                for (const m of mutations) {
+                    if (checkNow()) {
+                        observer.disconnect();
+                        return;
+                    }
                 }
             });
 
-            observer.observe(document.body, { childList: true, subtree: true });
-            console.log("👁️ Observando estado del captcha Turnstile...");
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+
+            console.log('👁️ Observando cambios de visibilidad en #success / #success-text...');
         })();
     """.trimIndent()
     if (isViewDestroyed) return
