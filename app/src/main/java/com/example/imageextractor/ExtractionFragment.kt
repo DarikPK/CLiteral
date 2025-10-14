@@ -854,11 +854,15 @@ class ExtractionFragment : Fragment() {
         val currentUrl = binding.webView.url
         when {
             currentUrl == loginUrl -> {
-                val newLoginData = sharedViewModel.getRandomLoginData()
-                sharedViewModel.config.value?.let {
-                    sharedViewModel.setExtractionConfig(it.copy(loginData = newLoginData))
-                }
-                autofillLoginForm(newLoginData)
+                val currentConfig = sharedViewModel.config.value
+                val manualLoginData = currentConfig?.loginData
+
+                // ✅ Si existen datos cargados manualmente, los usa.
+                // Solo si están vacíos o nulos, genera nuevos aleatorios.
+                val loginDataToUse = manualLoginData ?: sharedViewModel.getRandomLoginData()
+
+                sharedViewModel.setExtractionConfig(currentConfig?.copy(loginData = loginDataToUse) ?: return)
+                autofillLoginForm(loginDataToUse)
             }
             currentUrl?.startsWith(searchUrl) == true && !currentUrl.contains(resultsUrlSubstring) -> {
                 sharedViewModel.config.value?.let {
