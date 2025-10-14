@@ -414,7 +414,7 @@ class ExtractionFragment : Fragment() {
     private fun setupButtons() {
         binding.nativeStartButton.setOnClickListener {
             // Al hacer clic, simplemente mostramos la WebView para que el usuario pueda interactuar.
-            sharedViewModel.setIsWebViewVisible(true)
+            sharedViewModel.toggleWebViewVisibility()
         }
 
         binding.autofillButton.setOnClickListener {
