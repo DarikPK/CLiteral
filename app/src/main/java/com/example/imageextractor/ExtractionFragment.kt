@@ -919,6 +919,13 @@ class ExtractionFragment : Fragment() {
     }
 
 private fun injectCaptchaOverlayScript() {
+    // Si la URL actual no es la de inicio, elimina el botón si existe y sale del método.
+    if (binding.webView.url?.contains("inicio") == false) {
+        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
+        binding.webView.evaluateJavascript(removeScript, null)
+        return
+    }
+
     // Solo inyecta el script si el switch está activado
     if (sharedViewModel.isManualStartButtonVisible.value != true) {
         // Si está desactivado, nos aseguramos de que cualquier instancia anterior del botón se elimine
