@@ -140,6 +140,7 @@ class ExtractionFragment : Fragment() {
                 if (url == loginUrl) {
                     injectModalHandlerScript()
                     injectCaptchaOverlayScript()
+                    injectScrollLockScript()
                 }
             }
         }
@@ -885,6 +886,12 @@ private fun injectCaptchaOverlayScript() {
     """.trimIndent()
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(jsScript, null)
+}
+
+private fun injectScrollLockScript() {
+    val script = "document.body.style.overflow = 'hidden';"
+    if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(script, null)
 }
 
     private fun autofillSearchForm(config: ExtractionConfig) {
