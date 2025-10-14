@@ -42,6 +42,7 @@ class ExtractionFragment : Fragment() {
                 if (isViewDestroyed) return@runOnUiThread
                 binding.webView?.url?.let {
                     updateButtonStates(it)
+                    injectScrollLockScript() // 🔁 Actualiza el estado del scroll en cada cambio de URL
                 }
             }
         }
@@ -140,7 +141,6 @@ class ExtractionFragment : Fragment() {
                 if (url == loginUrl) {
                     injectModalHandlerScript()
                     injectCaptchaOverlayScript()
-                    injectScrollLockScript()
                 }
             }
         }
@@ -901,7 +901,18 @@ private fun injectCaptchaOverlayScript() {
 }
 
 private fun injectScrollLockScript() {
-    val script = "document.body.style.overflow = 'hidden';"
+    val script = """
+        (function() {
+            if (typeof document === 'undefined' || !document.body) return;
+            if (location.href.includes('/inicio')) {
+                document.body.style.overflow = 'hidden';
+                console.log("🧭 Scroll bloqueado en página de inicio");
+            } else {
+                document.body.style.overflow = '';
+                console.log("🌀 Scroll habilitado fuera de la página de inicio");
+            }
+        })();
+    """.trimIndent()
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(script, null)
 }
