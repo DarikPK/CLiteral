@@ -45,6 +45,12 @@ class ExtractionFragment : Fragment() {
                 val currentUrl = binding.webView?.url
                 binding.nativeStartButton.visibility = if (currentUrl?.contains("inicio") == true) View.VISIBLE else View.GONE
 
+                // Si no estamos en la página de inicio, reseteamos la posición del botón.
+                if (currentUrl?.contains("inicio") == false) {
+                    binding.nativeStartButton.translationX = 0f
+                    binding.nativeStartButton.translationY = 0f
+                }
+
                 currentUrl?.let {
                     updateButtonStates(it)
                     injectScrollLockScript()
@@ -67,6 +73,7 @@ class ExtractionFragment : Fragment() {
                         """.trimIndent()
                         binding.webView.evaluateJavascript(cleanupScript, null)
 
+                        injectCaptchaPositionerScript()
                         injectCaptchaHybridWatcher()
                     }
                 }
@@ -176,6 +183,48 @@ class ExtractionFragment : Fragment() {
                 injectCaptchaHybridWatcher()
             }
         }
+
+        @JavascriptInterface
+        fun onCaptchaPositionReady(jsonRect: String) {
+            activity?.runOnUiThread {
+                if (isViewDestroyed) return@runOnUiThread
+                try {
+                    val rect = org.json.JSONObject(jsonRect)
+                    val density = resources.displayMetrics.density
+
+                    // Coordenadas y dimensiones del captcha en píxeles de CSS desde la web
+                    val captchaX = rect.getDouble("x").toFloat()
+                    val captchaY = rect.getDouble("y").toFloat()
+                    val captchaWidth = rect.getDouble("width").toFloat()
+                    val captchaHeight = rect.getDouble("height").toFloat()
+
+                    // Convierte las coordenadas del captcha de píxeles CSS a píxeles físicos del dispositivo
+                    val captchaCenterX = (captchaX + captchaWidth / 2) * density
+                    val captchaCenterY = (captchaY + captchaHeight / 2) * density
+
+                    // Obtiene las coordenadas del botón nativo en la pantalla
+                    val button = binding.nativeStartButton
+                    val buttonCoords = IntArray(2)
+                    button.getLocationOnScreen(buttonCoords)
+                    val buttonX = buttonCoords[0]
+                    val buttonY = buttonCoords[1]
+
+                    // Calcula el centro actual del botón nativo
+                    val buttonCenterX = buttonX + button.width / 2
+                    val buttonCenterY = buttonY + button.height / 2
+
+                    // Calcula el desplazamiento necesario para alinear los centros
+                    val translationX = captchaCenterX - buttonCenterX
+                    val translationY = captchaCenterY - buttonCenterY
+
+                    // Aplica la traslación para mover el botón
+                    button.translationX = translationX
+                    button.translationY = translationY
+                } catch (e: Exception) {
+                    Log.e("CaptchaPosition", "Error al procesar las coordenadas del captcha", e)
+                }
+            }
+        }
     }
 
     private var _binding: FragmentExtractionBinding? = null
@@ -230,6 +279,7 @@ class ExtractionFragment : Fragment() {
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
+                    injectCaptchaPositionerScript()
                     injectCaptchaHybridWatcher() // aquí
                 }
             }
@@ -1102,6 +1152,49 @@ private fun injectCaptchaSolvedWatcher() {
     """.trimIndent()
 
     if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(script, null)
+}
+
+private fun injectCaptchaPositionerScript() {
+    val script = """
+        (function() {
+            if (window.captchaPositionerActive) return;
+            window.captchaPositionerActive = true;
+
+            const selector = 'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"]';
+            let attempts = 0;
+            const maxAttempts = 25; // Intentar por unos 10 segundos
+
+            const intervalId = setInterval(() => {
+                const captchaFrame = document.querySelector(selector);
+                if (captchaFrame && captchaFrame.offsetParent !== null) {
+                    const rect = captchaFrame.getBoundingClientRect();
+                    if (rect.width > 50 && rect.height > 20) {
+                        clearInterval(intervalId);
+                        window.captchaPositionerActive = false;
+                        const jsonRect = JSON.stringify({
+                            x: rect.x,
+                            y: rect.y,
+                            width: rect.width,
+                            height: rect.height
+                        });
+                        try {
+                            AndroidBridge.onCaptchaPositionReady(jsonRect);
+                        } catch(e) {
+                            console.error("Error sending captcha position to Android", e);
+                        }
+                    }
+                }
+
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    clearInterval(intervalId);
+                    window.captchaPositionerActive = false;
+                    console.warn("Captcha positioner timed out.");
+                }
+            }, 400);
+        })();
+    """.trimIndent()
     binding.webView.evaluateJavascript(script, null)
 }
 
