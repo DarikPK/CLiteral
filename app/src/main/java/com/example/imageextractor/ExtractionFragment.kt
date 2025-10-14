@@ -150,7 +150,7 @@ class ExtractionFragment : Fragment() {
                 if (url == loginUrl) {
                     injectModalHandlerScript()
                     injectCaptchaOverlayScript()
-                    injectCaptchaSolvedWatcher()
+                    injectCaptchaHybridWatcher() // aquí
                 }
             }
         }
@@ -1014,6 +1014,72 @@ private fun injectCaptchaSolvedWatcher() {
         })();
     """.trimIndent()
 
+    if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(script, null)
+}
+
+private fun injectCaptchaHybridWatcher() {
+    val script = """
+        (function() {
+          if (window.__captchaHybridWatcherInstalled) return;
+          window.__captchaHybridWatcherInstalled = true;
+          console.log("🧩 Iniciando watcher híbrido de Turnstile...");
+
+          function notifySolved() {
+            if (window.__captchaSolvedNotified) return;
+            window.__captchaSolvedNotified = true;
+            console.log("✅ Captcha resuelto detectado.");
+            try { AndroidBridge.onCaptchaSolved(); } catch(e) { console.error(e); }
+          }
+
+          function notifyError(msg) {
+            if (window.__captchaErrorNotified) return;
+            window.__captchaErrorNotified = true;
+            console.warn("⚠️ Captcha error: " + msg);
+            try { AndroidBridge.showToast(msg); } catch(e) { console.error(e); }
+          }
+
+          // 🧠 Método A: Escucha mensajes desde iframe (postMessage)
+          window.addEventListener("message", function(event) {
+            if (!event || !event.data) return;
+            try {
+              if (typeof event.data === "string" && event.data.includes("cf_challenge_success")) {
+                notifySolved();
+              } else if (event.data.event === "cf-challenge-response" && event.data.response === "success") {
+                notifySolved();
+              } else if (event.data.event === "cf-challenge-error") {
+                notifyError("❌ Error en el captcha.");
+              }
+            } catch(e) { console.error("Error al procesar mensaje Turnstile:", e); }
+          }, false);
+
+          // 🧠 Método B: Observa cambios en el input oculto del token
+          function observeTokenInput() {
+            const input = document.querySelector('input[name="cf-turnstile-response"]');
+            if (!input) {
+              console.log("⌛ Esperando input hidden del captcha...");
+              setTimeout(observeTokenInput, 1000);
+              return;
+            }
+            const observer = new MutationObserver(() => {
+              const val = input.value?.trim();
+              if (val && val.length > 10) {
+                observer.disconnect();
+                notifySolved();
+              }
+            });
+            observer.observe(input, { attributes: true, attributeFilter: ["value"] });
+            console.log("👀 Observador del input del captcha activo.");
+          }
+          observeTokenInput();
+
+          // 🕒 Timeout de seguridad (20s)
+          setTimeout(() => {
+            if (!window.__captchaSolvedNotified) notifyError("⏳ Tiempo agotado esperando resolución del captcha.");
+          }, 20000);
+
+        })();
+    """.trimIndent()
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(script, null)
 }
