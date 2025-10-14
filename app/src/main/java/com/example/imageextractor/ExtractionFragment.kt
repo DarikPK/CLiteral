@@ -151,7 +151,7 @@ class ExtractionFragment : Fragment() {
                 if (isViewDestroyed) return@runOnUiThread
                 Log.d("ReniecWatcher", "Error de RENIEC manejado, reiniciando watcher de captcha.")
 
-                // 🧼 Limpia banderas del watcher en la página
+                // 🧼 Limpia banderas globales del watcher para permitir reinyección
                 val cleanupScript = """
                     (function(){
                         delete window.__captchaHybridWatcherInstalled;
@@ -162,7 +162,8 @@ class ExtractionFragment : Fragment() {
                 """.trimIndent()
                 binding.webView.evaluateJavascript(cleanupScript, null)
 
-                // 🔁 Reinicia el watcher
+                // 🔁 Reinicia los scripts del captcha
+                injectCaptchaOverlayScript()
                 injectCaptchaHybridWatcher()
             }
         }
