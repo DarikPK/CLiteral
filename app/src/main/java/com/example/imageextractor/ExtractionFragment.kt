@@ -42,7 +42,23 @@ class ExtractionFragment : Fragment() {
                 if (isViewDestroyed) return@runOnUiThread
                 binding.webView?.url?.let {
                     updateButtonStates(it)
-                    injectScrollLockScript() // 🔁 Actualiza el estado del scroll en cada cambio de URL
+                    injectScrollLockScript()
+
+                    if (it == loginUrl) {
+                        // ♻️ Reinicia watcher y overlay del captcha al volver al login
+                        val cleanupScript = """
+                            (function(){
+                                delete window.__captchaHybridWatcherInstalled;
+                                delete window.__captchaSolvedNotified;
+                                delete window.__captchaErrorNotified;
+                                console.log("♻️ Watcher del captcha reiniciado al volver al login.");
+                            })();
+                        """.trimIndent()
+                        binding.webView.evaluateJavascript(cleanupScript, null)
+
+                        injectCaptchaOverlayScript()
+                        injectCaptchaHybridWatcher()
+                    }
                 }
             }
         }
@@ -134,6 +150,19 @@ class ExtractionFragment : Fragment() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
                 Log.d("ReniecWatcher", "Error de RENIEC manejado, reiniciando watcher de captcha.")
+
+                // 🧼 Limpia banderas del watcher en la página
+                val cleanupScript = """
+                    (function(){
+                        delete window.__captchaHybridWatcherInstalled;
+                        delete window.__captchaSolvedNotified;
+                        delete window.__captchaErrorNotified;
+                        console.log("♻️ Watcher del captcha reseteado tras error RENIEC.");
+                    })();
+                """.trimIndent()
+                binding.webView.evaluateJavascript(cleanupScript, null)
+
+                // 🔁 Reinicia el watcher
                 injectCaptchaHybridWatcher()
             }
         }
