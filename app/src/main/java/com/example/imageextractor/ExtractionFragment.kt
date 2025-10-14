@@ -962,13 +962,12 @@ private fun injectCaptchaOverlayScript() {
 private fun injectReniecErrorWatcher() {
     val script = """
         (function() {
-            // Evita inyectar el watcher si ya hay uno activo.
             if (window.reniecErrorWatcherActive) {
-                console.log("ReniecWatcher: Ya hay un watcher activo.");
+                console.log("ReniecWatcher: Ya activo.");
                 return;
             }
             window.reniecErrorWatcherActive = true;
-            console.log("ReniecWatcher: Activado. Esperando modal de error.");
+            console.log("🧩 ReniecWatcher activado (modo SweetAlert2).");
 
             const cleanup = () => {
                 if (window.reniecErrorWatcherActive) {
@@ -978,43 +977,37 @@ private fun injectReniecErrorWatcher() {
                 }
             };
 
-            const observer = new MutationObserver((mutations, obs) => {
-                if (!window.location.href.includes('/inicio')) {
-                    cleanup();
-                    return;
-                }
-
-                for (let mutation of mutations) {
-                    for (let node of mutation.addedNodes) {
-                        if (node.nodeType === 1 && node.matches('.cdk-overlay-container .ant-modal-content')) {
-                            const modalText = node.innerText || "";
-                            if (modalText.includes("no coincide con su dni") || modalText.includes("dígito validador no coincide")) {
-                                console.log("ReniecWatcher: Modal de error detectado.");
-                                cleanup(); // Desactiva el observer para no actuar múltiples veces.
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1 && node.matches('.swal2-popup.swal2-modal')) {
+                            const title = node.querySelector('#swal2-title');
+                            const text = title ? title.innerText.toLowerCase() : '';
+                            if (text.includes('no coincide') || text.includes('dígito validador')) {
+                                console.log("ReniecWatcher: Modal SweetAlert2 detectado.");
 
                                 (async () => {
-                                    await new Promise(r => setTimeout(r, 700)); // Espera para renderizado.
-
-                                    const acceptButton = Array.from(node.querySelectorAll('button')).find(b => b.innerText.toLowerCase().trim() === 'aceptar');
-                                    if (acceptButton) {
-                                        console.log("ReniecWatcher: Botón 'Aceptar' encontrado. Haciendo clic...");
-                                        acceptButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                                    await new Promise(r => setTimeout(r, 700));
+                                    const btn = node.querySelector('button.swal2-confirm.swal2-styled, button.swal2-confirm.swal2-styled.swal2-default-outline');
+                                    if (btn) {
+                                        console.log("ReniecWatcher: Botón 'Aceptar' encontrado, haciendo clic...");
+                                        btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
                                         await new Promise(r => setTimeout(r, 50));
-                                        acceptButton.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                                        btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
                                         await new Promise(r => setTimeout(r, 50));
-                                        acceptButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                                        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-                                        // Verificar que el modal se cerró
-                                        let modalClosed = false;
-                                        for(let i=0; i<10; i++) {
+                                        // Esperar a que el modal desaparezca
+                                        let closed = false;
+                                        for (let i = 0; i < 15; i++) {
                                             if (!document.body.contains(node)) {
-                                                modalClosed = true;
+                                                closed = true;
                                                 break;
                                             }
                                             await new Promise(r => setTimeout(r, 200));
                                         }
 
-                                        if (modalClosed) {
+                                        if (closed) {
                                             console.log("ReniecWatcher: Modal cerrado correctamente.");
                                             AndroidBridge.showToast("El dígito validador no coincide con el DNI.");
                                             AndroidBridge.onReniecErrorHandled();
@@ -1024,6 +1017,7 @@ private fun injectReniecErrorWatcher() {
                                     } else {
                                         console.warn("ReniecWatcher: No se encontró el botón 'Aceptar'.");
                                     }
+                                    cleanup();
                                 })();
                                 return;
                             }
@@ -1034,10 +1028,11 @@ private fun injectReniecErrorWatcher() {
 
             observer.observe(document.body, { childList: true, subtree: true });
 
-            // Timeout de seguridad para autodesactivar el watcher después de 15 segundos si no pasa nada.
+            // Timeout de seguridad: 15 segundos
             setTimeout(cleanup, 15000);
         })();
     """.trimIndent()
+
     binding.webView.evaluateJavascript(script, null)
 }
 
