@@ -932,14 +932,6 @@ private fun injectCaptchaOverlayScript() {
         return
     }
 
-    // Solo inyecta el script si el switch está activado
-    if (sharedViewModel.isManualStartButtonVisible.value != true) {
-        // Si está desactivado, nos aseguramos de que cualquier instancia anterior del botón se elimine
-        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
-        binding.webView.evaluateJavascript(removeScript, null)
-        return
-    }
-
     val jsScript = """
         (async function() {
             function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
