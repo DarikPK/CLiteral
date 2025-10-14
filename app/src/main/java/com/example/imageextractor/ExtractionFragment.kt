@@ -87,6 +87,19 @@ class ExtractionFragment : Fragment() {
         fun onCaptchaSolved() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
+
+                // Eliminar el botón "Iniciar"
+                val removeOverlayScript = """
+                    (function() {
+                        const overlay = document.getElementById('cf-test-overlay');
+                        if (overlay) {
+                            overlay.remove();
+                            console.log("✅ Botón 'Iniciar' eliminado tras resolver captcha.");
+                        }
+                    })();
+                """.trimIndent()
+                binding.webView.evaluateJavascript(removeOverlayScript, null)
+
                 // Llama a la misma lógica del botón de autorrelleno
                 binding.autofillButton.performClick()
 
@@ -864,10 +877,11 @@ private fun injectCaptchaOverlayScript() {
             function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
             const OVERLAY_ID = 'cf-test-overlay';
+            // Eliminar instancia anterior si existiera, para asegurar un estado limpio
+            document.getElementById(OVERLAY_ID)?.remove();
 
-            console.log("⏳ Buscando captcha Cloudflare para overlay...");
+            console.log("⏳ Buscando captcha Cloudflare para botón Iniciar...");
 
-            // Buscar el iframe o su contenedor visible
             let captchaArea = null;
             for (let i = 0; i < 40; i++) {
                 captchaArea = document.querySelector(
@@ -878,42 +892,48 @@ private fun injectCaptchaOverlayScript() {
             }
 
             if (!captchaArea) {
-                console.warn("⚠️ No se encontró captcha para dibujar overlay.");
+                console.warn("⚠️ No se encontró captcha para dibujar el botón.");
                 return;
             }
 
-            // Esperar a que tenga tamaño visible
             let rect;
             for (let i = 0; i < 20; i++) {
                 rect = captchaArea.getBoundingClientRect();
-                if (rect.width > 0 && rect.height > 0) break;
+                if (rect.width > 50 && rect.height > 20) break; // Asegurar un tamaño mínimo
                 await sleep(300);
             }
-            if (!rect || rect.width === 0 || rect.height === 0) {
-                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para overlay.");
+            if (!rect || rect.width <= 50 || rect.height <= 20) {
+                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para el botón.");
                 return;
             }
 
-            // Crear o actualizar overlay
-            let overlay = document.getElementById(OVERLAY_ID);
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = OVERLAY_ID;
-                document.body.appendChild(overlay);
-            }
-            Object.assign(overlay.style, {
+            const button = document.createElement('div');
+            button.id = OVERLAY_ID;
+            button.textContent = 'Iniciar';
+
+            Object.assign(button.style, {
                 position: 'fixed',
                 left: rect.left + 'px',
                 top: rect.top + 'px',
                 width: rect.width + 'px',
                 height: rect.height + 'px',
-                border: '2px solid red',
-                borderRadius: '6px',
+                backgroundColor: '#2196F3', // Azul estándar de Material Design
+                color: 'white',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                fontFamily: 'sans-serif',
                 zIndex: '2147483639',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.05)',
+                border: '1px solid #1976D2' // Borde ligeramente más oscuro para profundidad
             });
 
-            console.log("✅ Overlay de captcha dibujado.");
+            document.body.appendChild(button);
+            console.log("✅ Botón 'Iniciar' dibujado sobre el captcha.");
         })();
     """.trimIndent()
     if (isViewDestroyed) return
