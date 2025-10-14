@@ -282,6 +282,18 @@ class ExtractionFragment : Fragment() {
         url?.startsWith(searchUrl, ignoreCase = true) == true && !isResultsPage(url)
 
     private fun updateButtonStates(url: String?) {
+        val jsRemoveOverlay = """
+            (function() {
+                if (!location.href.includes('/inicio')) {
+                    const overlay = document.getElementById('cf-test-overlay');
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsRemoveOverlay, null)
+
         if (isViewDestroyed) return
 
         val onLoginPage = url == loginUrl
