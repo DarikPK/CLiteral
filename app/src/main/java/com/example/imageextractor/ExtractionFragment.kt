@@ -930,119 +930,90 @@ private fun injectScrollLockScript() {
 private fun injectCaptchaSolvedWatcher() {
     val script = """
         (function() {
-            // Evitar múltiples registros si se inyecta más de una vez
-            if (window.__captchaSolvedWatcherInstalled) {
-                console.log('[CaptchaWatcher] Ya instalado');
-                return;
-            }
-            window.__captchaSolvedWatcherInstalled = true;
+            if (window.__turnstileWatcherInstalled) return;
+            window.__turnstileWatcherInstalled = true;
+            console.log("👁️ Iniciando watcher del captcha Cloudflare...");
 
-            // Guard que evita notificar más de una vez
-            function notifySolvedOnce() {
-                if (window.__captchaSolvedNotified) return false;
-                window.__captchaSolvedNotified = true;
-                try {
-                    console.log('✅ [CaptchaWatcher] Captcha resuelto: notificando a Android...');
-                    AndroidBridge && AndroidBridge.onCaptchaSolved();
-                } catch (e) {
-                    console.error('[CaptchaWatcher] Error notificando a Android:', e);
+            function notifySolved() {
+                if (window.__turnstileAlreadyNotified) return;
+                window.__turnstileAlreadyNotified = true;
+                console.log("✅ Captcha confirmado: ¡Operación exitosa detectada!");
+                try { AndroidBridge.onCaptchaSolved(); } catch(e) {
+                    console.error("Error notificando a Android:", e);
                 }
-                return true;
             }
 
-            // 1) Heurística principal: desaparición/ocultamiento del iframe de Turnstile
-            const IFRAME_SEL = 'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"]';
-
-            function iframeCurrentlyVisible() {
-                const iframe = document.querySelector(IFRAME_SEL);
-                if (!iframe) return false; // No está => probablemente resuelto o no renderizado aún
-                const rect = iframe.getBoundingClientRect();
-                const style = window.getComputedStyle(iframe);
-                const visibleByBox = rect.width > 0 && rect.height > 0 && iframe.offsetParent !== null;
-                const visibleByStyle = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-                return visibleByBox && visibleByStyle;
-            }
-
-            // 2) Heurística de respaldo: habilitación de botones del flujo (si aplica)
-            //    No referenciamos IDs frágiles; buscamos botones típicos de acción.
-            const ACTION_BTNS_SEL = 'button[type="submit"], button.btn-buscar-partida, button.btn-search';
-
-            function anyActionButtonEnabled() {
-                const btns = Array.from(document.querySelectorAll(ACTION_BTNS_SEL));
-                return btns.some(b => !b.disabled);
-            }
-
-            // Comprobación inmediata: si ya está resuelto al cargar el watcher
-            if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
-                if (notifySolvedOnce()) return;
-            }
-
-            // Observadores: DOM y atributos para detectar cambios de visibilidad/habilitación
-            const domObserver = new MutationObserver(() => {
-                if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
-                    domObserver.disconnect();
-                    attrObserver.disconnect();
-                    notifySolvedOnce();
+            function notifyError(message) {
+                if (window.__turnstileErrorNotified) return;
+                window.__turnstileErrorNotified = true;
+                console.warn("⚠️ Captcha en estado de error:", message);
+                try { AndroidBridge.showToast(message); } catch(e) {
+                    console.error("Error mostrando Toast:", e);
                 }
-            });
+            }
 
-            // Observa el DOM global (aparece/desaparece iframe; cambios de clases/estilos)
-            domObserver.observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['style', 'class']
-            });
-
-            // Observa cambios de 'disabled' en botones de acción
-            const attrObserver = new MutationObserver((mutList) => {
-                for (const m of mutList) {
-                    if (m.type === 'attributes' && m.attributeName === 'disabled') {
-                        if (anyActionButtonEnabled()) {
-                            domObserver.disconnect();
-                            attrObserver.disconnect();
-                            notifySolvedOnce();
-                            break;
+            function waitForCaptchaContainer(timeout = 15000) {
+                return new Promise(resolve => {
+                    const start = Date.now();
+                    const interval = setInterval(() => {
+                        const el = document.querySelector('div.main-wrapper, .cb-container');
+                        if (el) {
+                            clearInterval(interval);
+                            resolve(el);
+                        } else if (Date.now() - start > timeout) {
+                            clearInterval(interval);
+                            console.warn("⚠️ No se encontró el contenedor del captcha.");
+                            resolve(null);
                         }
-                    }
-                }
-            });
+                    }, 300);
+                });
+            }
 
-            // Inicializa listeners de atributo en los botones ya presentes
-            Array.from(document.querySelectorAll(ACTION_BTNS_SEL)).forEach(btn => {
-                attrObserver.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
-            });
+            waitForCaptchaContainer().then(container => {
+                if (!container) return;
 
-            // Reintentos suaves: si los botones aparecen más tarde
-            let retries = 30; // ~15s si usamos 500ms
-            const rehookTimer = setInterval(() => {
-                if (window.__captchaSolvedNotified) {
-                    clearInterval(rehookTimer);
-                    return;
+                const successNode = document.querySelector('#success');
+                const failNode = document.querySelector('#fail');
+                const expiredNode = document.querySelector('#expired');
+                const timeoutNode = document.querySelector('#timeout');
+                const verifyingNode = document.querySelector('#verifying');
+
+                function isVisible(node) {
+                    if (!node) return false;
+                    const style = getComputedStyle(node);
+                    return style.display !== 'none' && style.visibility === 'visible';
                 }
-                const btns = Array.from(document.querySelectorAll(ACTION_BTNS_SEL));
-                btns.forEach(btn => {
-                    // Evitar observar dos veces el mismo nodo
-                    if (!btn.__captchaAttrObserved) {
-                        btn.__captchaAttrObserved = true;
-                        attrObserver.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+
+                const observer = new MutationObserver(() => {
+                    if (isVisible(successNode)) {
+                        observer.disconnect();
+                        notifySolved();
+                    } else if (isVisible(failNode)) {
+                        observer.disconnect();
+                        notifyError("❌ Error al verificar el captcha.");
+                    } else if (isVisible(expiredNode)) {
+                        observer.disconnect();
+                        notifyError("⚠️ El captcha expiró, actualice e intente nuevamente.");
+                    } else if (isVisible(timeoutNode)) {
+                        observer.disconnect();
+                        notifyError("⏳ Tiempo excedido al verificar el captcha.");
                     }
                 });
-                if (!iframeCurrentlyVisible() || anyActionButtonEnabled()) {
-                    clearInterval(rehookTimer);
-                    domObserver.disconnect();
-                    attrObserver.disconnect();
-                    notifySolvedOnce();
-                } else if (--retries <= 0) {
-                    clearInterval(rehookTimer);
-                    // No notificamos nada; dejamos que el usuario intervenga si el captcha requiere acción humana
-                    console.log('[CaptchaWatcher] Timeout de espera sin resolver captcha.');
-                }
-            }, 500);
 
-            console.log('👁️ [CaptchaWatcher] Observando estado del captcha Turnstile (iframe + habilitación de acciones)...');
+                [successNode, failNode, expiredNode, timeoutNode, verifyingNode].forEach(node => {
+                    if (node) {
+                        observer.observe(node, {
+                            attributes: true,
+                            attributeFilter: ['style', 'class']
+                        });
+                    }
+                });
+
+                console.log("🕵️ Watcher de captcha activado correctamente.");
+            });
         })();
     """.trimIndent()
+
     if (isViewDestroyed) return
     binding.webView.evaluateJavascript(script, null)
 }
