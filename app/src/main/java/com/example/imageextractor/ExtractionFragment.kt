@@ -191,34 +191,49 @@ class ExtractionFragment : Fragment() {
 
         @JavascriptInterface
         fun onCaptchaPositionReady(jsonRect: String) {
-            activity?.runOnUiThread {
-                if (isViewDestroyed) return@runOnUiThread
-                try {
-                    val rect = org.json.JSONObject(jsonRect)
-                    val density = resources.displayMetrics.density
+            val positionRunnable = object : Runnable {
+                override fun run() {
+                    if (isViewDestroyed) return
+                    try {
+                        // Reintentar si el WebView aún no ha sido medido.
+                        if (binding.webView.width == 0 || binding.webView.height == 0) {
+                            view?.postDelayed(this, 100)
+                            return
+                        }
 
-                    val captchaX = rect.getDouble("x").toFloat() * density
-                    val captchaY = rect.getDouble("y").toFloat() * density
-                    val captchaWidth = rect.getDouble("width").toFloat() * density
-                    val captchaHeight = rect.getDouble("height").toFloat() * density
-                    val scrollY = rect.getDouble("scrollY").toFloat() * density
+                        val rect = org.json.JSONObject(jsonRect)
+                        val density = resources.displayMetrics.density
 
-                    val button = binding.nativeStartButton
+                        // Coordenadas y dimensiones en píxeles CSS, relativas al viewport
+                        val captchaX = rect.getDouble("x").toFloat()
+                        val captchaY = rect.getDouble("y").toFloat()
+                        val captchaWidth = rect.getDouble("width").toFloat()
+                        val captchaHeight = rect.getDouble("height").toFloat()
 
-                    // Ajusta el tamaño del botón para que coincida con el label
-                    val params = button.layoutParams
-                    params.width = captchaWidth.toInt()
-                    params.height = captchaHeight.toInt()
-                    button.layoutParams = params
+                        // Convertir a píxeles de dispositivo
+                        val captchaXdp = captchaX * density
+                        val captchaYdp = captchaY * density
+                        val captchaWidthdp = captchaWidth * density
+                        val captchaHeightdp = captchaHeight * density
 
-                    // Ajusta la posición del botón
-                    button.translationX = captchaX
-                    button.translationY = captchaY - scrollY
+                        val button = binding.nativeStartButton
 
-                } catch (e: Exception) {
-                    Log.e("CaptchaPosition", "Error al procesar las coordenadas del captcha", e)
+                        // Ajustar tamaño
+                        val params = button.layoutParams
+                        params.width = captchaWidthdp.toInt()
+                        params.height = captchaHeightdp.toInt()
+                        button.layoutParams = params
+
+                        // Aplicar traslación desde la esquina superior izquierda
+                        button.translationX = captchaXdp
+                        button.translationY = captchaYdp
+
+                    } catch (e: Exception) {
+                        Log.e("CaptchaPosition", "Error al procesar las coordenadas del captcha", e)
+                    }
                 }
             }
+            activity?.runOnUiThread(positionRunnable)
         }
     }
 
@@ -1171,8 +1186,7 @@ private fun injectCaptchaPositionerScript() {
                             x: rect.x,
                             y: rect.y,
                             width: rect.width,
-                            height: rect.height,
-                            scrollY: window.scrollY
+                            height: rect.height
                         });
                         try {
                             AndroidBridge.onCaptchaPositionReady(jsonRect);
