@@ -45,17 +45,6 @@ class ExtractionFragment : Fragment() {
                 val currentUrl = binding.webView?.url
                 binding.nativeStartButton.visibility = if (currentUrl?.contains("inicio") == true) View.VISIBLE else View.GONE
 
-                // Si no estamos en la página de inicio, reseteamos la posición y el tamaño del botón.
-                if (currentUrl?.contains("inicio") == false) {
-                    val button = binding.nativeStartButton
-                    button.translationX = 0f
-                    button.translationY = 0f
-                    val params = button.layoutParams
-                    params.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                    params.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                    button.layoutParams = params
-                }
-
                 currentUrl?.let {
                     updateButtonStates(it)
                     injectScrollLockScript()
@@ -78,7 +67,7 @@ class ExtractionFragment : Fragment() {
                         """.trimIndent()
                         binding.webView.evaluateJavascript(cleanupScript, null)
 
-                        injectCaptchaPositionerScript()
+                        injectHybridCaptchaOverlay()
                         injectCaptchaHybridWatcher()
                     }
                 }
@@ -191,50 +180,14 @@ class ExtractionFragment : Fragment() {
 
         @JavascriptInterface
         fun onCaptchaPositionReady(jsonRect: String) {
-            val positionRunnable = object : Runnable {
-                override fun run() {
-                    if (isViewDestroyed) return
-                    try {
-                        // Reintentar si el WebView aún no ha sido medido.
-                        if (binding.webView.width == 0 || binding.webView.height == 0) {
-                            view?.postDelayed(this, 100)
-                            return
-                        }
+            // Esta función se vacía porque la nueva implementación no necesita pasar coordenadas a Kotlin.
+        }
 
-                        val rect = org.json.JSONObject(jsonRect)
-                        val density = resources.displayMetrics.density
-
-                        // Coordenadas y dimensiones en píxeles CSS, relativas al viewport
-                        val captchaX = rect.getDouble("x").toFloat()
-                        val captchaY = rect.getDouble("y").toFloat()
-                        val captchaWidth = rect.getDouble("width").toFloat()
-                        val captchaHeight = rect.getDouble("height").toFloat()
-                        val scrollY = rect.getDouble("scrollY").toFloat()
-
-                        // Convertir a píxeles de dispositivo
-                        val captchaXdp = captchaX * density
-                        val captchaYdp = (captchaY + scrollY) * density
-                        val captchaWidthdp = captchaWidth * density
-                        val captchaHeightdp = captchaHeight * density
-
-                        val button = binding.nativeStartButton
-
-                        // Ajustar tamaño
-                        val params = button.layoutParams
-                        params.width = captchaWidthdp.toInt()
-                        params.height = captchaHeightdp.toInt()
-                        button.layoutParams = params
-
-                        // Aplicar traslación desde la esquina superior izquierda
-                        button.translationX = captchaXdp
-                        button.translationY = captchaYdp
-
-                    } catch (e: Exception) {
-                        Log.e("CaptchaPosition", "Error al procesar las coordenadas del captcha", e)
-                    }
-                }
+        @JavascriptInterface
+        fun onCaptchaClicked() {
+            activity?.runOnUiThread {
+                triggerCaptchaClickProcess()
             }
-            activity?.runOnUiThread(positionRunnable)
         }
     }
 
@@ -270,10 +223,11 @@ class ExtractionFragment : Fragment() {
 
     private fun observeViewModel() {
         sharedViewModel.isWebViewVisible.observe(viewLifecycleOwner) { isVisible ->
-            // Asegurarse de que la vista siempre esté "visible" para el sistema de vistas
-            binding.webView.visibility = View.VISIBLE
-            // Cambiar la opacidad (alpha) para ocultarla o mostrarla visualmente
             binding.webView.alpha = if (isVisible) 1.0f else 0.01f
+
+            // Controla la visibilidad del botón nativo de respaldo
+            val isLoginPage = binding.webView.url?.contains("inicio") == true
+            binding.nativeStartButton.visibility = if (!isVisible && isLoginPage) View.VISIBLE else View.GONE
         }
     }
 
@@ -290,7 +244,7 @@ class ExtractionFragment : Fragment() {
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
-                    injectCaptchaPositionerScript()
+                    injectHybridCaptchaOverlay()
                     injectCaptchaHybridWatcher() // aquí
                 }
             }
@@ -474,7 +428,27 @@ class ExtractionFragment : Fragment() {
         }
     }
 
+    private fun triggerCaptchaClickProcess() {
+        // Asegura que la WebView sea visible para el usuario.
+        sharedViewModel.setIsWebViewVisible(true) // Suponiendo que tienes un método para esto
+
+        // Inyecta el script que simula un clic en el captcha.
+        val script = """
+            (function() {
+                const captchaElement = document.querySelector('label.cb-lb');
+                if (captchaElement) {
+                    captchaElement.click();
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(script, null)
+    }
+
     private fun setupButtons() {
+        binding.nativeStartButton.setOnClickListener {
+            triggerCaptchaClickProcess()
+        }
+
         binding.autofillButton.setOnClickListener {
             autofillCurrentPage()
         }
@@ -1166,45 +1140,51 @@ private fun injectCaptchaSolvedWatcher() {
     binding.webView.evaluateJavascript(script, null)
 }
 
-private fun injectCaptchaPositionerScript() {
+
+private fun injectHybridCaptchaOverlay() {
     val script = """
         (function() {
-            if (window.captchaPositionerActive) return;
-            window.captchaPositionerActive = true;
+            const overlayId = 'hybrid-captcha-overlay';
+            if (document.getElementById(overlayId)) return;
 
-            const selector = 'label.cb-lb';
-            let attempts = 0;
-            const maxAttempts = 25; // Intentar por unos 10 segundos
+            const captchaSelector = 'label.cb-lb';
+            let overlay = document.createElement('div');
+            overlay.id = overlayId;
+            Object.assign(overlay.style, {
+                position: 'absolute',
+                zIndex: '10000',
+                backgroundColor: 'rgba(0, 255, 0, 0.2)', // Color semitransparente para depuración
+                cursor: 'pointer'
+            });
 
-            const intervalId = setInterval(() => {
-                const captchaLabel = document.querySelector(selector);
-                if (captchaLabel && captchaLabel.offsetParent !== null) {
-                    const rect = captchaLabel.getBoundingClientRect();
-                    if (rect.width > 50 && rect.height > 20) {
-                        clearInterval(intervalId);
-                        window.captchaPositionerActive = false;
-                        const jsonRect = JSON.stringify({
-                            x: rect.x,
-                            y: rect.y,
-                            width: rect.width,
-                            height: rect.height,
-                            scrollY: window.scrollY
-                        });
-                        try {
-                            AndroidBridge.onCaptchaPositionReady(jsonRect);
-                        } catch(e) {
-                            console.error("Error sending captcha position to Android", e);
-                        }
-                    }
+            overlay.onclick = () => {
+                try {
+                    AndroidBridge.onCaptchaClicked();
+                } catch (e) {
+                    console.error('Error calling onCaptchaClicked', e);
                 }
+            };
 
-                attempts++;
-                if (attempts >= maxAttempts) {
-                    clearInterval(intervalId);
-                    window.captchaPositionerActive = false;
-                    console.warn("Captcha positioner timed out: label.cb-lb not found.");
+            document.body.appendChild(overlay);
+
+            const observer = new MutationObserver(() => {
+                const captchaEl = document.querySelector(captchaSelector);
+                if (captchaEl) {
+                    const rect = captchaEl.getBoundingClientRect();
+                    Object.assign(overlay.style, {
+                        left: `${'${rect.left + window.scrollX}'}px`,
+                        top: `${'${rect.top + window.scrollY}'}px`,
+                        width: `${'${rect.width}'}px`,
+                        height: `${'${rect.height}'}px`,
+                        display: 'block'
+                    });
+                } else {
+                    overlay.style.display = 'none';
                 }
-            }, 400);
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
         })();
     """.trimIndent()
     binding.webView.evaluateJavascript(script, null)
