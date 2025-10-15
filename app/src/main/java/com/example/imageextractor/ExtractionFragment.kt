@@ -1172,10 +1172,10 @@ private fun injectHybridCaptchaOverlay() {
                 if (captchaEl) {
                     const rect = captchaEl.getBoundingClientRect();
                     Object.assign(overlay.style, {
-                        left: `${"${rect.left + window.scrollX}"}px`,
-                        top: `${"${rect.top + window.scrollY}"}px`,
-                        width: `${"${rect.width}"}px`,
-                        height: `${"${rect.height}"}px`,
+                        left: `${'$'}{rect.left + window.scrollX}px`,
+                        top: `${'$'}{rect.top + window.scrollY}px`,
+                        width: `${'$'}{rect.width}px`,
+                        height: `${'$'}{rect.height}px`,
                         display: 'block'
                     });
                 } else {
