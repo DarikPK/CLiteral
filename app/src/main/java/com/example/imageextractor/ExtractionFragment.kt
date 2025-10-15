@@ -1190,6 +1190,55 @@ private fun injectHybridCaptchaOverlay() {
     binding.webView.evaluateJavascript(script, null)
 }
 
+private fun injectHybridCaptchaOverlay() {
+    val script = """
+        (function() {
+            const overlayId = 'hybrid-captcha-overlay';
+            if (document.getElementById(overlayId)) return;
+
+            const captchaSelector = 'label.cb-lb';
+            let overlay = document.createElement('div');
+            overlay.id = overlayId;
+            Object.assign(overlay.style, {
+                position: 'absolute',
+                zIndex: '10000',
+                backgroundColor: 'rgba(0, 255, 0, 0.2)', // Color semitransparente para depuración
+                cursor: 'pointer'
+            });
+
+            overlay.onclick = () => {
+                try {
+                    AndroidBridge.onCaptchaClicked();
+                } catch (e) {
+                    console.error('Error calling onCaptchaClicked', e);
+                }
+            };
+
+            document.body.appendChild(overlay);
+
+            const observer = new MutationObserver(() => {
+                const captchaEl = document.querySelector(captchaSelector);
+                if (captchaEl) {
+                    const rect = captchaEl.getBoundingClientRect();
+                    Object.assign(overlay.style, {
+                        left: `${'$'}{rect.left + window.scrollX}px`,
+                        top: `${'$'}{rect.top + window.scrollY}px`,
+                        width: `${'$'}{rect.width}px`,
+                        height: `${'$'}{rect.height}px`,
+                        display: 'block'
+                    });
+                } else {
+                    overlay.style.display = 'none';
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+        })();
+    """.trimIndent()
+    binding.webView.evaluateJavascript(script, null)
+}
+
 private fun injectCaptchaHybridWatcher() {
     val script = """
         (function() {
