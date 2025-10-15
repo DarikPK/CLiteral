@@ -209,10 +209,11 @@ class ExtractionFragment : Fragment() {
                         val captchaY = rect.getDouble("y").toFloat()
                         val captchaWidth = rect.getDouble("width").toFloat()
                         val captchaHeight = rect.getDouble("height").toFloat()
+                        val scrollY = rect.getDouble("scrollY").toFloat()
 
                         // Convertir a píxeles de dispositivo
                         val captchaXdp = captchaX * density
-                        val captchaYdp = captchaY * density
+                        val captchaYdp = (captchaY + scrollY) * density
                         val captchaWidthdp = captchaWidth * density
                         val captchaHeightdp = captchaHeight * density
 
@@ -1186,7 +1187,8 @@ private fun injectCaptchaPositionerScript() {
                             x: rect.x,
                             y: rect.y,
                             width: rect.width,
-                            height: rect.height
+                            height: rect.height,
+                            scrollY: window.scrollY
                         });
                         try {
                             AndroidBridge.onCaptchaPositionReady(jsonRect);
