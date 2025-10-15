@@ -42,6 +42,10 @@ class SharedViewModel : ViewModel() {
         _isWebViewVisible.value = !(_isWebViewVisible.value ?: true)
     }
 
+    fun setIsWebViewVisible(isVisible: Boolean) {
+        _isWebViewVisible.value = isVisible
+    }
+
     // --- Estado de Visibilidad del Botón de Inicio Manual ---
     private val _isManualStartButtonVisible = MutableLiveData(true)
     val isManualStartButtonVisible: LiveData<Boolean> = _isManualStartButtonVisible
