@@ -40,20 +40,9 @@ class ExtractionFragment : Fragment() {
         fun notifyUrlChanged() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
-
-                // Control de visibilidad del botón nativo "Iniciar"
-                val currentUrl = binding.webView?.url
-                binding.nativeStartButton.visibility = if (currentUrl?.contains("inicio") == true) View.VISIBLE else View.GONE
-
-                currentUrl?.let {
+                binding.webView?.url?.let {
                     updateButtonStates(it)
                     injectScrollLockScript()
-
-                    // Si la URL no es la de inicio, elimina el botón por si acaso existe.
-                    if (!it.contains("inicio")) {
-                        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
-                        binding.webView.evaluateJavascript(removeScript, null)
-                    }
 
                     if (it == loginUrl) {
                         // ♻️ Reinicia watcher y overlay del captcha al volver al login
@@ -67,7 +56,7 @@ class ExtractionFragment : Fragment() {
                         """.trimIndent()
                         binding.webView.evaluateJavascript(cleanupScript, null)
 
-                        injectHybridCaptchaOverlay()
+                        injectCaptchaOverlayScript()
                         injectCaptchaHybridWatcher()
                     }
                 }
@@ -174,19 +163,8 @@ class ExtractionFragment : Fragment() {
                 binding.webView.evaluateJavascript(cleanupScript, null)
 
                 // 🔁 Reinicia los scripts del captcha
+                injectCaptchaOverlayScript()
                 injectCaptchaHybridWatcher()
-            }
-        }
-
-        @JavascriptInterface
-        fun onCaptchaPositionReady(jsonRect: String) {
-            // Esta función se vacía porque la nueva implementación no necesita pasar coordenadas a Kotlin.
-        }
-
-        @JavascriptInterface
-        fun onCaptchaClicked() {
-            activity?.runOnUiThread {
-                triggerCaptchaClickProcess()
             }
         }
     }
@@ -223,11 +201,10 @@ class ExtractionFragment : Fragment() {
 
     private fun observeViewModel() {
         sharedViewModel.isWebViewVisible.observe(viewLifecycleOwner) { isVisible ->
+            // Asegurarse de que la vista siempre esté "visible" para el sistema de vistas
+            binding.webView.visibility = View.VISIBLE
+            // Cambiar la opacidad (alpha) para ocultarla o mostrarla visualmente
             binding.webView.alpha = if (isVisible) 1.0f else 0.01f
-
-            // Controla la visibilidad del botón nativo de respaldo
-            val isLoginPage = binding.webView.url?.contains("inicio") == true
-            binding.nativeStartButton.visibility = if (!isVisible && isLoginPage) View.VISIBLE else View.GONE
         }
     }
 
@@ -244,7 +221,7 @@ class ExtractionFragment : Fragment() {
 
                 if (url == loginUrl) {
                     injectModalHandlerScript()
-                    injectHybridCaptchaOverlay()
+                    injectCaptchaOverlayScript()
                     injectCaptchaHybridWatcher() // aquí
                 }
             }
@@ -387,22 +364,21 @@ class ExtractionFragment : Fragment() {
         url?.startsWith(searchUrl, ignoreCase = true) == true && !isResultsPage(url)
 
     private fun updateButtonStates(url: String?) {
-        if (isViewDestroyed) return
-
-        val onLoginPage = url == loginUrl
-
-        // Si no estamos en la página de login, nos aseguramos de que el overlay se elimine.
-        if (!onLoginPage) {
-            val jsRemoveOverlay = """
-                (function() {
+        val jsRemoveOverlay = """
+            (function() {
+                if (!location.href.includes('/inicio')) {
                     const overlay = document.getElementById('cf-test-overlay');
                     if (overlay) {
                         overlay.remove();
                     }
-                })();
-            """.trimIndent()
-            binding.webView.evaluateJavascript(jsRemoveOverlay, null)
-        }
+                }
+            })();
+        """.trimIndent()
+        binding.webView.evaluateJavascript(jsRemoveOverlay, null)
+
+        if (isViewDestroyed) return
+
+        val onLoginPage = url == loginUrl
         val onSearchPage = isSearchPage(url)
         val onResultsPage = isResultsPage(url)
 
@@ -428,27 +404,7 @@ class ExtractionFragment : Fragment() {
         }
     }
 
-    private fun triggerCaptchaClickProcess() {
-        // Asegura que la WebView sea visible para el usuario.
-        sharedViewModel.setIsWebViewVisible(true) // Suponiendo que tienes un método para esto
-
-        // Inyecta el script que simula un clic en el captcha.
-        val script = """
-            (function() {
-                const captchaElement = document.querySelector('label.cb-lb');
-                if (captchaElement) {
-                    captchaElement.click();
-                }
-            })();
-        """.trimIndent()
-        binding.webView.evaluateJavascript(script, null)
-    }
-
     private fun setupButtons() {
-        binding.nativeStartButton.setOnClickListener {
-            triggerCaptchaClickProcess()
-        }
-
         binding.autofillButton.setOnClickListener {
             autofillCurrentPage()
         }
@@ -962,9 +918,79 @@ class ExtractionFragment : Fragment() {
     }
 
 private fun injectCaptchaOverlayScript() {
-    // Este método se deja vacío intencionadamente.
-    // El botón "Iniciar" ahora es un componente nativo de Android y
-    // este script ya no es necesario.
+    // Solo inyecta el script si el switch está activado
+    if (sharedViewModel.isManualStartButtonVisible.value != true) {
+        // Si está desactivado, nos aseguramos de que cualquier instancia anterior del botón se elimine
+        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
+        binding.webView.evaluateJavascript(removeScript, null)
+        return
+    }
+
+    val jsScript = """
+        (async function() {
+            function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+            const OVERLAY_ID = 'cf-test-overlay';
+            document.getElementById(OVERLAY_ID)?.remove();
+
+            console.log("⏳ Buscando captcha Cloudflare para botón Iniciar...");
+
+            let captchaArea = null;
+            for (let i = 0; i < 40; i++) {
+                captchaArea = document.querySelector(
+                    'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"], cloudcaptcha, ngx-turnstile, div[title*="Cloudflare"], div[style*="300px"][style*="65px"]'
+                );
+                if (captchaArea) break;
+                await sleep(250);
+            }
+
+            if (!captchaArea) {
+                console.warn("⚠️ No se encontró captcha para dibujar el botón.");
+                return;
+            }
+
+            let rect;
+            for (let i = 0; i < 20; i++) {
+                rect = captchaArea.getBoundingClientRect();
+                if (rect.width > 50 && rect.height > 20) break;
+                await sleep(300);
+            }
+            if (!rect || rect.width <= 50 || rect.height <= 20) {
+                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para el botón.");
+                return;
+            }
+
+            const button = document.createElement('div');
+            button.id = OVERLAY_ID;
+            button.textContent = 'Iniciar';
+
+            Object.assign(button.style, {
+                position: 'fixed',
+                left: rect.left + 'px',
+                top: rect.top + 'px',
+                width: rect.width + 'px',
+                height: rect.height + 'px',
+                backgroundColor: '#6200EE', // Color primario de Material Design (similar al botón Continuar)
+                color: 'white',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                fontFamily: 'sans-serif',
+                zIndex: '2147483639',
+                pointerEvents: 'none',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.05)',
+                border: '1px solid #3700B3'
+            });
+
+            document.body.appendChild(button);
+            console.log("✅ Botón 'Iniciar' dibujado sobre el captcha.");
+        })();
+    """.trimIndent()
+    if (isViewDestroyed) return
+    binding.webView.evaluateJavascript(jsScript, null)
 }
 
 private fun injectReniecErrorWatcher() {
@@ -1137,57 +1163,6 @@ private fun injectCaptchaSolvedWatcher() {
     """.trimIndent()
 
     if (isViewDestroyed) return
-    binding.webView.evaluateJavascript(script, null)
-}
-
-
-
-private fun injectHybridCaptchaOverlay() {
-    val script = """
-        (function() {
-            const overlayId = 'hybrid-captcha-overlay';
-            if (document.getElementById(overlayId)) return;
-
-            const captchaSelector = 'label.cb-lb';
-            let overlay = document.createElement('div');
-            overlay.id = overlayId;
-            Object.assign(overlay.style, {
-                position: 'absolute',
-                zIndex: '10000',
-                backgroundColor: 'rgba(0, 255, 0, 0.2)', // Color semitransparente para depuración
-                cursor: 'pointer'
-            });
-
-            overlay.onclick = () => {
-                try {
-                    AndroidBridge.onCaptchaClicked();
-                } catch (e) {
-                    console.error('Error calling onCaptchaClicked', e);
-                }
-            };
-
-            document.body.appendChild(overlay);
-
-            const observer = new MutationObserver(() => {
-                const captchaEl = document.querySelector(captchaSelector);
-                if (captchaEl) {
-                    const rect = captchaEl.getBoundingClientRect();
-                    Object.assign(overlay.style, {
-                        left: `${'$'}{rect.left + window.scrollX}px`,
-                        top: `${'$'}{rect.top + window.scrollY}px`,
-                        width: `${'$'}{rect.width}px`,
-                        height: `${'$'}{rect.height}px`,
-                        display: 'block'
-                    });
-                } else {
-                    overlay.style.display = 'none';
-                }
-            });
-
-            observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-
-        })();
-    """.trimIndent()
     binding.webView.evaluateJavascript(script, null)
 }
 

@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_mainMenuFragment_to_pdfSettingsFragment"
             app:destination="@id/pdfSettingsFragment" />
+        <action
+            android:id="@+id/action_mainMenuFragment_to_waitingAnimationsFragment"
+            app:destination="@id/waitingAnimationsFragment" />
     </fragment>
 
     <fragment
@@ -95,5 +98,11 @@
             android:name="imagePath"
             app:argType="string" />
     </fragment>
+
+    <fragment
+        android:id="@+id/waitingAnimationsFragment"
+        android:name="com.example.imageextractor.WaitingAnimationsFragment"
+        android:label="Animaciones de Espera"
+        tools:layout="@layout/fragment_waiting_animations" />
 
 </navigation>
