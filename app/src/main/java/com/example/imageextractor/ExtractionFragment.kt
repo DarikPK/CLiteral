@@ -918,74 +918,86 @@ class ExtractionFragment : Fragment() {
     }
 
 private fun injectCaptchaOverlayScript() {
-    // Solo inyecta el script si el switch está activado
-    if (sharedViewModel.isManualStartButtonVisible.value != true) {
-        // Si está desactivado, nos aseguramos de que cualquier instancia anterior del botón se elimine
-        val removeScript = "document.getElementById('cf-test-overlay')?.remove();"
-        binding.webView.evaluateJavascript(removeScript, null)
-        return
-    }
-
+    // La visibilidad del overlay ahora es controlada totalmente por el script de monitoreo.
+    // Ya no se necesita la lógica del isManualStartButtonVisible aquí, pero se respeta la estructura.
     val jsScript = """
         (function() {
+            // Evita la reinyección si el monitor ya está activo para no duplicar procesos.
+            if (window.captchaMonitorActive) {
+                console.log("ℹ️ El monitor del captcha ya está activo.");
+                return;
+            }
+            window.captchaMonitorActive = true;
+
             const OVERLAY_ID = 'cf-test-overlay';
-            const TARGET_SELECTOR = 'span.cb-lb-t'; // Requisito: Selector base
+            const TARGET_SELECTOR = 'span.cb-lb-t';
             let overlay = document.getElementById(OVERLAY_ID);
 
-            // Crea el overlay si no existe, y lo añade al body.
+            // Crea el overlay si no existe, manteniendo los estilos requeridos.
             if (!overlay) {
                 overlay = document.createElement('div');
                 overlay.id = OVERLAY_ID;
-                // No se asigna textContent aquí para mantener el estilo limpio.
                 Object.assign(overlay.style, {
-                    position: 'absolute', // Requisito: 'absolute' para que las coordenadas con scroll funcionen.
+                    position: 'absolute',
                     display: 'none', // Requisito: Oculto por defecto.
-                    backgroundColor: 'rgba(98, 0, 238, 0.5)', // Mismo color, pero semitransparente como se pide.
-                    zIndex: '2147483639', // Mismo z-index.
-                    pointerEvents: 'none', // No debe interceptar clics.
+                    backgroundColor: 'rgba(98, 0, 238, 0.5)',
+                    zIndex: '2147483639',
+                    pointerEvents: 'none',
                     border: '1px solid #3700B3',
-                    borderRadius: '4px', // Un borde más sutil.
-                    boxSizing: 'border-box' // Para que el borde no altere el tamaño.
+                    borderRadius: '4px',
+                    boxSizing: 'border-box'
                 });
                 document.body.appendChild(overlay);
             }
 
-            // Función para actualizar la posición y tamaño del overlay.
-            const updateOverlayPosition = () => {
-                const targetElement = document.querySelector(TARGET_SELECTOR);
-                // Requisito: El overlay solo se muestra si el span.cb-lb-t existe y es visible.
-                if (targetElement && targetElement.offsetParent !== null) {
-                    const rect = targetElement.getBoundingClientRect();
-                    // Requisito: Cálculo exacto de coordenadas y dimensiones, incluyendo el scroll.
-                    overlay.style.left = `${'$'}{rect.left + window.scrollX}px`;
-                    overlay.style.top = `${'$'}{rect.top + window.scrollY}px`;
-                    overlay.style.width = `${'$'}{rect.width}px`;
-                    overlay.style.height = `${'$'}{rect.height}px`;
-                    overlay.style.display = 'block'; // Mostrar el overlay.
-                } else {
-                    // Requisito: Si el span no existe o está oculto, el overlay se oculta.
-                    overlay.style.display = 'none';
+            // Función de espera activa que busca el elemento visible.
+            async function waitForCaptcha() {
+                const start = Date.now();
+                while (Date.now() - start < 10000) { // Requisito: Timeout de 10 segundos.
+                    const span = document.querySelector(TARGET_SELECTOR);
+                    // Requisito: Verificar que el elemento existe y es visible (offsetParent).
+                    if (span && span.offsetParent !== null) {
+                        return span;
+                    }
+                    await new Promise(r => setTimeout(r, 250)); // Requisito: Reintentos periódicos.
                 }
-            };
-
-            // Requisito: Observer para actualizar dinámicamente.
-            // Se desconecta el observador anterior para evitar duplicados si el script se reinyecta.
-            if (window.captchaOverlayObserver) {
-                window.captchaOverlayObserver.disconnect();
+                return null; // Retorna null si se agota el tiempo.
             }
 
-            window.captchaOverlayObserver = new MutationObserver(updateOverlayPosition);
-            window.captchaOverlayObserver.observe(document.body, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['style', 'class'] // Optimización para observar solo cambios relevantes.
-            });
+            // Bucle principal de monitoreo que se ejecuta continuamente.
+            async function monitorCaptcha() {
+                console.log("🔄 Iniciando monitor de captcha para el elemento 'span.cb-lb-t'.");
+                // El bucle infinito asegura que el monitoreo persista a través de los cambios de estado del captcha.
+                while (true) {
+                    const captchaElement = await waitForCaptcha();
 
-            // Llamada inicial para posicionar el overlay si el elemento ya existe al inyectar el script.
-            updateOverlayPosition();
+                    // Si el elemento se encuentra y es visible:
+                    if (captchaElement) {
+                        console.log("✅ Captcha detectado. Mostrando y posicionando overlay.");
+                        const rect = captchaElement.getBoundingClientRect();
+                        overlay.style.display = 'block';
+                        // Requisito: Posicionamiento y tamaño exactos usando getBoundingClientRect y scroll.
+                        overlay.style.left = `${'$'}{rect.left + window.scrollX}px`;
+                        overlay.style.top = `${'$'}{rect.top + window.scrollY}px`;
+                        overlay.style.width = `${'$'}{rect.width}px`;
+                        overlay.style.height = `${'$'}{rect.height}px`;
 
-            console.log("✅ Overlay del captcha dinámico instalado y observando span.cb-lb-t.");
+                        // Requisito: Esperar a que el elemento desaparezca para reiniciar el ciclo.
+                        while (document.querySelector(TARGET_SELECTOR)?.offsetParent !== null) {
+                            await new Promise(r => setTimeout(r, 300));
+                        }
+                        console.log("❌ Captcha desaparecido. Ocultando overlay y reiniciando espera.");
+                        overlay.style.display = 'none';
+                    } else {
+                         console.log("⏳ Timeout esperando el captcha. Se reintentará el ciclo de búsqueda.");
+                    }
+                    // Pequeña pausa antes de reiniciar el ciclo para evitar consumo excesivo de CPU.
+                    await new Promise(r => setTimeout(r, 300));
+                }
+            }
+
+            // Inicia el proceso de monitoreo.
+            monitorCaptcha();
         })();
     """.trimIndent()
     if (isViewDestroyed) return
