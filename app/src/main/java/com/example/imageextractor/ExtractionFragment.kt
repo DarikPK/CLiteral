@@ -927,66 +927,65 @@ private fun injectCaptchaOverlayScript() {
     }
 
     val jsScript = """
-        (async function() {
-            function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
+        (function() {
             const OVERLAY_ID = 'cf-test-overlay';
-            document.getElementById(OVERLAY_ID)?.remove();
+            const TARGET_SELECTOR = 'span.cb-lb-t'; // Requisito: Selector base
+            let overlay = document.getElementById(OVERLAY_ID);
 
-            console.log("⏳ Buscando captcha Cloudflare para botón Iniciar...");
-
-            let captchaArea = null;
-            for (let i = 0; i < 40; i++) {
-                captchaArea = document.querySelector(
-                    'iframe[id^="cf-chl-widget"], iframe[src*="challenges.cloudflare.com"], cloudcaptcha, ngx-turnstile, div[title*="Cloudflare"], div[style*="300px"][style*="65px"]'
-                );
-                if (captchaArea) break;
-                await sleep(250);
+            // Crea el overlay si no existe, y lo añade al body.
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = OVERLAY_ID;
+                // No se asigna textContent aquí para mantener el estilo limpio.
+                Object.assign(overlay.style, {
+                    position: 'absolute', // Requisito: 'absolute' para que las coordenadas con scroll funcionen.
+                    display: 'none', // Requisito: Oculto por defecto.
+                    backgroundColor: 'rgba(98, 0, 238, 0.5)', // Mismo color, pero semitransparente como se pide.
+                    zIndex: '2147483639', // Mismo z-index.
+                    pointerEvents: 'none', // No debe interceptar clics.
+                    border: '1px solid #3700B3',
+                    borderRadius: '4px', // Un borde más sutil.
+                    boxSizing: 'border-box' // Para que el borde no altere el tamaño.
+                });
+                document.body.appendChild(overlay);
             }
 
-            if (!captchaArea) {
-                console.warn("⚠️ No se encontró captcha para dibujar el botón.");
-                return;
+            // Función para actualizar la posición y tamaño del overlay.
+            const updateOverlayPosition = () => {
+                const targetElement = document.querySelector(TARGET_SELECTOR);
+                // Requisito: El overlay solo se muestra si el span.cb-lb-t existe y es visible.
+                if (targetElement && targetElement.offsetParent !== null) {
+                    const rect = targetElement.getBoundingClientRect();
+                    // Requisito: Cálculo exacto de coordenadas y dimensiones, incluyendo el scroll.
+                    overlay.style.left = `${'$'}{rect.left + window.scrollX}px`;
+                    overlay.style.top = `${'$'}{rect.top + window.scrollY}px`;
+                    overlay.style.width = `${'$'}{rect.width}px`;
+                    overlay.style.height = `${'$'}{rect.height}px`;
+                    overlay.style.display = 'block'; // Mostrar el overlay.
+                } else {
+                    // Requisito: Si el span no existe o está oculto, el overlay se oculta.
+                    overlay.style.display = 'none';
+                }
+            };
+
+            // Requisito: Observer para actualizar dinámicamente.
+            // Se desconecta el observador anterior para evitar duplicados si el script se reinyecta.
+            if (window.captchaOverlayObserver) {
+                window.captchaOverlayObserver.disconnect();
             }
 
-            let rect;
-            for (let i = 0; i < 20; i++) {
-                rect = captchaArea.getBoundingClientRect();
-                if (rect.width > 50 && rect.height > 20) break;
-                await sleep(300);
-            }
-            if (!rect || rect.width <= 50 || rect.height <= 20) {
-                 console.warn("⚠️ Captcha detectado, pero sin tamaño visible para el botón.");
-                return;
-            }
-
-            const button = document.createElement('div');
-            button.id = OVERLAY_ID;
-            button.textContent = 'Iniciar';
-
-            Object.assign(button.style, {
-                position: 'fixed',
-                left: rect.left + 'px',
-                top: rect.top + 'px',
-                width: rect.width + 'px',
-                height: rect.height + 'px',
-                backgroundColor: '#6200EE', // Color primario de Material Design (similar al botón Continuar)
-                color: 'white',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                fontFamily: 'sans-serif',
-                zIndex: '2147483639',
-                pointerEvents: 'none',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.05)',
-                border: '1px solid #3700B3'
+            window.captchaOverlayObserver = new MutationObserver(updateOverlayPosition);
+            window.captchaOverlayObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class'] // Optimización para observar solo cambios relevantes.
             });
 
-            document.body.appendChild(button);
-            console.log("✅ Botón 'Iniciar' dibujado sobre el captcha.");
+            // Llamada inicial para posicionar el overlay si el elemento ya existe al inyectar el script.
+            updateOverlayPosition();
+
+            console.log("✅ Overlay del captcha dinámico instalado y observando span.cb-lb-t.");
         })();
     """.trimIndent()
     if (isViewDestroyed) return
