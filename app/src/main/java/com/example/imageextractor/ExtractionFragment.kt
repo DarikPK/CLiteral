@@ -212,6 +212,48 @@ class ExtractionFragment : Fragment() {
         binding.webView.settings.javaScriptEnabled = true
         binding.webView.addJavascriptInterface(JsBridge(), "AndroidBridge")
         binding.webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url != null && url.startsWith("intent://")) {
+                    try {
+                        // Convertir la URL del intent a un objeto Intent de Android
+                        val intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                        // Verificación adicional para el paquete de RENIEC y logging
+                        if (url.contains("package=pe.gob.reniec.pki.reniecidaas2")) {
+                            Log.d("ReniecIntent", "Intent RENIEC detectado y manejado correctamente.")
+                        }
+
+                        // Iniciar la actividad externa
+                        activity?.startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e("ReniecIntent", "Intent desconocido o aplicación no instalada.", e)
+
+                        // Si la app no está instalada, redirigir al Play Store
+                        val packageName = try {
+                            Intent.parseUri(url, Intent.URI_INTENT_SCHEME).`package`
+                        } catch (parseEx: Exception) { null }
+
+                        if (packageName != null) {
+                            try {
+                                val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+                                marketIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                activity?.startActivity(marketIntent)
+                            } catch (marketEx: Exception) {
+                                // Fallback al navegador si la app de Play Store no está disponible
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+                                browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                activity?.startActivity(browserIntent)
+                            }
+                        }
+                    }
+                    // Indicar que hemos manejado la URL para evitar que el WebView la cargue
+                    return true
+                }
+                // Para cualquier otra URL, dejar que el WebView la maneje por defecto
+                return super.shouldOverrideUrlLoading(view, url)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (isViewDestroyed) return
