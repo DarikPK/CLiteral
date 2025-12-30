@@ -5,47 +5,80 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewbinding.ViewBinding
 import com.example.imageextractor.databinding.FolderItemBinding
+import com.example.imageextractor.databinding.FolderListItemBinding
 
 class FolderAdapter(
     private val onClick: (ImageFolder) -> Unit,
     private val onDelete: (ImageFolder) -> Unit
 ) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
-    class FolderViewHolder(
-        private val binding: FolderItemBinding,
-        private val onClick: (ImageFolder) -> Unit,
-        private val onDelete: (ImageFolder) -> Unit
-    ) : RecyclerView.ViewHolder(binding.root) {
+    private var currentViewType = ViewType.GRID
 
-        private var currentFolder: ImageFolder? = null
+    enum class ViewType {
+        GRID, LIST
+    }
 
-        init {
-            itemView.setOnClickListener {
-                currentFolder?.let(onClick)
-            }
-            itemView.setOnLongClickListener {
-                currentFolder?.let(onDelete)
-                true // Consume el evento
-            }
-        }
+    abstract class FolderViewHolder(binding: ViewBinding) : RecyclerView.ViewHolder(binding.root) {
+        abstract fun bind(folder: ImageFolder)
+    }
 
-        fun bind(folder: ImageFolder) {
-            currentFolder = folder
+    inner class GridViewHolder(
+        private val binding: FolderItemBinding
+    ) : FolderViewHolder(binding) {
+        override fun bind(folder: ImageFolder) {
             binding.partidaIdText.text = folder.partidaId
             val imageCount = folder.imagePaths.size
             binding.imageCountText.text = "$imageCount ${if (imageCount == 1) "imagen" else "imágenes"}"
+            itemView.setOnClickListener { onClick(folder) }
+            itemView.setOnLongClickListener {
+                onDelete(folder)
+                true
+            }
+        }
+    }
+
+    inner class ListViewHolder(
+        private val binding: FolderListItemBinding
+    ) : FolderViewHolder(binding) {
+        override fun bind(folder: ImageFolder) {
+            binding.partidaIdText.text = folder.partidaId
+            val imageCount = folder.imagePaths.size
+            binding.imageCountText.text = "$imageCount ${if (imageCount == 1) "imagen" else "imágenes"}"
+            itemView.setOnClickListener { onClick(folder) }
+            binding.deleteButton.setOnClickListener { onDelete(folder) }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
-        val binding = FolderItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return FolderViewHolder(binding, onClick, onDelete)
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            ViewType.LIST.ordinal -> {
+                val binding = FolderListItemBinding.inflate(inflater, parent, false)
+                ListViewHolder(binding)
+            }
+            else -> {
+                val binding = FolderItemBinding.inflate(inflater, parent, false)
+                GridViewHolder(binding)
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
         val folder = getItem(position)
         holder.bind(folder)
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return currentViewType.ordinal
+    }
+
+    fun setViewType(viewType: ViewType) {
+        if (currentViewType != viewType) {
+            currentViewType = viewType
+            notifyDataSetChanged()
+        }
     }
 }
 

@@ -9,15 +9,14 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 import java.io.File
 
@@ -41,7 +40,6 @@ class EditGalleryFragment : Fragment() {
                 loadFoldersFromStorage()
             } else {
                 if (!shouldShowRequestPermissionRationale(storagePermission)) {
-                    // User has permanently denied the permission.
                     AlertDialog.Builder(requireContext())
                         .setTitle("Permiso Denegado")
                         .setMessage("Has denegado el permiso de forma permanente. Por favor, actívalo en los ajustes de la aplicación para poder ver tus extracciones.")
@@ -58,6 +56,11 @@ class EditGalleryFragment : Fragment() {
                 }
             }
         }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -84,9 +87,6 @@ class EditGalleryFragment : Fragment() {
                     putStringArray("imageUrls", folder.imagePaths.toTypedArray())
                     putString("partidaId", folder.partidaId)
                 }
-                // The action ID needs to be found in the navigation graph.
-                // It should be the action from EditingFragment to ViewGalleryFragment.
-                // I will assume the ID based on previous exploration.
                 findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
             },
             onDelete = { folder ->
@@ -135,11 +135,9 @@ class EditGalleryFragment : Fragment() {
                 requireContext(),
                 storagePermission
             ) == PackageManager.PERMISSION_GRANTED -> {
-                // Permiso ya concedido, cargar las carpetas.
                 loadFoldersFromStorage()
             }
             shouldShowRequestPermissionRationale(storagePermission) -> {
-                // El usuario ha denegado el permiso antes. Mostrar una explicación.
                 AlertDialog.Builder(requireContext())
                     .setTitle("Permiso Necesario")
                     .setMessage("Para mostrar las extracciones guardadas, la aplicación necesita permiso para leer los archivos de tu dispositivo.")
@@ -150,7 +148,6 @@ class EditGalleryFragment : Fragment() {
                     .show()
             }
             else -> {
-                // Pedir el permiso por primera vez o si el usuario marcó "No volver a preguntar".
                 requestPermissionLauncher.launch(storagePermission)
             }
         }
@@ -187,6 +184,27 @@ class EditGalleryFragment : Fragment() {
         }
 
         folderAdapter.submitList(folderList)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.view_mode_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_view_mode_list -> {
+                binding.editGalleryRecyclerView.layoutManager = LinearLayoutManager(context)
+                folderAdapter.setViewType(FolderAdapter.ViewType.LIST)
+                true
+            }
+            R.id.action_view_mode_grid -> {
+                binding.editGalleryRecyclerView.layoutManager = GridLayoutManager(context, 2)
+                folderAdapter.setViewType(FolderAdapter.ViewType.GRID)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onDestroyView() {
