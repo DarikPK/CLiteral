@@ -15,7 +15,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 import java.io.File
@@ -26,6 +25,7 @@ class EditGalleryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var folderAdapter: FolderAdapter
+    private var deleteMenuItem: MenuItem? = null
 
     private val storagePermission: String
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -81,30 +81,33 @@ class EditGalleryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        folderAdapter = FolderAdapter(
-            onClick = { folder ->
-                val bundle = Bundle().apply {
-                    putStringArray("imageUrls", folder.imagePaths.toTypedArray())
-                    putString("partidaId", folder.partidaId)
-                }
-                findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
-            },
-            onDelete = { folder ->
-                showDeleteConfirmationDialog(folder)
-            }
-        )
+        folderAdapter = FolderAdapter { selectionSize ->
+            updateDeleteIconState(selectionSize > 0)
+        }
         binding.editGalleryRecyclerView.apply {
-            layoutManager = GridLayoutManager(context, 2)
+            layoutManager = LinearLayoutManager(context)
             adapter = folderAdapter
         }
     }
 
-    private fun showDeleteConfirmationDialog(folder: ImageFolder) {
+    private fun updateDeleteIconState(isEnabled: Boolean) {
+        deleteMenuItem?.isVisible = isEnabled
+    }
+
+    private fun showDeleteConfirmationDialog(foldersToDelete: List<ImageFolder>) {
+        val message = if (foldersToDelete.size == 1) {
+            "¿Estás seguro de que deseas eliminar la partida '${foldersToDelete.first().partidaId}'?"
+        } else {
+            "¿Estás seguro de que deseas eliminar ${foldersToDelete.size} partidas seleccionadas?"
+        }
+
         AlertDialog.Builder(requireContext())
             .setTitle("Confirmar Eliminación")
-            .setMessage("¿Estás seguro de que deseas eliminar la partida '${folder.partidaId}' y todas sus imágenes? Esta acción no se puede deshacer.")
+            .setMessage("$message\nEsta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
-                deleteFolderContents(folder)
+                foldersToDelete.forEach { deleteFolderContents(it) }
+                folderAdapter.clearSelection()
+                loadFoldersFromStorage()
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -118,15 +121,8 @@ class EditGalleryFragment : Fragment() {
                 deletedCount++
             }
         }
-
-        if (deletedCount > 0) {
-            val message = "Se eliminaron $deletedCount ${if (deletedCount == 1) "imagen" else "imágenes"}."
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "No se pudieron eliminar las imágenes.", Toast.LENGTH_SHORT).show()
-        }
-
-        loadFoldersFromStorage()
+        // También eliminamos la carpeta contenedora si está vacía, aunque en este caso las imágenes están sueltas.
+        // La lógica actual ya elimina los archivos PNG correctamente.
     }
 
     private fun checkAndRequestPermission() {
@@ -187,20 +183,19 @@ class EditGalleryFragment : Fragment() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.view_mode_menu, menu)
+        inflater.inflate(R.menu.edit_gallery_menu, menu)
+        deleteMenuItem = menu.findItem(R.id.action_delete_selection)
+        updateDeleteIconState(false) // Oculto al inicio
         super.onCreateOptionsMenu(menu, inflater)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_view_mode_list -> {
-                binding.editGalleryRecyclerView.layoutManager = LinearLayoutManager(context)
-                folderAdapter.setViewType(FolderAdapter.ViewType.LIST)
-                true
-            }
-            R.id.action_view_mode_grid -> {
-                binding.editGalleryRecyclerView.layoutManager = GridLayoutManager(context, 2)
-                folderAdapter.setViewType(FolderAdapter.ViewType.GRID)
+            R.id.action_delete_selection -> {
+                val selected = folderAdapter.getSelectedItems()
+                if (selected.isNotEmpty()) {
+                    showDeleteConfirmationDialog(selected)
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
