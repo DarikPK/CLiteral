@@ -1,8 +1,6 @@
 package com.example.imageextractor
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -14,7 +12,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -25,6 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import android.content.ContentUris
+import android.provider.MediaStore
 
 class PdfSettingsFragment : Fragment() {
 
@@ -121,31 +120,35 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun showPartidaSelectionDialog(isForPreview: Boolean) {
-        val folders = getCapturedFolders()
-        if (folders.isEmpty()) {
-            Toast.makeText(context, "No se encontraron partidas capturadas.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val partidaIds = folders.map { it.partidaId }.toTypedArray()
-        val title = if (isForPreview) "Seleccionar Partida para Previsualizar" else "Seleccionar Partida para PDF"
-
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle(title)
-            .setItems(partidaIds) { _, which ->
-                val selectedFolder = folders[which]
-                if (isForPreview) {
-                    generatePdfPreview(selectedFolder)
-                } else {
-                    generatePdfForPartida(selectedFolder)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val folders = getCapturedFolders()
+            withContext(Dispatchers.Main) {
+                if (folders.isEmpty()) {
+                    Toast.makeText(context, "No se encontraron partidas capturadas.", Toast.LENGTH_SHORT).show()
+                    return@withContext
                 }
+
+                val partidaIds = folders.map { it.partidaId }.toTypedArray()
+                val title = if (isForPreview) "Seleccionar Partida para Previsualizar" else "Seleccionar Partida para PDF"
+
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle(title)
+                    .setItems(partidaIds) { _, which ->
+                        val selectedFolder = folders[which]
+                        if (isForPreview) {
+                            generatePdfPreview(selectedFolder)
+                        } else {
+                            generatePdfForPartida(selectedFolder)
+                        }
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
             }
-            .setNegativeButton("Cancelar", null)
-            .show()
+        }
     }
 
     private fun generatePdfPreview(folder: ImageFolder) {
-        if (folder.imagePaths.isEmpty()) {
+        if (folder.imageFiles.isEmpty()) {
             Toast.makeText(context, "La partida no tiene imágenes para previsualizar.", Toast.LENGTH_SHORT).show()
             return
         }
@@ -170,27 +173,45 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun getCapturedFolders(): List<ImageFolder> {
-        val folders = mutableMapOf<String, MutableList<String>>()
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val imageDir = File(downloadsDir, "capturas_sunarp")
+        val folders = mutableMapOf<String, MutableList<ImageFile>>()
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.DATA
+        )
+        val selection = "${MediaStore.Images.Media.DATA} like ? and ${MediaStore.Images.Media.DATA} like ?"
+        val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %")
 
-        if (imageDir.exists() && imageDir.isDirectory) {
-            val imageFiles = imageDir.listFiles { file ->
-                file.isFile && file.name.endsWith(".png") && file.name.contains("-Hoja ")
-            }
-            imageFiles?.forEach { file ->
-                val fileName = file.name
-                val partidaId = fileName.substringBefore("-Hoja").trim()
+        val cursor = requireContext().contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            "${MediaStore.Images.Media.DISPLAY_NAME} ASC"
+        )
+
+        cursor?.use {
+            val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            val nameColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val pathColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+
+            while (it.moveToNext()) {
+                val id = it.getLong(idColumn)
+                val name = it.getString(nameColumn)
+                val path = it.getString(pathColumn)
+                val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+
+                val partidaId = name.substringBefore("-Hoja").trim()
                 if (partidaId.isNotEmpty()) {
-                    folders.getOrPut(partidaId) { mutableListOf() }.add(file.absolutePath)
+                    val imageFile = ImageFile(uri, path, name)
+                    folders.getOrPut(partidaId) { mutableListOf() }.add(imageFile)
                 }
             }
         }
-        return folders.map { (partidaId, paths) ->
-            val sortedPaths = paths.sortedBy { path ->
-                path.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0
-            }
-            ImageFolder(partidaId = partidaId, imagePaths = sortedPaths)
+
+        return folders.map { (partidaId, files) ->
+            val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
+            ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
         }
     }
 
@@ -219,8 +240,7 @@ class PdfSettingsFragment : Fragment() {
         val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
 
         val pdfDocument = PdfDocument()
-        // Both preview and final generation will process all images.
-        val imagesToProcess = folder.imagePaths
+        val imagesToProcess = folder.imageFiles.map { it.path }
 
         for ((index, imagePath) in imagesToProcess.withIndex()) {
             val pageWidth = 595
