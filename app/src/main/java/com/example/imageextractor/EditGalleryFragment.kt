@@ -26,6 +26,8 @@ class EditGalleryFragment : Fragment() {
 
     private lateinit var folderAdapter: FolderAdapter
     private var deleteMenuItem: MenuItem? = null
+    private var selectAllMenuItem: MenuItem? = null
+    private var originalToolbarTitle: CharSequence? = null
 
     private val storagePermission: String
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -39,7 +41,7 @@ class EditGalleryFragment : Fragment() {
             if (isGranted) {
                 loadFoldersFromStorage()
             } else {
-                if (!shouldShowRequestPermissionRationale(storagePermission)) {
+                 if (!shouldShowRequestPermissionRationale(storagePermission)) {
                     AlertDialog.Builder(requireContext())
                         .setTitle("Permiso Denegado")
                         .setMessage("Has denegado el permiso de forma permanente. Por favor, actívalo en los ajustes de la aplicación para poder ver tus extracciones.")
@@ -73,8 +75,10 @@ class EditGalleryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
-        (activity as? AppCompatActivity)?.supportActionBar?.title = "Partidas Capturadas"
+        val activity = activity as? AppCompatActivity
+        activity?.setSupportActionBar(binding.toolbar)
+        originalToolbarTitle = activity?.supportActionBar?.title
+        activity?.supportActionBar?.title = "Partidas Capturadas"
 
         setupRecyclerView()
     }
@@ -86,16 +90,36 @@ class EditGalleryFragment : Fragment() {
 
     private fun setupRecyclerView() {
         folderAdapter = FolderAdapter { selectionSize ->
-            updateDeleteIconState(selectionSize > 0)
+            updateUiOnSelectionChange(selectionSize)
         }
+
+        val dragSelectListener = DragSelectTouchListener(binding.editGalleryRecyclerView, folderAdapter) { start, end ->
+            folderAdapter.selectRange(start, end)
+        }
+
         binding.editGalleryRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = folderAdapter
+            addOnItemTouchListener(dragSelectListener)
         }
     }
 
-    private fun updateDeleteIconState(isVisible: Boolean) {
-        deleteMenuItem?.isVisible = isVisible
+    private fun updateUiOnSelectionChange(selectionSize: Int) {
+        val hasSelection = selectionSize > 0
+        deleteMenuItem?.isVisible = hasSelection
+
+        val activity = activity as? AppCompatActivity
+        if (hasSelection) {
+            activity?.supportActionBar?.title = "$selectionSize seleccionado(s)"
+        } else {
+            activity?.supportActionBar?.title = "Partidas Capturadas"
+        }
+
+        if (selectionSize == folderAdapter.itemCount && folderAdapter.itemCount > 0) {
+            selectAllMenuItem?.title = "Deseleccionar Todo"
+        } else {
+            selectAllMenuItem?.title = "Seleccionar Todo"
+        }
     }
 
     private fun showDeleteConfirmationDialog(foldersToDelete: List<ImageFolder>) {
@@ -110,7 +134,7 @@ class EditGalleryFragment : Fragment() {
             .setMessage("$message\nEsta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
                 foldersToDelete.forEach { deleteFolderContents(it) }
-                folderAdapter.clearSelection()
+                folderAdapter.deselectAll()
                 loadFoldersFromStorage()
                 Toast.makeText(context, "${foldersToDelete.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
             }
@@ -182,11 +206,13 @@ class EditGalleryFragment : Fragment() {
         }
 
         folderAdapter.submitList(folderList)
+        updateUiOnSelectionChange(folderAdapter.getSelectionSize())
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.edit_gallery_menu, menu)
         deleteMenuItem = menu.findItem(R.id.action_delete_selection)
+        selectAllMenuItem = menu.findItem(R.id.action_select_all)
         super.onCreateOptionsMenu(menu, inflater)
     }
 
@@ -196,6 +222,14 @@ class EditGalleryFragment : Fragment() {
                 val selected = folderAdapter.getSelectedItems()
                 if (selected.isNotEmpty()) {
                     showDeleteConfirmationDialog(selected)
+                }
+                true
+            }
+            R.id.action_select_all -> {
+                if (folderAdapter.getSelectionSize() == folderAdapter.itemCount) {
+                    folderAdapter.deselectAll()
+                } else {
+                    folderAdapter.selectAll()
                 }
                 true
             }

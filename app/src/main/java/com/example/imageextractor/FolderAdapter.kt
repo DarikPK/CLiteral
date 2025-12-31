@@ -18,12 +18,7 @@ class FolderAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         init {
-            itemView.setOnClickListener {
-                toggleSelection(adapterPosition)
-            }
-            binding.checkboxSelect.setOnClickListener {
-                toggleSelection(adapterPosition)
-            }
+            // Clics individuales ahora se manejan en el TouchListener para coexistir con el arrastre
         }
 
         fun bind(folder: ImageFolder) {
@@ -43,7 +38,7 @@ class FolderAdapter(
         holder.bind(folder)
     }
 
-    private fun toggleSelection(position: Int) {
+    fun toggleSelection(position: Int) {
         if (position != RecyclerView.NO_POSITION) {
             val folder = getItem(position)
             if (selectedItems.contains(folder.partidaId)) {
@@ -56,15 +51,34 @@ class FolderAdapter(
         }
     }
 
-    fun getSelectedItems(): List<ImageFolder> {
-        return currentList.filter { selectedItems.contains(it.partidaId) }
+    fun selectRange(start: Int, end: Int) {
+        val range = if (start < end) (start..end) else (end..start)
+        for (i in range) {
+            if (i in 0 until itemCount) {
+                selectedItems.add(getItem(i).partidaId)
+                notifyItemChanged(i)
+            }
+        }
+        onSelectionChanged(selectedItems.size)
     }
 
-    fun clearSelection() {
+    fun selectAll() {
+        currentList.forEach { selectedItems.add(it.partidaId) }
+        notifyDataSetChanged()
+        onSelectionChanged(selectedItems.size)
+    }
+
+    fun deselectAll() {
         selectedItems.clear()
         notifyDataSetChanged()
         onSelectionChanged(0)
     }
+
+    fun getSelectedItems(): List<ImageFolder> {
+        return currentList.filter { selectedItems.contains(it.partidaId) }
+    }
+
+    fun getSelectionSize(): Int = selectedItems.size
 }
 
 object FolderDiffCallback : DiffUtil.ItemCallback<ImageFolder>() {
