@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.bumptech.glide.Glide
 import com.example.imageextractor.databinding.FragmentImagePreviewBinding
 import java.io.File
 
@@ -15,6 +16,15 @@ class ImagePreviewFragment : Fragment() {
 
     private var _binding: FragmentImagePreviewBinding? = null
     private val binding get() = _binding!!
+
+    private var imagePath: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            imagePath = it.getString("imagePath")
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -28,10 +38,12 @@ class ImagePreviewFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         loadImage()
+        setupZoomButtons()
     }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
+        (activity as? AppCompatActivity)?.supportActionBar?.title = imagePath?.substringAfterLast("/") ?: "Vista Previa"
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
@@ -39,13 +51,21 @@ class ImagePreviewFragment : Fragment() {
     }
 
     private fun loadImage() {
-        val imagePath = requireArguments().getString("imagePath")
-        if (imagePath != null) {
-            val imageFile = File(imagePath)
-            if (imageFile.exists()) {
-                binding.previewImageView.setImageURI(Uri.fromFile(imageFile))
-                (activity as? AppCompatActivity)?.supportActionBar?.title = imageFile.name
-            }
+        imagePath?.let {
+            Glide.with(this)
+                .load(Uri.fromFile(File(it)))
+                .into(binding.previewImageView)
+        }
+    }
+
+    private fun setupZoomButtons() {
+        binding.fabZoomIn.setOnClickListener {
+            binding.previewImageView.scaleX *= 1.2f
+            binding.previewImageView.scaleY *= 1.2f
+        }
+
+        binding.fabZoomReset.setOnClickListener {
+            binding.previewImageView.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
         }
     }
 
