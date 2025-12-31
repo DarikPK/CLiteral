@@ -4,10 +4,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.PointF
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.MotionEvent
 import androidx.appcompat.widget.AppCompatImageView
-import kotlin.math.abs
+import kotlin.math.min
 
 @SuppressLint("ClickableViewAccessibility")
 class ZoomableImageView @JvmOverloads constructor(
@@ -16,7 +17,8 @@ class ZoomableImageView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
 
-    private val imageMatrix = Matrix()
+    private val baseMatrix = Matrix()
+    private val drawMatrix = Matrix()
     private val startPoint = PointF()
 
     private var currentScale = 1.0f
@@ -35,30 +37,61 @@ class ZoomableImageView @JvmOverloads constructor(
                     MotionEvent.ACTION_MOVE -> {
                         val dx = event.x - startPoint.x
                         val dy = event.y - startPoint.y
-                        imageMatrix.postTranslate(dx, dy)
-                        setImageMatrix(imageMatrix)
+                        drawMatrix.postTranslate(dx, dy)
+                        imageMatrix = drawMatrix
                         startPoint.set(event.x, event.y)
                         true
                     }
                     else -> false
                 }
             } else {
-                false // No consumir el evento si no hay zoom
+                false
             }
         }
+    }
+
+    override fun setImageDrawable(drawable: Drawable?) {
+        super.setImageDrawable(drawable)
+        updateBaseMatrix()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateBaseMatrix()
+    }
+
+    private fun updateBaseMatrix() {
+        if (drawable == null) return
+
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
+        val drawableWidth = drawable.intrinsicWidth.toFloat()
+        val drawableHeight = drawable.intrinsicHeight.toFloat()
+
+        baseMatrix.reset()
+
+        val scale = min(viewWidth / drawableWidth, viewHeight / drawableHeight)
+
+        val dx = (viewWidth - drawableWidth * scale) / 2f
+        val dy = (viewHeight - drawableHeight * scale) / 2f
+
+        baseMatrix.postScale(scale, scale)
+        baseMatrix.postTranslate(dx, dy)
+
+        resetZoom()
     }
 
     fun zoomIn() {
         if (currentScale * zoomIncrement <= maxScale) {
             currentScale *= zoomIncrement
-            imageMatrix.postScale(zoomIncrement, zoomIncrement, width / 2f, height / 2f)
-            setImageMatrix(imageMatrix)
+            drawMatrix.postScale(zoomIncrement, zoomIncrement, width / 2f, height / 2f)
+            imageMatrix = drawMatrix
         }
     }
 
     fun resetZoom() {
-        imageMatrix.postScale(1.0f / currentScale, 1.0f / currentScale, width / 2f, height / 2f)
+        drawMatrix.set(baseMatrix)
         currentScale = 1.0f
-        setImageMatrix(imageMatrix)
+        imageMatrix = drawMatrix
     }
 }
