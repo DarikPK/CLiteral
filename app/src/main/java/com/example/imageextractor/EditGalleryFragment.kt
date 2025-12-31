@@ -93,9 +93,7 @@ class EditGalleryFragment : Fragment() {
             updateUiOnSelectionChange(selectionSize)
         }
 
-        val dragSelectListener = DragSelectTouchListener(binding.editGalleryRecyclerView, folderAdapter) { start, end ->
-            folderAdapter.selectRange(start, end)
-        }
+        val dragSelectListener = DragSelectTouchListener(binding.editGalleryRecyclerView, folderAdapter)
 
         binding.editGalleryRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
