@@ -1,6 +1,7 @@
 package com.example.imageextractor
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -13,6 +14,7 @@ class FolderAdapter(
 ) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
     private val selectedItems = mutableSetOf<String>()
+    private var isSelectionMode = false
 
     inner class FolderViewHolder(
         private val binding: FolderListItemBinding
@@ -29,6 +31,8 @@ class FolderAdapter(
         fun bind(folder: ImageFolder) {
             val imageCount = folder.imagePaths.size
             binding.detailsText.text = "${folder.partidaId} - $imageCount ${if (imageCount == 1) "Imagen" else "Imágenes"}"
+
+            binding.checkboxSelect.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
             binding.checkboxSelect.isChecked = selectedItems.contains(folder.partidaId)
         }
     }
@@ -40,6 +44,14 @@ class FolderAdapter(
 
     override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
         holder.bind(getItem(position))
+    }
+
+    fun setMode(isSelectionMode: Boolean) {
+        this.isSelectionMode = isSelectionMode
+        if (!isSelectionMode) {
+            deselectAll()
+        }
+        notifyDataSetChanged()
     }
 
     fun toggleSelection(position: Int) {

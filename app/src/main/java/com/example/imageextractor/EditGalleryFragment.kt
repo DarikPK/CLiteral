@@ -2,13 +2,9 @@ package com.example.imageextractor
 
 import android.Manifest
 import android.app.AlertDialog
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.Settings
 import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +14,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
+import com.google.android.material.tabs.TabLayout
 import java.io.File
 
 class EditGalleryFragment : Fragment() {
@@ -28,6 +25,7 @@ class EditGalleryFragment : Fragment() {
     private lateinit var folderAdapter: FolderAdapter
     private var deleteMenuItem: MenuItem? = null
     private var selectAllMenuItem: MenuItem? = null
+    private var isSelectionMode = false
 
     private val storagePermission: String
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -53,6 +51,7 @@ class EditGalleryFragment : Fragment() {
         (activity as? AppCompatActivity)?.supportActionBar?.title = "Partidas Capturadas"
 
         setupRecyclerView()
+        setupTabLayout()
     }
 
     override fun onResume() {
@@ -63,8 +62,16 @@ class EditGalleryFragment : Fragment() {
     private fun setupRecyclerView() {
         folderAdapter = FolderAdapter(
             onItemClick = { folder ->
-                val position = folderAdapter.currentList.indexOf(folder)
-                folderAdapter.toggleSelection(position)
+                if (isSelectionMode) {
+                    val position = folderAdapter.currentList.indexOf(folder)
+                    folderAdapter.toggleSelection(position)
+                } else {
+                    val bundle = Bundle().apply {
+                        putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+                        putString("partidaId", folder.partidaId)
+                    }
+                    findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
+                }
             },
             onSelectionChanged = { selectionSize ->
                 updateMenuState(selectionSize)
@@ -76,15 +83,30 @@ class EditGalleryFragment : Fragment() {
         }
     }
 
-    private fun updateMenuState(selectionSize: Int) {
-        deleteMenuItem?.isVisible = selectionSize > 0
+    private fun setupTabLayout() {
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> setMode(false) // Modo Visualización
+                    1 -> setMode(true)  // Modo Selección
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+    }
 
+    private fun setMode(isSelection: Boolean) {
+        isSelectionMode = isSelection
+        folderAdapter.setMode(isSelection)
+        activity?.invalidateOptionsMenu()
+    }
+
+    private fun updateMenuState(selectionSize: Int) {
+        if (!isSelectionMode) return
+        deleteMenuItem?.isVisible = selectionSize > 0
         val totalItems = folderAdapter.itemCount
-        if (totalItems > 0 && selectionSize == totalItems) {
-            selectAllMenuItem?.title = "Deseleccionar Todo"
-        } else {
-            selectAllMenuItem?.title = "Seleccionar Todo"
-        }
+        selectAllMenuItem?.title = if (totalItems > 0 && selectionSize == totalItems) "Deseleccionar Todo" else "Seleccionar Todo"
     }
 
     private fun showDeleteConfirmationDialog() {
@@ -111,14 +133,6 @@ class EditGalleryFragment : Fragment() {
     private fun checkAndRequestPermission() {
         when {
             ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> loadFoldersFromStorage()
-            shouldShowRequestPermissionRationale(storagePermission) -> {
-                 AlertDialog.Builder(requireContext())
-                    .setTitle("Permiso Necesario")
-                    .setMessage("Se necesita permiso para leer archivos y mostrar las partidas.")
-                    .setPositiveButton("Entendido") { _, _ -> requestPermissionLauncher.launch(storagePermission) }
-                    .setNegativeButton("Cancelar", null)
-                    .show()
-            }
             else -> requestPermissionLauncher.launch(storagePermission)
         }
     }
@@ -143,13 +157,7 @@ class EditGalleryFragment : Fragment() {
             ImageFolder(partidaId = partidaId, imagePaths = sortedPaths)
         }
 
-        if (folderList.isEmpty()) {
-            Toast.makeText(context, "No se encontraron extracciones.", Toast.LENGTH_SHORT).show()
-        }
-
-        folderAdapter.submitList(folderList) {
-            updateMenuState(folderAdapter.getSelectionSize())
-        }
+        folderAdapter.submitList(folderList)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -157,6 +165,12 @@ class EditGalleryFragment : Fragment() {
         deleteMenuItem = menu.findItem(R.id.action_delete_selection)
         selectAllMenuItem = menu.findItem(R.id.action_select_all)
         super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu) {
+        deleteMenuItem?.isVisible = isSelectionMode && folderAdapter.getSelectionSize() > 0
+        selectAllMenuItem?.isVisible = isSelectionMode
+        super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
