@@ -1,24 +1,21 @@
 package com.example.imageextractor
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.imageextractor.databinding.FolderItemBinding
+import com.example.imageextractor.databinding.FolderListItemBinding
 
 class FolderAdapter(
     private val onItemClick: (ImageFolder) -> Unit,
-    private val onItemLongClick: (ImageFolder) -> Unit,
     private val onSelectionChanged: (Int) -> Unit
 ) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
-    private var isSelectionModeActive = false
     private val selectedItems = mutableSetOf<String>()
 
     inner class FolderViewHolder(
-        private val binding: FolderItemBinding
+        private val binding: FolderListItemBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
         init {
@@ -27,62 +24,22 @@ class FolderAdapter(
                     onItemClick(getItem(adapterPosition))
                 }
             }
-            itemView.setOnLongClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onItemLongClick(getItem(adapterPosition))
-                }
-                true
-            }
         }
 
         fun bind(folder: ImageFolder) {
-            binding.partidaIdText.text = folder.partidaId
             val imageCount = folder.imagePaths.size
-            binding.imageCountText.text = "$imageCount ${if (imageCount == 1) "imagen" else "imágenes"}"
-
-            binding.checkboxSelect.visibility = if (isSelectionModeActive) View.VISIBLE else View.GONE
+            binding.detailsText.text = "${folder.partidaId} - $imageCount ${if (imageCount == 1) "Imagen" else "Imágenes"}"
             binding.checkboxSelect.isChecked = selectedItems.contains(folder.partidaId)
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
-        val binding = FolderItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = FolderListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return FolderViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
         holder.bind(getItem(position))
-    }
-
-    fun setSelectionMode(isActive: Boolean) {
-        isSelectionModeActive = isActive
-        if (!isActive) {
-            selectedItems.clear()
-        }
-        notifyDataSetChanged()
-        onSelectionChanged(selectedItems.size)
-    }
-
-    fun selectRange(start: Int, end: Int) {
-        val range = if (start < end) (start..end) else (end..start)
-        for (i in range) {
-            if (i in 0 until itemCount) {
-                selectedItems.add(getItem(i).partidaId)
-                notifyItemChanged(i)
-            }
-        }
-        onSelectionChanged(selectedItems.size)
-    }
-
-    fun deselectRange(start: Int, end: Int) {
-        val range = if (start < end) (start..end) else (end..start)
-        for (i in range) {
-            if (i in 0 until itemCount) {
-                selectedItems.remove(getItem(i).partidaId)
-                notifyItemChanged(i)
-            }
-        }
-        onSelectionChanged(selectedItems.size)
     }
 
     fun toggleSelection(position: Int) {
