@@ -34,8 +34,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import kotlin.random.Random
 
-class PdfSettingsFragment : Fragment() {
-
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
 
@@ -242,7 +240,7 @@ class PdfSettingsFragment : Fragment() {
 
     private fun generateStampBitmap(dateText: String): Bitmap {
         val context = requireContext()
-        // 1. Cargar la imagen base del sello y convertirla a un Bitmap mutable
+        // 1. Cargar la imagen base del sello (la imagen PNG proporcionada) y convertirla a un Bitmap mutable
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
         val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
