@@ -21,7 +21,7 @@ class ViewGalleryFragment : Fragment() {
     private var imageUrls: List<String> = emptyList()
     private var partidaId: String? = null
 
-    private var currentViewMode = ViewMode.DETAIL
+    private var currentViewMode = ViewMode.ICON
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
