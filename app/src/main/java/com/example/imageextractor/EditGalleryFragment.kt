@@ -29,10 +29,18 @@ class EditGalleryFragment : Fragment() {
     private var isSelectionMode = false
 
     private val storagePermission: String
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Manifest.permission.READ_EXTERNAL_STORAGE else Manifest.permission.WRITE_EXTERNAL_STORAGE
+        get() = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> Manifest.permission.READ_MEDIA_IMAGES
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> Manifest.permission.READ_EXTERNAL_STORAGE
+            else -> Manifest.permission.WRITE_EXTERNAL_STORAGE
+        }
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) loadFoldersFromStorage() else Toast.makeText(requireContext(), "Permiso denegado.", Toast.LENGTH_SHORT).show()
+        if (isGranted) {
+            loadFoldersFromStorage()
+        } else {
+            Toast.makeText(requireContext(), "Permiso denegado. No se pueden mostrar las partidas.", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,8 +97,8 @@ class EditGalleryFragment : Fragment() {
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 when (tab?.position) {
-                    0 -> setMode(false) // Modo Visualización
-                    1 -> setMode(true)  // Modo Selección
+                    0 -> setMode(false)
+                    1 -> setMode(true)
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -119,10 +127,17 @@ class EditGalleryFragment : Fragment() {
             .setTitle("Confirmar Eliminación")
             .setMessage("¿Deseas eliminar ${selected.size} partida(s)? Esta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
-                selected.forEach { deleteFolderContents(it) }
+                var totalDeletedFiles = 0
+                selected.forEach { totalDeletedFiles += deleteFolderContents(it) }
+
+                if (totalDeletedFiles > 0) {
+                    Toast.makeText(context, "$totalDeletedFiles archivo(s) eliminado(s) correctamente.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "No se pudieron eliminar los archivos.", Toast.LENGTH_LONG).show()
+                }
+
                 folderAdapter.deselectAll()
                 loadFoldersFromStorage()
-                Toast.makeText(context, "${selected.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -141,8 +156,22 @@ class EditGalleryFragment : Fragment() {
 
     private fun checkAndRequestPermission() {
         when {
-            ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> loadFoldersFromStorage()
-            else -> requestPermissionLauncher.launch(storagePermission)
+            ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> {
+                loadFoldersFromStorage()
+            }
+            shouldShowRequestPermissionRationale(storagePermission) -> {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Permiso Necesario")
+                    .setMessage("Para leer y eliminar partidas guardadas, la aplicación necesita acceso a tus archivos.")
+                    .setPositiveButton("Entendido") { _, _ ->
+                        requestPermissionLauncher.launch(storagePermission)
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            }
+            else -> {
+                requestPermissionLauncher.launch(storagePermission)
+            }
         }
     }
 
