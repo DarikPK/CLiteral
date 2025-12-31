@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="16dp">
+    android:padding="12dp">
 
     <CheckBox
         android:id="@+id/checkbox_select"
@@ -16,9 +16,9 @@
 
     <ImageView
         android:id="@+id/folder_icon"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="16dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="12dp"
         android:src="@drawable/ic_folder"
         app:layout_constraintStart_toEndOf="@id/checkbox_select"
         app:layout_constraintTop_toTopOf="parent"
@@ -26,25 +26,15 @@
         android:contentDescription="Icono de carpeta"/>
 
     <TextView
-        android:id="@+id/partida_id_text"
+        android:id="@+id/details_text"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:textAppearance="?attr/textAppearanceListItem"
         app:layout_constraintStart_toEndOf="@id/folder_icon"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        tools:text="ID de Partida 12345" />
-
-    <TextView
-        android:id="@+id/image_count_text"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:textAppearance="?attr/textAppearanceListItemSecondary"
-        app:layout_constraintStart_toEndOf="@id/folder_icon"
-        app:layout_constraintTop_toBottomOf="@id/partida_id_text"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="5 imágenes" />
+        tools:text="Nro de partida 12345678 - 5 Imágenes" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
