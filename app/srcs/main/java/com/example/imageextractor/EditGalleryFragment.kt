@@ -28,7 +28,7 @@ class EditGalleryFragment : Fragment() {
     private var isSelectionMode = false
 
     private val storagePermission: String
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Manifest.permission.READ_EXTERNAL_STORAGE else Manifest.permission.WRITE_EXTERNAL_STORAGE
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) loadFoldersFromStorage() else Toast.makeText(requireContext(), "Permiso denegado.", Toast.LENGTH_SHORT).show()
@@ -118,10 +118,17 @@ class EditGalleryFragment : Fragment() {
             .setTitle("Confirmar Eliminación")
             .setMessage("¿Deseas eliminar ${selected.size} partida(s)? Esta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
-                selected.forEach { deleteFolderContents(it) }
+                var totalDeletedFiles = 0
+                selected.forEach { totalDeletedFiles += deleteFolderContents(it) }
+
+                if (totalDeletedFiles > 0) {
+                    Toast.makeText(context, "$totalDeletedFiles archivo(s) eliminado(s).", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "No se pudieron eliminar los archivos. Comprueba los permisos.", Toast.LENGTH_LONG).show()
+                }
+
                 folderAdapter.deselectAll()
                 loadFoldersFromStorage()
-                Toast.makeText(context, "${selected.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancelar", null)
             .show()

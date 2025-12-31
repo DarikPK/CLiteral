@@ -29,7 +29,7 @@ class EditGalleryFragment : Fragment() {
     private var isSelectionMode = false
 
     private val storagePermission: String
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) Manifest.permission.READ_EXTERNAL_STORAGE else Manifest.permission.WRITE_EXTERNAL_STORAGE
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) loadFoldersFromStorage() else Toast.makeText(requireContext(), "Permiso denegado.", Toast.LENGTH_SHORT).show()
@@ -128,8 +128,15 @@ class EditGalleryFragment : Fragment() {
             .show()
     }
 
-    private fun deleteFolderContents(folder: ImageFolder) {
-        folder.imagePaths.forEach { File(it).delete() }
+    private fun deleteFolderContents(folder: ImageFolder): Int {
+        var deletedCount = 0
+        folder.imagePaths.forEach { path ->
+            val file = File(path)
+            if (file.exists() && file.delete()) {
+                deletedCount++
+            }
+        }
+        return deletedCount
     }
 
     private fun checkAndRequestPermission() {
