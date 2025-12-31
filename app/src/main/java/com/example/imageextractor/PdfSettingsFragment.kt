@@ -334,8 +334,8 @@ class PdfSettingsFragment : Fragment() {
             canvas.drawBitmap(bitmap, null, android.graphics.Rect(left, top, left + finalWidth, top + finalHeight), paint)
 
             if (stampBitmap != null && (index == 0 || index == imagesToProcess.lastIndex)) {
-                val stampWidth = (stampBitmap.width * 0.4f).toInt()
-                val stampHeight = (stampBitmap.height * 0.4f).toInt()
+                val stampWidth = (stampBitmap.width * 0.15f).toInt()
+                val stampHeight = (stampBitmap.height * 0.15f).toInt()
                 val stampLeft = pageWidth - stampWidth - marginRight - 10
                 val stampTop = pageHeight - stampHeight - marginBottom - 10
                 canvas.drawBitmap(stampBitmap, null, android.graphics.Rect(stampLeft, stampTop, stampLeft + stampWidth, stampTop + stampHeight), null)
