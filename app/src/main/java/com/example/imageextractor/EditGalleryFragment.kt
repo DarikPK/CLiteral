@@ -12,10 +12,9 @@ import android.provider.Settings
 import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 import java.io.File
@@ -73,6 +72,10 @@ class EditGalleryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
+        (activity as? AppCompatActivity)?.supportActionBar?.title = "Partidas Capturadas"
+
         setupRecyclerView()
     }
 
@@ -86,7 +89,7 @@ class EditGalleryFragment : Fragment() {
             updateDeleteIconState(selectionSize > 0)
         }
         binding.editGalleryRecyclerView.apply {
-            layoutManager = GridLayoutManager(context, 2)
+            layoutManager = LinearLayoutManager(context)
             adapter = folderAdapter
         }
     }
@@ -109,6 +112,7 @@ class EditGalleryFragment : Fragment() {
                 foldersToDelete.forEach { deleteFolderContents(it) }
                 folderAdapter.clearSelection()
                 loadFoldersFromStorage()
+                Toast.makeText(context, "${foldersToDelete.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -188,16 +192,6 @@ class EditGalleryFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_view_mode_list -> {
-                binding.editGalleryRecyclerView.layoutManager = LinearLayoutManager(context)
-                folderAdapter.setViewType(FolderAdapter.ViewType.LIST)
-                true
-            }
-            R.id.action_view_mode_grid -> {
-                binding.editGalleryRecyclerView.layoutManager = GridLayoutManager(context, 2)
-                folderAdapter.setViewType(FolderAdapter.ViewType.GRID)
-                true
-            }
             R.id.action_delete_selection -> {
                 val selected = folderAdapter.getSelectedItems()
                 if (selected.isNotEmpty()) {
