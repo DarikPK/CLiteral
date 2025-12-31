@@ -3,6 +3,7 @@ package com.example.imageextractor
 import android.Manifest
 import android.app.AlertDialog
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.*
@@ -104,35 +105,92 @@ class EditGalleryFragment : Fragment() {
     }
 
     private fun updateMenuState(selectionSize: Int) {
-        // ... (lógica de actualización de menú)
+        if (!isSelectionMode) return
+        deleteMenuItem?.isVisible = selectionSize > 0
+        val totalItems = folderAdapter.itemCount
+        selectAllMenuItem?.title = if (totalItems > 0 && selectionSize == totalItems) "Deseleccionar Todo" else "Seleccionar Todo"
     }
 
     private fun showDeleteConfirmationDialog() {
-        // ... (lógica de diálogo)
+        val selected = folderAdapter.getSelectedItems()
+        if (selected.isEmpty()) return
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Confirmar Eliminación")
+            .setMessage("¿Deseas eliminar ${selected.size} partida(s)? Esta acción no se puede deshacer.")
+            .setPositiveButton("Eliminar") { _, _ ->
+                selected.forEach { deleteFolderContents(it) }
+                folderAdapter.deselectAll()
+                loadFoldersFromStorage()
+                Toast.makeText(context, "${selected.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun deleteFolderContents(folder: ImageFolder) {
-        // ... (lógica de borrado)
+        folder.imagePaths.forEach { File(it).delete() }
     }
 
     private fun checkAndRequestPermission() {
-        // ... (lógica de permisos)
+        when {
+            ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> loadFoldersFromStorage()
+            else -> requestPermissionLauncher.launch(storagePermission)
+        }
     }
 
     private fun loadFoldersFromStorage() {
-        // ... (lógica de carga)
+        val folders = mutableMapOf<String, MutableList<String>>()
+        val imageDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "capturas_sunarp")
+
+        if (imageDir.exists() && imageDir.isDirectory) {
+            imageDir.listFiles { file ->
+                file.isFile && file.name.endsWith(".png") && file.name.contains("-Hoja ")
+            }?.forEach { file ->
+                val partidaId = file.name.substringBefore("-Hoja").trim()
+                if (partidaId.isNotEmpty()) {
+                    folders.getOrPut(partidaId) { mutableListOf() }.add(file.absolutePath)
+                }
+            }
+        }
+
+        val folderList = folders.map { (partidaId, paths) ->
+            val sortedPaths = paths.sortedBy { it.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
+            ImageFolder(partidaId = partidaId, imagePaths = sortedPaths)
+        }
+
+        folderAdapter.submitList(folderList)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        // ... (lógica de creación de menú)
+        inflater.inflate(R.menu.edit_gallery_menu, menu)
+        deleteMenuItem = menu.findItem(R.id.action_delete_selection)
+        selectAllMenuItem = menu.findItem(R.id.action_select_all)
+        super.onCreateOptionsMenu(menu, inflater)
     }
 
     override fun onPrepareOptionsMenu(menu: Menu) {
-        // ... (lógica de preparación de menú)
+        deleteMenuItem?.isVisible = isSelectionMode && folderAdapter.getSelectionSize() > 0
+        selectAllMenuItem?.isVisible = isSelectionMode
+        super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // ... (lógica de selección de item de menú)
+        return when (item.itemId) {
+            R.id.action_delete_selection -> {
+                showDeleteConfirmationDialog()
+                true
+            }
+            R.id.action_select_all -> {
+                if (folderAdapter.getSelectionSize() == folderAdapter.itemCount) {
+                    folderAdapter.deselectAll()
+                } else {
+                    folderAdapter.selectAll()
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onDestroyView() {
