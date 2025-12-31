@@ -28,7 +28,7 @@ class FolderAdapter(
 
         fun bind(folder: ImageFolder) {
             val imageCount = folder.imagePaths.size
-            binding.detailsText.text = "Nro de partida ${folder.partidaId} - $imageCount ${if (imageCount == 1) "Imagen" else "Imágenes"}"
+            binding.detailsText.text = "${folder.partidaId} - $imageCount ${if (imageCount == 1) "Imagen" else "Imágenes"}"
             binding.checkboxSelect.isChecked = selectedItems.contains(folder.partidaId)
         }
     }
