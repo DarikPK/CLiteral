@@ -28,18 +28,33 @@ class EditGalleryFragment : Fragment() {
     private var selectAllMenuItem: MenuItem? = null
     private var isSelectionMode = false
 
-    private val storagePermission: String
+    // Permiso para LEER archivos
+    private val readStoragePermission: String
         get() = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> Manifest.permission.READ_MEDIA_IMAGES
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> Manifest.permission.READ_EXTERNAL_STORAGE
-            else -> Manifest.permission.WRITE_EXTERNAL_STORAGE
+            else -> Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+    // Permiso para ESCRIBIR (eliminar) archivos
+    private val writeStoragePermission: String
+        get() = Manifest.permission.WRITE_EXTERNAL_STORAGE
+
+    // Launcher para el permiso de LECTURA.
+    private val requestReadPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
             loadFoldersFromStorage()
         } else {
             Toast.makeText(requireContext(), "Permiso denegado. No se pueden mostrar las partidas.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Launcher para el permiso de ESCRITURA (para eliminar).
+    private val requestDeletePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, ahora mostramos el diálogo de confirmación.
+            showDeleteConfirmationDialog()
+        } else {
+            Toast.makeText(requireContext(), "Permiso de escritura denegado. No se pueden eliminar los archivos.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -65,7 +80,7 @@ class EditGalleryFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        checkAndRequestPermission()
+        checkAndRequestPermission() // Comprueba el permiso de LECTURA al volver a la pantalla
     }
 
     private fun setupRecyclerView() {
@@ -119,6 +134,26 @@ class EditGalleryFragment : Fragment() {
         selectAllMenuItem?.title = if (totalItems > 0 && selectionSize == totalItems) "Deseleccionar Todo" else "Seleccionar Todo"
     }
 
+    // Paso 1: Punto de entrada desde el clic en el menú
+    private fun checkPermissionAndAttemptDelete() {
+        if (folderAdapter.getSelectedItems().isEmpty()) {
+            Toast.makeText(requireContext(), "No hay partidas seleccionadas.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        when {
+            ContextCompat.checkSelfPermission(requireContext(), writeStoragePermission) == PackageManager.PERMISSION_GRANTED -> {
+                // Ya tenemos permiso, mostramos el diálogo de confirmación
+                showDeleteConfirmationDialog()
+            }
+            else -> {
+                // No tenemos permiso, lo solicitamos. El resultado lo gestiona requestDeletePermissionLauncher
+                requestDeletePermissionLauncher.launch(writeStoragePermission)
+            }
+        }
+    }
+
+    // Paso 2: Mostrar el diálogo de confirmación (asume que el permiso está o será concedido)
     private fun showDeleteConfirmationDialog() {
         val selected = folderAdapter.getSelectedItems()
         if (selected.isEmpty()) return
@@ -127,50 +162,65 @@ class EditGalleryFragment : Fragment() {
             .setTitle("Confirmar Eliminación")
             .setMessage("¿Deseas eliminar ${selected.size} partida(s)? Esta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
-                var totalDeletedFiles = 0
-                selected.forEach { totalDeletedFiles += deleteFolderContents(it) }
-
-                if (totalDeletedFiles > 0) {
-                    Toast.makeText(context, "$totalDeletedFiles archivo(s) eliminado(s) correctamente.", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "No se pudieron eliminar los archivos.", Toast.LENGTH_LONG).show()
-                }
-
-                folderAdapter.deselectAll()
-                loadFoldersFromStorage()
+                deleteSelectedFolders()
             }
             .setNegativeButton("Cancelar", null)
             .show()
     }
 
-    private fun deleteFolderContents(folder: ImageFolder): Int {
-        var deletedCount = 0
-        folder.imagePaths.forEach { path ->
-            val file = File(path)
-            if (file.exists() && file.delete()) {
-                deletedCount++
+    // Paso 3: La lógica de borrado en sí
+    private fun deleteSelectedFolders() {
+        val selected = folderAdapter.getSelectedItems()
+        var totalDeletedFiles = 0
+        val failedDeletions = mutableListOf<String>()
+
+        selected.forEach { folder ->
+            folder.imagePaths.forEach { path ->
+                val file = File(path)
+                if (file.exists()) {
+                    if (file.delete()) {
+                        totalDeletedFiles++
+                    } else {
+                        failedDeletions.add(file.name)
+                    }
+                }
             }
         }
-        return deletedCount
+
+        val context = context ?: return // Evitar crash si el fragmento se desvincula
+
+        if (totalDeletedFiles > 0) {
+            Toast.makeText(context, "$totalDeletedFiles archivo(s) eliminado(s) correctamente.", Toast.LENGTH_SHORT).show()
+        }
+
+        if (failedDeletions.isNotEmpty()) {
+            Toast.makeText(context, "No se pudieron eliminar ${failedDeletions.size} archivo(s).", Toast.LENGTH_LONG).show()
+        } else if (totalDeletedFiles == 0 && selected.isNotEmpty()) {
+            Toast.makeText(context, "No se eliminó ningún archivo. Verifique los permisos.", Toast.LENGTH_LONG).show()
+        }
+
+        // Refrescar la UI
+        folderAdapter.deselectAll()
+        loadFoldersFromStorage()
     }
 
     private fun checkAndRequestPermission() {
         when {
-            ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> {
+            ContextCompat.checkSelfPermission(requireContext(), readStoragePermission) == PackageManager.PERMISSION_GRANTED -> {
                 loadFoldersFromStorage()
             }
-            shouldShowRequestPermissionRationale(storagePermission) -> {
+            shouldShowRequestPermissionRationale(readStoragePermission) -> {
                 AlertDialog.Builder(requireContext())
                     .setTitle("Permiso Necesario")
-                    .setMessage("Para leer y eliminar partidas guardadas, la aplicación necesita acceso a tus archivos.")
+                    .setMessage("Para leer las partidas guardadas, la aplicación necesita acceso a tus archivos.")
                     .setPositiveButton("Entendido") { _, _ ->
-                        requestPermissionLauncher.launch(storagePermission)
+                        requestReadPermissionLauncher.launch(readStoragePermission)
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
             }
             else -> {
-                requestPermissionLauncher.launch(storagePermission)
+                requestReadPermissionLauncher.launch(readStoragePermission)
             }
         }
     }
@@ -214,7 +264,7 @@ class EditGalleryFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_delete_selection -> {
-                showDeleteConfirmationDialog()
+                checkPermissionAndAttemptDelete() // La llamada ahora va a la nueva función
                 true
             }
             R.id.action_select_all -> {
