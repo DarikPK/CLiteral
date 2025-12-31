@@ -60,12 +60,11 @@ class ImagePreviewFragment : Fragment() {
 
     private fun setupZoomButtons() {
         binding.fabZoomIn.setOnClickListener {
-            binding.previewImageView.scaleX *= 1.2f
-            binding.previewImageView.scaleY *= 1.2f
+            binding.previewImageView.zoomIn()
         }
 
         binding.fabZoomReset.setOnClickListener {
-            binding.previewImageView.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+            binding.previewImageView.resetZoom()
         }
     }
 
