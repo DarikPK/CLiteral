@@ -3,4 +3,5 @@
     <color name="feedback_green">#4CAF50</color>
     <color name="button_red">#FF0000</color>
     <color name="button_blue">#0000FF</color>
+    <color name="stamp_blue">#0033CC</color>
 </resources>

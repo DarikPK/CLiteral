@@ -1,10 +1,8 @@
 package com.example.imageextractor
 
+import android.app.DatePickerDialog
 import android.content.Context
-import android.graphics.BitmapFactory
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
+import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import android.os.Environment
@@ -12,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -24,11 +23,17 @@ import java.io.File
 import java.io.FileOutputStream
 import android.content.ContentUris
 import android.provider.MediaStore
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import kotlin.random.Random
 
 class PdfSettingsFragment : Fragment() {
 
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private val calendar = Calendar.getInstance()
 
     companion object {
         private const val PREFS_NAME = "PdfSettingsPrefs"
@@ -38,6 +43,7 @@ class PdfSettingsFragment : Fragment() {
         private const val KEY_MARGIN_BOTTOM = "margin_bottom"
         private const val KEY_MARGIN_LEFT = "margin_left"
         private const val KEY_MARGIN_RIGHT = "margin_right"
+        private const val KEY_STAMP_DATE = "stamp_date"
     }
 
     override fun onCreateView(
@@ -70,7 +76,33 @@ class PdfSettingsFragment : Fragment() {
         binding.contrastEditText.doOnTextChanged { text, _, _, _ ->
             validateRange(text.toString(), 0, 100)
         }
+        binding.selectStampDateButton.setOnClickListener {
+            showDatePickerDialog()
+        }
     }
+
+    private fun showDatePickerDialog() {
+        val dateSetListener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            updateDateInView()
+        }
+        DatePickerDialog(
+            requireContext(),
+            dateSetListener,
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun updateDateInView() {
+        val myFormat = "dd/MM/yyyy"
+        val sdf = SimpleDateFormat(myFormat, Locale.getDefault())
+        binding.stampDateTextView.text = sdf.format(calendar.time)
+    }
+
 
     private fun validateRange(text: String, min: Int, max: Int) {
         val value = text.toIntOrNull()
@@ -89,6 +121,14 @@ class PdfSettingsFragment : Fragment() {
         binding.marginBottomEditText.setText(prefs.getInt(KEY_MARGIN_BOTTOM, 20).toString())
         binding.marginLeftEditText.setText(prefs.getInt(KEY_MARGIN_LEFT, 20).toString())
         binding.marginRightEditText.setText(prefs.getInt(KEY_MARGIN_RIGHT, 20).toString())
+
+        val stampDate = prefs.getLong(KEY_STAMP_DATE, -1)
+        if (stampDate != -1L) {
+            calendar.timeInMillis = stampDate
+            updateDateInView()
+        } else {
+            updateDateInView()
+        }
     }
 
     private fun saveSettings() {
@@ -114,6 +154,7 @@ class PdfSettingsFragment : Fragment() {
         prefs.putInt(KEY_MARGIN_BOTTOM, binding.marginBottomEditText.text.toString().toIntOrNull() ?: 20)
         prefs.putInt(KEY_MARGIN_LEFT, binding.marginLeftEditText.text.toString().toIntOrNull() ?: 20)
         prefs.putInt(KEY_MARGIN_RIGHT, binding.marginRightEditText.text.toString().toIntOrNull() ?: 20)
+        prefs.putLong(KEY_STAMP_DATE, calendar.timeInMillis)
         prefs.apply()
 
         Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
@@ -271,6 +312,12 @@ class PdfSettingsFragment : Fragment() {
             val top = marginTop + (drawableHeight - finalHeight) / 2
 
             canvas.drawBitmap(bitmap, null, android.graphics.Rect(left, top, left + finalWidth, top + finalHeight), paint)
+
+            // Lógica para añadir el sello
+            if (index == 0 || index == imagesToProcess.size - 1) {
+                drawRealisticStamp(canvas, pageHeight)
+            }
+
             pdfDocument.finishPage(page)
             bitmap.recycle()
         }
@@ -288,6 +335,55 @@ class PdfSettingsFragment : Fragment() {
         pdfDocument.close()
         return targetFile
     }
+
+    private fun drawRealisticStamp(canvas: Canvas, pageHeight: Int) {
+        val stampPaint = Paint().apply {
+            color = ContextCompat.getColor(requireContext(), R.color.stamp_blue)
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            isAntiAlias = true
+        }
+        val textPaint = Paint().apply {
+            color = ContextCompat.getColor(requireContext(), R.color.stamp_blue)
+            textSize = 20f
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        }
+
+        // --- Efectos de realismo ---
+        // 1. Transparencia aleatoria
+        val alpha = Random.nextInt(200, 256) // Entre ~80% y 100% de opacidad
+        stampPaint.alpha = alpha
+        textPaint.alpha = alpha
+
+        // 2. Posición aleatoria (Jitter)
+        val x = canvas.width - 150f + Random.nextInt(-20, 21)
+        val y = pageHeight - 100f + Random.nextInt(-20, 21)
+
+        // 3. Rotación aleatoria
+        val rotation = Random.nextFloat() * 6 - 3 // Entre -3 y 3 grados
+        canvas.save()
+        canvas.rotate(rotation, x, y)
+
+        // --- Dibujar sello ---
+        val rect = RectF(x - 100, y - 40, x + 100, y + 40)
+        canvas.drawRoundRect(rect, 10f, 10f, stampPaint)
+
+        val myFormat = "dd MMM yyyy"
+        val sdf = SimpleDateFormat(myFormat, Locale.getDefault())
+        val dateText = sdf.format(calendar.time).uppercase()
+
+        // Centrar el texto en el rectángulo
+        val textBounds = Rect()
+        textPaint.getTextBounds(dateText, 0, dateText.length, textBounds)
+        val textY = rect.centerY() - textBounds.exactCenterY()
+
+        canvas.drawText(dateText, rect.centerX(), textY, textPaint)
+
+        canvas.restore()
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
