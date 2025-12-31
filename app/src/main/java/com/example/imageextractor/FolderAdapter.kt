@@ -62,6 +62,17 @@ class FolderAdapter(
         onSelectionChanged(selectedItems.size)
     }
 
+    fun deselectRange(start: Int, end: Int) {
+        val range = if (start < end) (start..end) else (end..start)
+        for (i in range) {
+            if (i in 0 until itemCount) {
+                selectedItems.remove(getItem(i).partidaId)
+                notifyItemChanged(i)
+            }
+        }
+        onSelectionChanged(selectedItems.size)
+    }
+
     fun selectAll() {
         currentList.forEach { selectedItems.add(it.partidaId) }
         notifyDataSetChanged()
