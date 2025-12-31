@@ -15,71 +15,77 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.imageextractor.databinding.FragmentEditGalleryBinding
 import java.io.File
 
 class EditGalleryFragment : Fragment() {
 
+    private enum class Mode { VIEW, SELECTION }
+
     private var _binding: FragmentEditGalleryBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var folderAdapter: FolderAdapter
-    private var deleteMenuItem: MenuItem? = null
-    private var selectAllMenuItem: MenuItem? = null
-    private var originalToolbarTitle: CharSequence? = null
+    private var currentMode: Mode = Mode.VIEW
+    private var actionMode: ActionMode? = null
 
     private val storagePermission: String
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            loadFoldersFromStorage()
         } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Toast.makeText(requireContext(), "El permiso para leer archivos es necesario para esta función.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val actionModeCallback = object : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+            mode.menuInflater.inflate(R.menu.contextual_selection_menu, menu)
+            return true
         }
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                loadFoldersFromStorage()
-            } else {
-                 if (!shouldShowRequestPermissionRationale(storagePermission)) {
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Permiso Denegado")
-                        .setMessage("Has denegado el permiso de forma permanente. Por favor, actívalo en los ajustes de la aplicación para poder ver tus extracciones.")
-                        .setPositiveButton("Ir a Ajustes") { _, _ ->
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", requireActivity().packageName, null)
-                            }
-                            startActivity(intent)
-                        }
-                        .setNegativeButton("Cancelar", null)
-                        .show()
-                } else {
-                    Toast.makeText(requireContext(), "El permiso para leer archivos es necesario para esta función.", Toast.LENGTH_LONG).show()
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean {
+            val selectionSize = folderAdapter.getSelectionSize()
+            val selectAllItem = menu.findItem(R.id.action_select_all)
+            selectAllItem.title = if (selectionSize == folderAdapter.itemCount) "Deseleccionar Todo" else "Seleccionar Todo"
+            mode.title = "$selectionSize seleccionado(s)"
+            return true
+        }
+
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            return when (item.itemId) {
+                R.id.action_delete_selection -> {
+                    showDeleteConfirmationDialog(folderAdapter.getSelectedItems())
+                    true
                 }
+                R.id.action_select_all -> {
+                    if (folderAdapter.getSelectionSize() == folderAdapter.itemCount) {
+                        folderAdapter.deselectAll()
+                    } else {
+                        folderAdapter.selectAll()
+                    }
+                    true
+                }
+                else -> false
             }
         }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
+        override fun onDestroyActionMode(mode: ActionMode) {
+            exitSelectionMode()
+        }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentEditGalleryBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        val activity = activity as? AppCompatActivity
-        activity?.setSupportActionBar(binding.toolbar)
-        originalToolbarTitle = activity?.supportActionBar?.title
-        activity?.supportActionBar?.title = "Partidas Capturadas"
-
         setupRecyclerView()
     }
 
@@ -89,50 +95,68 @@ class EditGalleryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        folderAdapter = FolderAdapter { selectionSize ->
-            updateUiOnSelectionChange(selectionSize)
-        }
+        folderAdapter = FolderAdapter(
+            onItemClick = { folder ->
+                if (currentMode == Mode.SELECTION) {
+                    val position = folderAdapter.currentList.indexOf(folder)
+                    folderAdapter.toggleSelection(position)
+                } else {
+                    val bundle = Bundle().apply {
+                        putStringArray("imageUrls", folder.imagePaths.toTypedArray())
+                        putString("partidaId", folder.partidaId)
+                    }
+                    findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
+                }
+            },
+            onItemLongClick = { folder ->
+                if (currentMode != Mode.SELECTION) {
+                    enterSelectionMode()
+                    val position = folderAdapter.currentList.indexOf(folder)
+                    folderAdapter.toggleSelection(position)
+                }
+            },
+            onSelectionChanged = { selectionSize ->
+                if (currentMode == Mode.SELECTION) {
+                    if (selectionSize == 0) {
+                        actionMode?.finish()
+                    } else {
+                        actionMode?.invalidate()
+                    }
+                }
+            }
+        )
 
-        val dragSelectListener = DragSelectTouchListener(binding.editGalleryRecyclerView, folderAdapter)
+        val dragListener = DragSelectTouchListener(binding.editGalleryRecyclerView, folderAdapter,
+            isInSelectionMode = { currentMode == Mode.SELECTION },
+            onDragSelectionFinished = { actionMode?.invalidate() }
+        )
 
         binding.editGalleryRecyclerView.apply {
-            layoutManager = LinearLayoutManager(context)
+            layoutManager = GridLayoutManager(context, 2)
             adapter = folderAdapter
-            addOnItemTouchListener(dragSelectListener)
+            addOnItemTouchListener(dragListener)
         }
     }
 
-    private fun updateUiOnSelectionChange(selectionSize: Int) {
-        val hasSelection = selectionSize > 0
-        deleteMenuItem?.isVisible = hasSelection
+    private fun enterSelectionMode() {
+        currentMode = Mode.SELECTION
+        actionMode = (activity as? AppCompatActivity)?.startActionMode(actionModeCallback)
+        folderAdapter.setSelectionMode(true)
+    }
 
-        val activity = activity as? AppCompatActivity
-        if (hasSelection) {
-            activity?.supportActionBar?.title = "$selectionSize seleccionado(s)"
-        } else {
-            activity?.supportActionBar?.title = "Partidas Capturadas"
-        }
-
-        if (selectionSize == folderAdapter.itemCount && folderAdapter.itemCount > 0) {
-            selectAllMenuItem?.title = "Deseleccionar Todo"
-        } else {
-            selectAllMenuItem?.title = "Seleccionar Todo"
-        }
+    private fun exitSelectionMode() {
+        currentMode = Mode.VIEW
+        actionMode = null
+        folderAdapter.setSelectionMode(false)
     }
 
     private fun showDeleteConfirmationDialog(foldersToDelete: List<ImageFolder>) {
-        val message = if (foldersToDelete.size == 1) {
-            "¿Estás seguro de que deseas eliminar la partida '${foldersToDelete.first().partidaId}'?"
-        } else {
-            "¿Estás seguro de que deseas eliminar ${foldersToDelete.size} partidas seleccionadas?"
-        }
-
         AlertDialog.Builder(requireContext())
             .setTitle("Confirmar Eliminación")
-            .setMessage("$message\nEsta acción no se puede deshacer.")
+            .setMessage("¿Deseas eliminar ${foldersToDelete.size} partida(s)? Esta acción no se puede deshacer.")
             .setPositiveButton("Eliminar") { _, _ ->
                 foldersToDelete.forEach { deleteFolderContents(it) }
-                folderAdapter.deselectAll()
+                actionMode?.finish()
                 loadFoldersFromStorage()
                 Toast.makeText(context, "${foldersToDelete.size} partida(s) eliminada(s).", Toast.LENGTH_SHORT).show()
             }
@@ -141,29 +165,19 @@ class EditGalleryFragment : Fragment() {
     }
 
     private fun deleteFolderContents(folder: ImageFolder) {
-        folder.imagePaths.forEach { path ->
-            val file = File(path)
-            if (file.exists()) {
-                file.delete()
-            }
-        }
+        folder.imagePaths.forEach { File(it).delete() }
     }
 
     private fun checkAndRequestPermission() {
         when {
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                storagePermission
-            ) == PackageManager.PERMISSION_GRANTED -> {
+            ContextCompat.checkSelfPermission(requireContext(), storagePermission) == PackageManager.PERMISSION_GRANTED -> {
                 loadFoldersFromStorage()
             }
             shouldShowRequestPermissionRationale(storagePermission) -> {
                 AlertDialog.Builder(requireContext())
                     .setTitle("Permiso Necesario")
-                    .setMessage("Para mostrar las extracciones guardadas, la aplicación necesita permiso para leer los archivos de tu dispositivo.")
-                    .setPositiveButton("Entendido") { _, _ ->
-                        requestPermissionLauncher.launch(storagePermission)
-                    }
+                    .setMessage("Para mostrar las extracciones guardadas, la aplicación necesita permiso para leer los archivos.")
+                    .setPositiveButton("Entendido") { _, _ -> requestPermissionLauncher.launch(storagePermission) }
                     .setNegativeButton("Cancelar", null)
                     .show()
             }
@@ -179,13 +193,10 @@ class EditGalleryFragment : Fragment() {
         val imageDir = File(downloadsDir, "capturas_sunarp")
 
         if (imageDir.exists() && imageDir.isDirectory) {
-            val imageFiles = imageDir.listFiles { file ->
+            imageDir.listFiles { file ->
                 file.isFile && file.name.endsWith(".png") && file.name.contains("-Hoja ")
-            }
-
-            imageFiles?.forEach { file ->
-                val fileName = file.name
-                val partidaId = fileName.substringBefore("-Hoja").trim()
+            }?.forEach { file ->
+                val partidaId = file.name.substringBefore("-Hoja").trim()
                 if (partidaId.isNotEmpty()) {
                     folders.getOrPut(partidaId) { mutableListOf() }.add(file.absolutePath)
                 }
@@ -193,9 +204,7 @@ class EditGalleryFragment : Fragment() {
         }
 
         val folderList = folders.map { (partidaId, paths) ->
-            val sortedPaths = paths.sortedBy { path ->
-                path.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0
-            }
+            val sortedPaths = paths.sortedBy { it.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
             ImageFolder(partidaId = partidaId, imagePaths = sortedPaths)
         }
 
@@ -204,39 +213,11 @@ class EditGalleryFragment : Fragment() {
         }
 
         folderAdapter.submitList(folderList)
-        updateUiOnSelectionChange(folderAdapter.getSelectionSize())
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.edit_gallery_menu, menu)
-        deleteMenuItem = menu.findItem(R.id.action_delete_selection)
-        selectAllMenuItem = menu.findItem(R.id.action_select_all)
-        super.onCreateOptionsMenu(menu, inflater)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_delete_selection -> {
-                val selected = folderAdapter.getSelectedItems()
-                if (selected.isNotEmpty()) {
-                    showDeleteConfirmationDialog(selected)
-                }
-                true
-            }
-            R.id.action_select_all -> {
-                if (folderAdapter.getSelectionSize() == folderAdapter.itemCount) {
-                    folderAdapter.deselectAll()
-                } else {
-                    folderAdapter.selectAll()
-                }
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        actionMode?.finish()
         _binding = null
     }
 }
