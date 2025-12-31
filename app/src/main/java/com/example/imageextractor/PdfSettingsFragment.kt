@@ -22,8 +22,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Typeface
 import android.content.ContentUris
 import android.provider.MediaStore
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import kotlin.random.Random
 
 class PdfSettingsFragment : Fragment() {
 
@@ -231,6 +240,51 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
+    private fun generateStampBitmap(dateText: String): Bitmap {
+        val context = requireContext()
+        // 1. Cargar la imagen base del sello y convertirla a un Bitmap mutable
+        val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
+        val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+
+        // 2. Preparar el Paint para el texto de la fecha
+        val textPaint = Paint().apply {
+            color = 0xFF003366.toInt() // Color azul oscuro, similar al del sello
+            textSize = 45f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+
+        // 3. Dibujar el texto en el Bitmap
+        val canvas = Canvas(baseStampBitmap)
+        val x = canvas.width / 2f
+        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 15f // Ajuste vertical
+        canvas.drawText(dateText, x, y, textPaint)
+
+        // 4. Seleccionar y aplicar una textura de desgaste aleatoria
+        val textureId = if (Random.nextBoolean()) R.drawable.texture_grunge_1 else R.drawable.texture_grunge_2
+        val textureDrawable = ContextCompat.getDrawable(context, textureId)!!
+        val textureBitmap = textureDrawable.toBitmap(baseStampBitmap.width, baseStampBitmap.height, Bitmap.Config.ALPHA_8)
+
+        val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+        }
+        canvas.drawBitmap(textureBitmap, 0f, 0f, maskPaint)
+        textureBitmap.recycle()
+
+        // 5. Aplicar una rotación aleatoria
+        val matrix = Matrix()
+        val rotation = Random.nextFloat() * 10 - 5 // Rotación entre -5 y 5 grados
+        matrix.postRotate(rotation, baseStampBitmap.width / 2f, baseStampBitmap.height / 2f)
+
+        val rotatedBitmap = Bitmap.createBitmap(baseStampBitmap, 0, 0, baseStampBitmap.width, baseStampBitmap.height, matrix, true)
+        if (rotatedBitmap != baseStampBitmap) {
+            baseStampBitmap.recycle()
+        }
+
+        return rotatedBitmap
+    }
+
     private fun createPdf(folder: ImageFolder, isPreview: Boolean): File {
         val brightness = binding.brightnessEditText.text.toString().toIntOrNull() ?: 0
         val contrast = binding.contrastEditText.text.toString().toIntOrNull() ?: 100
@@ -238,6 +292,13 @@ class PdfSettingsFragment : Fragment() {
         val marginBottom = binding.marginBottomEditText.text.toString().toIntOrNull() ?: 20
         val marginLeft = binding.marginLeftEditText.text.toString().toIntOrNull() ?: 20
         val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
+
+        val isStampEnabled = binding.stampEnabledCheckbox.isChecked
+        val stampDateText = binding.stampDateEditText.text.toString()
+        var stampBitmap: Bitmap? = null
+        if (isStampEnabled && stampDateText.isNotBlank()) {
+            stampBitmap = generateStampBitmap(stampDateText)
+        }
 
         val pdfDocument = PdfDocument()
         val imagesToProcess = folder.imageFiles.map { it.path }
@@ -271,9 +332,20 @@ class PdfSettingsFragment : Fragment() {
             val top = marginTop + (drawableHeight - finalHeight) / 2
 
             canvas.drawBitmap(bitmap, null, android.graphics.Rect(left, top, left + finalWidth, top + finalHeight), paint)
+
+            if (stampBitmap != null && (index == 0 || index == imagesToProcess.lastIndex)) {
+                val stampWidth = (stampBitmap.width * 0.4f).toInt()
+                val stampHeight = (stampBitmap.height * 0.4f).toInt()
+                val stampLeft = pageWidth - stampWidth - marginRight - 10
+                val stampTop = pageHeight - stampHeight - marginBottom - 10
+                canvas.drawBitmap(stampBitmap, null, android.graphics.Rect(stampLeft, stampTop, stampLeft + stampWidth, stampTop + stampHeight), null)
+            }
+
             pdfDocument.finishPage(page)
             bitmap.recycle()
         }
+
+        stampBitmap?.recycle()
 
         val targetFile = if (isPreview) {
             val previewDir = File(requireContext().cacheDir, "previews")

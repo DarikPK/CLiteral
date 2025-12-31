@@ -117,6 +117,33 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
+        <TextView
+            style="@style/TextAppearance.Material3.TitleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3. Sello de Fecha"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"/>
+
+        <CheckBox
+            android:id="@+id/stamp_enabled_checkbox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Añadir sello de fecha en la primera y última página" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="Texto de la fecha (ej. 24 AGO 2024)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/stamp_date_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapCharacters" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+
         <Button
             android:id="@+id/save_settings_button"
             android:layout_width="match_parent"
