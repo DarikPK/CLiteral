@@ -242,26 +242,22 @@ class PdfSettingsFragment : Fragment() {
 
     private fun generateStampBitmap(dateText: String): Bitmap {
         val context = requireContext()
-        // 1. Cargar la imagen base del sello (la imagen PNG proporcionada) y convertirla a un Bitmap mutable
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
         val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
-        // 2. Preparar el Paint para el texto de la fecha
         val textPaint = Paint().apply {
-            color = 0xFF003366.toInt() // Color azul oscuro, similar al del sello
+            color = 0xFF003366.toInt()
             textSize = 45f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
 
-        // 3. Dibujar el texto en el Bitmap
         val canvas = Canvas(baseStampBitmap)
         val x = canvas.width / 2f
-        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 15f // Ajuste vertical
+        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 15f
         canvas.drawText(dateText, x, y, textPaint)
 
-        // 4. Seleccionar y aplicar una textura de desgaste aleatoria
         val textureId = if (Random.nextBoolean()) R.drawable.texture_grunge_1 else R.drawable.texture_grunge_2
         val textureDrawable = ContextCompat.getDrawable(context, textureId)!!
         val textureBitmap = textureDrawable.toBitmap(baseStampBitmap.width, baseStampBitmap.height, Bitmap.Config.ALPHA_8)
@@ -272,17 +268,7 @@ class PdfSettingsFragment : Fragment() {
         canvas.drawBitmap(textureBitmap, 0f, 0f, maskPaint)
         textureBitmap.recycle()
 
-        // 5. Aplicar una rotación aleatoria
-        val matrix = Matrix()
-        val rotation = Random.nextFloat() * 10 - 5 // Rotación entre -5 y 5 grados
-        matrix.postRotate(rotation, baseStampBitmap.width / 2f, baseStampBitmap.height / 2f)
-
-        val rotatedBitmap = Bitmap.createBitmap(baseStampBitmap, 0, 0, baseStampBitmap.width, baseStampBitmap.height, matrix, true)
-        if (rotatedBitmap != baseStampBitmap) {
-            baseStampBitmap.recycle()
-        }
-
-        return rotatedBitmap
+        return baseStampBitmap
     }
 
     private fun createPdf(folder: ImageFolder, isPreview: Boolean): File {
@@ -295,6 +281,9 @@ class PdfSettingsFragment : Fragment() {
 
         val isStampEnabled = binding.stampEnabledCheckbox.isChecked
         val stampDateText = binding.stampDateEditText.text.toString()
+        val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 8
+        val stampMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
+
         var stampBitmap: Bitmap? = null
         if (isStampEnabled && stampDateText.isNotBlank()) {
             stampBitmap = generateStampBitmap(stampDateText)
@@ -334,11 +323,17 @@ class PdfSettingsFragment : Fragment() {
             canvas.drawBitmap(bitmap, null, android.graphics.Rect(left, top, left + finalWidth, top + finalHeight), paint)
 
             if (stampBitmap != null && (index == 0 || index == imagesToProcess.lastIndex)) {
-                val stampWidth = (stampBitmap.width * 0.15f).toInt()
-                val stampHeight = (stampBitmap.height * 0.15f).toInt()
+                val scale = stampSizePercent / 100f
+                val stampWidth = (stampBitmap.width * scale).toInt()
+                val stampHeight = (stampBitmap.height * scale).toInt()
                 val stampLeft = pageWidth - stampWidth - marginRight - 10
                 val stampTop = pageHeight - stampHeight - marginBottom - 10
+
+                canvas.save()
+                val rotation = Random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
+                canvas.rotate(rotation, (stampLeft + stampWidth / 2).toFloat(), (stampTop + stampHeight / 2).toFloat())
                 canvas.drawBitmap(stampBitmap, null, android.graphics.Rect(stampLeft, stampTop, stampLeft + stampWidth, stampTop + stampHeight), null)
+                canvas.restore()
             }
 
             pdfDocument.finishPage(page)
