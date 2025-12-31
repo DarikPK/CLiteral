@@ -34,6 +34,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import kotlin.random.Random
 
+class PdfSettingsFragment : Fragment() {
+
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
 
