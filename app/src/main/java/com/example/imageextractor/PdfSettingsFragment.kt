@@ -11,6 +11,7 @@ import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
@@ -62,6 +63,18 @@ class PdfSettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         loadSettings()
         setupListeners()
+        setupMonthSpinner()
+    }
+
+    private fun setupMonthSpinner() {
+        ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.months_array,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            binding.stampMonthSpinner.adapter = adapter
+        }
     }
 
     private fun setupListeners() {
@@ -241,14 +254,14 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generateStampBitmap(dateText: String): Bitmap {
+    private fun generateStampBitmap(dateText: String, fontSize: Float): Bitmap {
         val context = requireContext()
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
         val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
         val textPaint = Paint().apply {
             color = Color.RED
-            textSize = 50f
+            textSize = fontSize
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
@@ -281,8 +294,9 @@ class PdfSettingsFragment : Fragment() {
         val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
 
         val isStampEnabled = binding.stampEnabledCheckbox.isChecked
-        val stampDay = binding.stampDayEditText.text.toString()
-        val stampMonth = binding.stampMonthEditText.text.toString().uppercase()
+        val dayInt = binding.stampDayEditText.text.toString().toIntOrNull()
+        val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
+        val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
         val stampYear = binding.stampYearEditText.text.toString()
 
         val stampDateText = if(stampDay.isNotBlank() && stampMonth.isNotBlank() && stampYear.isNotBlank()) {
@@ -292,11 +306,12 @@ class PdfSettingsFragment : Fragment() {
         }
 
         val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 5
+        val stampFontSize = binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 50f
         val stampMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
 
         var stampBitmap: Bitmap? = null
         if (isStampEnabled && stampDateText.isNotBlank()) {
-            stampBitmap = generateStampBitmap(stampDateText)
+            stampBitmap = generateStampBitmap(stampDateText, stampFontSize)
         }
 
         val pdfDocument = PdfDocument()
