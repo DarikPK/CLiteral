@@ -19,12 +19,54 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/pdf_pages_recycler_view"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        tools:listitem="@layout/pdf_page_item" />
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <com.example.imageextractor.ZoomableImageView
+            android:id="@+id/pdf_page_zoomable_image_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#CCCCCC" />
+
+        <ImageButton
+            android:id="@+id/previous_page_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:src="@android:drawable/ic_media_previous"
+            android:contentDescription="Página Anterior" />
+
+        <ImageButton
+            android:id="@+id/next_page_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:src="@android:drawable/ic_media_next"
+            android:contentDescription="Página Siguiente" />
+
+        <TextView
+            android:id="@+id/page_number_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_alignTop="@id/next_page_button"
+            android:layout_alignBottom="@id/next_page_button"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:background="#80000000"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            tools:text="Página 1 / 10" />
+
+    </RelativeLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_save_pdf"
@@ -33,6 +75,7 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:contentDescription="Guardar PDF Final"
-        app:srcCompat="@android:drawable/ic_menu_save" />
+        app:srcCompat="@android:drawable/ic_menu_save"
+        android:visibility="gone" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
