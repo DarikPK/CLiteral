@@ -33,6 +33,7 @@ import android.graphics.Typeface
 import android.content.ContentUris
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
 import kotlin.random.Random
 
@@ -82,10 +83,10 @@ class PdfSettingsFragment : Fragment() {
             saveSettings()
         }
         binding.generatePdfButton.setOnClickListener {
-            showPartidaSelectionDialog(isForPreview = false)
+            validateStampFieldsAndProceed(isForPreview = false)
         }
         binding.previewPdfButton.setOnClickListener {
-            showPartidaSelectionDialog(isForPreview = true)
+            validateStampFieldsAndProceed(isForPreview = true)
         }
         binding.brightnessEditText.doOnTextChanged { text, _, _, _ ->
             validateRange(text.toString(), 0, 100)
@@ -93,6 +94,21 @@ class PdfSettingsFragment : Fragment() {
         binding.contrastEditText.doOnTextChanged { text, _, _, _ ->
             validateRange(text.toString(), 0, 100)
         }
+    }
+
+    private fun validateStampFieldsAndProceed(isForPreview: Boolean) {
+        if (binding.stampEnabledCheckbox.isChecked) {
+            val day = binding.stampDayEditText.text.toString()
+            if (day.isBlank()) {
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Campo Requerido")
+                    .setMessage("Por favor, ingrese un día para el sello antes de continuar.")
+                    .setPositiveButton("Aceptar", null)
+                    .show()
+                return
+            }
+        }
+        showPartidaSelectionDialog(isForPreview)
     }
 
     private fun validateRange(text: String, min: Int, max: Int) {
@@ -259,10 +275,12 @@ class PdfSettingsFragment : Fragment() {
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
         val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
+        val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
+
         val textPaint = Paint().apply {
             color = Color.RED
             textSize = fontSize
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            typeface = customTypeface ?: Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
