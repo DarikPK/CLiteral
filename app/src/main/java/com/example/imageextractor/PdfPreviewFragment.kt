@@ -1,13 +1,9 @@
 package com.example.imageextractor
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
 import android.graphics.pdf.PdfRenderer
 import android.os.Bundle
-import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.view.*
 import android.widget.Toast
@@ -16,15 +12,11 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.example.imageextractor.databinding.FragmentPdfPreviewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 class PdfPreviewFragment : Fragment() {
 
@@ -33,10 +25,10 @@ class PdfPreviewFragment : Fragment() {
 
     private lateinit var pdfRenderer: PdfRenderer
     private lateinit var parcelFileDescriptor: ParcelFileDescriptor
-    private lateinit var pageAdapter: PdfPageAdapter
     private var pdfPath: String? = null
     private var partidaId: String? = null
     private val pageBitmaps = mutableListOf<Bitmap>()
+    private var currentPageIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,9 +50,8 @@ class PdfPreviewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        setupRecyclerView()
         renderPdf()
-        setupSaveButton()
+        setupNavigationButtons()
     }
 
     private fun setupToolbar() {
@@ -72,30 +63,18 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun setupRecyclerView() {
-        pageAdapter = PdfPageAdapter()
-        binding.pdfPagesRecyclerView.adapter = pageAdapter
-        binding.pdfPagesRecyclerView.layoutManager = LinearLayoutManager(context)
-
-        val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
-                val fromPosition = viewHolder.adapterPosition
-                val toPosition = target.adapterPosition
-                pageAdapter.moveItem(fromPosition, toPosition)
-                return true
+    private fun setupNavigationButtons() {
+        binding.previousPageButton.setOnClickListener {
+            if (currentPageIndex > 0) {
+                currentPageIndex--
+                displayPage(currentPageIndex)
             }
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
         }
-        ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(binding.pdfPagesRecyclerView)
-    }
-
-    private fun setupSaveButton() {
-        binding.fabSavePdf.setOnClickListener {
-            saveReorderedPdf()
+        binding.nextPageButton.setOnClickListener {
+            if (currentPageIndex < pageBitmaps.size - 1) {
+                currentPageIndex++
+                displayPage(currentPageIndex)
+            }
         }
     }
 
@@ -115,7 +94,9 @@ class PdfPreviewFragment : Fragment() {
                     page.close()
                 }
                 withContext(Dispatchers.Main) {
-                    pageAdapter.submitList(pageBitmaps)
+                    if (pageBitmaps.isNotEmpty()) {
+                        displayPage(currentPageIndex)
+                    }
                 }
             } catch (e: Exception) {
                 // Handle error
@@ -123,38 +104,13 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun saveReorderedPdf() {
-        val reorderedBitmaps = pageAdapter.getCurrentList()
-        if (reorderedBitmaps.isEmpty() || partidaId == null) {
-            Toast.makeText(context, "No hay páginas para guardar.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val pdfDocument = PdfDocument()
-                for ((index, bitmap) in reorderedBitmaps.withIndex()) {
-                    val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
-                    val page = pdfDocument.startPage(pageInfo)
-                    page.canvas.drawBitmap(bitmap, 0f, 0f, Paint())
-                    pdfDocument.finishPage(page)
-                }
-
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val pdfFile = File(downloadsDir, "$partidaId.pdf")
-                pdfDocument.writeTo(FileOutputStream(pdfFile))
-                pdfDocument.close()
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "PDF guardado en ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
-                    findNavController().popBackStack(R.id.pdfSettingsFragment, false)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error al guardar el PDF: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+    private fun displayPage(index: Int) {
+        if (index >= 0 && index < pageBitmaps.size) {
+            binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
+            binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
+            binding.previousPageButton.visibility = if (index > 0) View.VISIBLE else View.INVISIBLE
+            binding.nextPageButton.visibility = if (index < pageBitmaps.size - 1) View.VISIBLE else View.INVISIBLE
+            binding.pdfPageZoomableImageView.resetZoom()
         }
     }
 
@@ -167,6 +123,14 @@ class PdfPreviewFragment : Fragment() {
         return when (item.itemId) {
             R.id.action_share -> {
                 sharePdf()
+                true
+            }
+            R.id.action_zoom_in -> {
+                binding.pdfPageZoomableImageView.zoomIn()
+                true
+            }
+            R.id.action_reset_zoom -> {
+                binding.pdfPageZoomableImageView.resetZoom()
                 true
             }
             else -> super.onOptionsItemSelected(item)
