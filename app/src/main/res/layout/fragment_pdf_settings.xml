@@ -129,19 +129,59 @@
             android:id="@+id/stamp_enabled_checkbox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Añadir sello de fecha en la primera y última página" />
+            android:text="Añadir sello de fecha en la primera y última página"
+            android:checked="true"/>
 
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="Texto de la fecha (ej. 24 AGO 2024)">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/stamp_date_edit_text"
-                android:layout_width="match_parent"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:inputType="textCapCharacters" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:hint="Día">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/stamp_day_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="2"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1.5"
+                android:layout_marginEnd="4dp"
+                android:layout_marginStart="4dp"
+                android:hint="Mes (ej. ENE)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/stamp_month_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textCapCharacters"
+                    android:maxLength="3"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1.2"
+                android:layout_marginStart="4dp"
+                android:hint="Año">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/stamp_year_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:maxLength="4"
+                    android:text="2026"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -160,7 +200,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"
-                    android:text="8"/>
+                    android:text="5"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout

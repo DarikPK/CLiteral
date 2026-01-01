@@ -24,6 +24,7 @@ import java.io.File
 import java.io.FileOutputStream
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
@@ -246,8 +247,8 @@ class PdfSettingsFragment : Fragment() {
         val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
         val textPaint = Paint().apply {
-            color = 0xFF003366.toInt()
-            textSize = 45f
+            color = Color.RED
+            textSize = 50f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
@@ -255,7 +256,7 @@ class PdfSettingsFragment : Fragment() {
 
         val canvas = Canvas(baseStampBitmap)
         val x = canvas.width / 2f
-        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 15f
+        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
         canvas.drawText(dateText, x, y, textPaint)
 
         val textureId = if (Random.nextBoolean()) R.drawable.texture_grunge_1 else R.drawable.texture_grunge_2
@@ -280,8 +281,17 @@ class PdfSettingsFragment : Fragment() {
         val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
 
         val isStampEnabled = binding.stampEnabledCheckbox.isChecked
-        val stampDateText = binding.stampDateEditText.text.toString()
-        val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 8
+        val stampDay = binding.stampDayEditText.text.toString()
+        val stampMonth = binding.stampMonthEditText.text.toString().uppercase()
+        val stampYear = binding.stampYearEditText.text.toString()
+
+        val stampDateText = if(stampDay.isNotBlank() && stampMonth.isNotBlank() && stampYear.isNotBlank()) {
+            "$stampDay $stampMonth. $stampYear"
+        } else {
+            ""
+        }
+
+        val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 5
         val stampMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
 
         var stampBitmap: Bitmap? = null
