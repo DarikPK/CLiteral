@@ -7,7 +7,9 @@ import android.graphics.PointF
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
+import kotlin.math.max
 import kotlin.math.min
 
 @SuppressLint("ClickableViewAccessibility")
@@ -17,81 +19,138 @@ class ZoomableImageView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
 
-    private val baseMatrix = Matrix()
-    private val drawMatrix = Matrix()
-    private val startPoint = PointF()
+    private var matrixListener: OnMatrixChangeListener? = null
+    private val currentMatrix = Matrix()
+    private val lastTouchPoint = PointF()
+    private var mode = NONE
 
-    private var currentScale = 1.0f
-    private val zoomIncrement = 1.2f
-    private val maxScale = 5.0f
+    // Scales
+    private var minScale = 1f
+    private var maxScale = 5f
+    private var currentScaleValues = FloatArray(9)
+
+    // Scale Gesture Detector
+    private val scaleDetector: ScaleGestureDetector
+
+    companion object {
+        const val NONE = 0
+        const val DRAG = 1
+        const val ZOOM = 2
+    }
+
+    interface OnMatrixChangeListener {
+        fun onMatrixChanged(matrix: Matrix)
+    }
+
+    fun setOnMatrixChangeListener(listener: OnMatrixChangeListener) {
+        matrixListener = listener
+    }
+
 
     init {
+        super.setClickable(true)
+        scaleDetector = ScaleGestureDetector(context, ScaleListener())
+        imageMatrix = currentMatrix
         scaleType = ScaleType.MATRIX
-        setOnTouchListener { _, event ->
-            if (currentScale > 1.0f) { // Solo permitir paneo si hay zoom
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        startPoint.set(event.x, event.y)
-                        true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = event.x - startPoint.x
-                        val dy = event.y - startPoint.y
-                        drawMatrix.postTranslate(dx, dy)
-                        imageMatrix = drawMatrix
-                        startPoint.set(event.x, event.y)
-                        true
-                    }
-                    else -> false
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleDetector.onTouchEvent(event)
+        val currentPoint = PointF(event.x, event.y)
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchPoint.set(currentPoint)
+                mode = DRAG
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (mode == DRAG) {
+                    val dx = currentPoint.x - lastTouchPoint.x
+                    val dy = currentPoint.y - lastTouchPoint.y
+                    currentMatrix.postTranslate(dx, dy)
+                    lastTouchPoint.set(currentPoint.x, currentPoint.y)
                 }
-            } else {
-                false
+            }
+            MotionEvent.ACTION_UP -> {
+                mode = NONE
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                mode = NONE
             }
         }
+        imageMatrix = currentMatrix
+        matrixListener?.onMatrixChanged(currentMatrix)
+        invalidate()
+        return true
     }
 
     override fun setImageDrawable(drawable: Drawable?) {
         super.setImageDrawable(drawable)
-        updateBaseMatrix()
+        if (drawable != null) {
+            configureInitialMatrix()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        updateBaseMatrix()
-    }
-
-    private fun updateBaseMatrix() {
-        if (drawable == null) return
-
-        val viewWidth = width.toFloat()
-        val viewHeight = height.toFloat()
-        val drawableWidth = drawable.intrinsicWidth.toFloat()
-        val drawableHeight = drawable.intrinsicHeight.toFloat()
-
-        baseMatrix.reset()
-
-        val scale = min(viewWidth / drawableWidth, viewHeight / drawableHeight)
-
-        val dx = (viewWidth - drawableWidth * scale) / 2f
-        val dy = (viewHeight - drawableHeight * scale) / 2f
-
-        baseMatrix.postScale(scale, scale)
-        baseMatrix.postTranslate(dx, dy)
-
-        resetZoom()
-    }
-
-    fun zoomIn() {
-        if (currentScale * zoomIncrement <= maxScale) {
-            currentScale *= zoomIncrement
-            drawMatrix.postScale(zoomIncrement, zoomIncrement, width / 2f, height / 2f)
-            imageMatrix = drawMatrix
+        if (drawable != null) {
+            configureInitialMatrix()
         }
     }
 
-    fun resetZoom() {
-        drawMatrix.set(baseMatrix)
-        currentScale = 1.0f
-        imageMatrix = drawMatrix
+    private fun configureInitialMatrix() {
+        val dwidth = drawable.intrinsicWidth.toFloat()
+        val dheight = drawable.intrinsicHeight.toFloat()
+        val vwidth = width.toFloat()
+        val vheight = height.toFloat()
+
+        val scale: Float
+        val dx: Float
+        val dy: Float
+
+        if (dwidth * vheight > vwidth * dheight) {
+            scale = vheight / dheight
+            dx = (vwidth - dwidth * scale) * 0.5f
+            dy = 0f
+        } else {
+            scale = vwidth / dwidth
+            dx = 0f
+            dy = (vheight - dheight * scale) * 0.5f
+        }
+
+        currentMatrix.setScale(scale, scale)
+        currentMatrix.postTranslate(dx, dy)
+        minScale = scale
+        imageMatrix = currentMatrix
+        matrixListener?.onMatrixChanged(currentMatrix)
+    }
+
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            mode = ZOOM
+            return true
+        }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            var mScaleFactor = detector.scaleFactor
+            val origScale = getScale()
+            val newScale = origScale * mScaleFactor
+
+            if (newScale > maxScale) {
+                mScaleFactor = maxScale / origScale
+            } else if (newScale < minScale) {
+                mScaleFactor = minScale / origScale
+            }
+
+            if (drawable != null) {
+                currentMatrix.postScale(mScaleFactor, mScaleFactor, detector.focusX, detector.focusY)
+            }
+            return true
+        }
+    }
+
+    private fun getScale(): Float {
+        currentMatrix.getValues(currentScaleValues)
+        return currentScaleValues[Matrix.MSCALE_X]
     }
 }

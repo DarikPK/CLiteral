@@ -1,7 +1,9 @@
 package com.example.imageextractor
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.imageextractor.databinding.PdfPageItemBinding
@@ -11,10 +13,25 @@ class PdfPageAdapter : RecyclerView.Adapter<PdfPageAdapter.PageViewHolder>() {
 
     private val pages = mutableListOf<Bitmap>()
 
-    class PageViewHolder(private val binding: PdfPageItemBinding) : RecyclerView.ViewHolder(binding.root) {
+    class PageViewHolder(private val binding: PdfPageItemBinding) :
+        RecyclerView.ViewHolder(binding.root), ZoomableImageView.OnMatrixChangeListener {
+
+        init {
+            binding.pageImageView.setOnMatrixChangeListener(this)
+        }
+
         fun bind(bitmap: Bitmap, position: Int) {
             binding.pageImageView.setImageBitmap(bitmap)
             binding.pageNumberText.text = "Página ${position + 1}"
+
+            // For demonstration, we'll make the stamp visible.
+            // In a real app, this would be driven by settings from a ViewModel.
+            binding.stampImageView.visibility = View.VISIBLE
+            binding.stampImageView.setImageResource(android.R.drawable.ic_menu_myplaces) // Placeholder stamp
+        }
+
+        override fun onMatrixChanged(matrix: Matrix) {
+            binding.stampImageView.imageMatrix = matrix
         }
     }
 
@@ -32,7 +49,7 @@ class PdfPageAdapter : RecyclerView.Adapter<PdfPageAdapter.PageViewHolder>() {
     fun submitList(newPages: List<Bitmap>) {
         pages.clear()
         pages.addAll(newPages)
-        notifyDataSetChanged() // For a full list update, this is sufficient.
+        notifyDataSetChanged()
     }
 
     fun moveItem(fromPosition: Int, toPosition: Int) {
