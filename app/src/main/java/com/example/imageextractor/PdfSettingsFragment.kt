@@ -34,7 +34,7 @@ import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
-import kotlin.random.Random
+import java.util.Random
 
 class PdfSettingsFragment : Fragment() {
 
