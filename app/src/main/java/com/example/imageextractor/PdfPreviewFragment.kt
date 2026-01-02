@@ -45,8 +45,8 @@ class PdfPreviewFragment : Fragment() {
     private var stampSizePercent: Float = 0f
     private var stampMaxRotation: Float = 0f
 
-    private var brightness: Float = 0f
-    private var contrast: Float = 1f
+    private var brightness: Float = 50f
+    private var contrast: Float = 50f
 
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
@@ -56,8 +56,8 @@ class PdfPreviewFragment : Fragment() {
         arguments?.let {
             partidaId = it.getString("partidaId")
             imagePaths = it.getStringArray("imagePaths")
-            brightness = it.getFloat("brightness", 0f)
-            contrast = it.getFloat("contrast", 1f)
+            brightness = it.getFloat("brightness", 50f)
+            contrast = it.getFloat("contrast", 50f)
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
                 stampDateText = it.getString("stampDateText", "")
@@ -293,7 +293,7 @@ class PdfPreviewFragment : Fragment() {
         val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
         canvas.drawText(stampDateText, x, y, textPaint)
 
-        this.cleanStampBitmap = bitmap
+        this.cleanStampBitmap = applyBitmapAdjustments(bitmap)
     }
 
     private fun applyWearEffect() {
@@ -354,14 +354,19 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {
-        if (brightness == 0f && contrast == 1f) {
+        if (brightness == 50f && contrast == 50f) {
             return originalBitmap
         }
 
+        // Convert brightness from 0-100 range to -255 to 255
+        val brightnessValue = (brightness - 50) * 2.55f
+        // Convert contrast from 0-100 range to 0 to 2
+        val contrastValue = contrast / 50f
+
         val colorMatrix = ColorMatrix(floatArrayOf(
-            contrast, 0f, 0f, 0f, brightness,
-            0f, contrast, 0f, 0f, brightness,
-            0f, 0f, contrast, 0f, brightness,
+            contrastValue, 0f, 0f, 0f, brightnessValue,
+            0f, contrastValue, 0f, 0f, brightnessValue,
+            0f, 0f, contrastValue, 0f, brightnessValue,
             0f, 0f, 0f, 1f, 0f
         ))
 
