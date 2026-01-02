@@ -317,16 +317,14 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    fun applyInkWear(source: Bitmap, intensity: Float, seed: Long): Bitmap {
+    fun applyInkWear(source: Bitmap, intensity: Float, size: Float, seed: Long): Bitmap {
         if (intensity <= 0.0f) return source
 
-        // 1. Crear la máscara y llenarla de blanco (opaco).
         val maskBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         maskBitmap.density = source.density
         val maskCanvas = Canvas(maskBitmap)
         maskCanvas.drawColor(Color.WHITE)
 
-        // 2. Crear un pincel que "borre" (haga transparente) en la máscara.
         val erasePaint = Paint().apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
             isAntiAlias = true
@@ -335,30 +333,34 @@ class PdfPreviewFragment : Fragment() {
 
         val random = Random(seed)
 
-        // 3. Capa 1: Ruido de grano fino usando pequeños círculos borrados.
-        // La cantidad de ruido aumenta con la intensidad.
-        val noiseCount = (source.width * source.height / 50 * intensity).toInt()
+        // Convert size (0-1) and intensity (0-1) to multipliers, and dramatically increase the effect
+        val sizeMultiplier = (1 + size * 2) * 15f
+        val intensityMultiplier = (1 + intensity * 2) * 15f
+
+        // Layer 1: Fine grain noise
+        val noiseCount = (source.width * source.height / 50 * intensityMultiplier).toInt()
         for (i in 0..noiseCount) {
             val x = random.nextFloat() * source.width
             val y = random.nextFloat() * source.height
-            val radius = random.nextFloat() * 2.5f // Radio pequeño para simular grano
+            val radius = random.nextFloat() * 1.5f * sizeMultiplier
             maskCanvas.drawCircle(x, y, radius, erasePaint)
         }
 
-        // 4. Capa 2: Manchas irregulares para áreas de desgaste más grandes.
-        val blotchCount = (30 * intensity).toInt()
+        // Layer 2: Irregular blotches
+        val blotchCount = (20 * intensityMultiplier).toInt()
         for (i in 0..blotchCount) {
             val path = Path()
             val startX = random.nextFloat() * source.width
             val startY = random.nextFloat() * source.height
             path.moveTo(startX, startY)
 
-            val segmentCount = random.nextInt(5) + 3 // Entre 3 y 7 segmentos
+            val segmentCount = random.nextInt(5) + 3
             for (j in 0..segmentCount) {
-                val cpx1 = startX + random.nextFloat() * 100 - 50
-                val cpy1 = startY + random.nextFloat() * 100 - 50
-                val x2 = startX + random.nextFloat() * 100 - 50
-                val y2 = startY + random.nextFloat() * 100 - 50
+                val pathSize = 60f * sizeMultiplier
+                val cpx1 = startX + random.nextFloat() * pathSize - (pathSize / 2)
+                val cpy1 = startY + random.nextFloat() * pathSize - (pathSize / 2)
+                val x2 = startX + random.nextFloat() * pathSize - (pathSize / 2)
+                val y2 = startY + random.nextFloat() * pathSize - (pathSize / 2)
                 path.quadTo(cpx1, cpy1, x2, y2)
             }
             path.close()
