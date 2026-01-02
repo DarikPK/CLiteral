@@ -42,6 +42,7 @@ class PdfPreviewFragment : Fragment() {
     private lateinit var stampDateText: String
     private var stampFontSize: Float = 0f
     private var stampWearIntensity: Float = 0f
+    private var stampWearSize: Float = 0f
     private var stampSizePercent: Float = 0f
     private var stampMaxRotation: Float = 0f
     private var stampBrightness: Float = 50f
@@ -65,6 +66,7 @@ class PdfPreviewFragment : Fragment() {
                 stampDateText = it.getString("stampDateText", "")
                 stampFontSize = it.getFloat("stampFontSize", 220f)
                 stampWearIntensity = it.getFloat("stampWearIntensity", 0.3f)
+                stampWearSize = it.getFloat("stampWearSize", 50f)
                 stampSizePercent = it.getFloat("stampSizePercent", 5f)
                 stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
                 stampBrightness = it.getFloat("stampBrightness", 50f)
