@@ -1,39 +1,33 @@
     private fun applyWearEffect() {
-        cleanStampBitmap?.let {
+        cleanStampBitmap?.let { sourceBitmap ->
             lifecycleScope.launch(Dispatchers.IO) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
                 }
 
-                // Simplified and robust wear effect logic
-                val sourceBitmap = cleanStampBitmap!!
+                // Create the result bitmap with the same density as the source to prevent scaling issues
                 val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
+                resultBitmap.density = sourceBitmap.density
+
                 val canvas = Canvas(resultBitmap)
-                val paint = Paint()
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
                 canvas.drawBitmap(sourceBitmap, 0f, 0f, paint)
 
-                val erasePaint = Paint().apply {
+                val erasePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-                    isAntiAlias = true
                 }
 
                 val random = Random(System.currentTimeMillis())
                 val baseDefects = 2000
-                val numDefects = (baseDefects * (stampWearIntensity / 100f)).toInt()
+                val numDefects = (baseDefects * stampWearIntensity).toInt()
                 val sizeMultiplier = 1 + (stampWearSize / 100f) * 4
                 val maxRadius = sourceBitmap.height / 12f
 
                 for (i in 0 until numDefects) {
-                    val x = (random.nextGaussian() * (sourceBitmap.width / 4) + (sourceBitmap.width / 2)).toFloat()
-                    val y = (random.nextGaussian() * (sourceBitmap.height / 4) + (sourceBitmap.height / 2)).toFloat()
-                    val baseRadius = random.nextFloat() * maxRadius * (0.5f + (stampWearIntensity/100f)) * sizeMultiplier
-                    val numBlobs = random.nextInt(4) + 1
-                    for (j in 0 until numBlobs) {
-                        val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
-                        val blobY = y + (random.nextFloat() - 0.5f) * baseRadius * 2
-                        val blobRadius = baseRadius * (0.5f + random.nextFloat())
-                        canvas.drawCircle(blobX, blobY, blobRadius, erasePaint)
-                    }
+                    val x = random.nextFloat() * sourceBitmap.width
+                    val y = random.nextFloat() * sourceBitmap.height
+                    val radius = random.nextFloat() * maxRadius * (0.5f + stampWearIntensity) * sizeMultiplier
+                    canvas.drawCircle(x, y, radius, erasePaint)
                 }
 
                 wornStampBitmap = resultBitmap
@@ -47,6 +41,13 @@
         }
     }
 
-    // The following two methods are now unused and can be removed.
-    // private fun generateWearMask(...) { ... }
-    // private fun applyInkWearMask(...) { ... }
+    // The generateWearMask and applyInkWearMask functions are no longer needed.
+    private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
+        // This function is now unused.
+        return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+    }
+
+    private fun applyInkWearMask(sourceBitmap: Bitmap, intensity: Float, seed: Long): Bitmap {
+        // This function is now unused.
+        return sourceBitmap
+    }
