@@ -161,18 +161,24 @@ class PdfPreviewFragment : Fragment() {
             val random = Random()
 
             val firstPage = pageBitmaps[0]
+            var xPos = firstPage.width - stampWidth - 25
+            var yPos = firstPage.height - stampHeight - 25
+
             firstPageStampState = StampState(
-                x = firstPage.width - stampWidth - 25,
-                y = firstPage.height - stampHeight - 25,
+                x = maxOf(0f, xPos),
+                y = maxOf(0f, yPos),
                 scale = scale,
                 rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
             )
 
             if (pageBitmaps.size > 1) {
                 val lastPage = pageBitmaps.last()
+                xPos = lastPage.width - stampWidth - 25
+                yPos = lastPage.height - stampHeight - 25
+
                 lastPageStampState = StampState(
-                    x = lastPage.width - stampWidth - 25,
-                    y = lastPage.height - stampHeight - 25,
+                    x = maxOf(0f, xPos),
+                    y = maxOf(0f, yPos),
                     scale = scale,
                     rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
                 )
