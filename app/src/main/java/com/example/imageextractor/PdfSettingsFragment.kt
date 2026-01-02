@@ -23,33 +23,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Typeface
 import android.content.ContentUris
 import android.provider.MediaStore
-import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.drawable.toBitmap
-import java.util.Random
 
 class PdfSettingsFragment : Fragment() {
 
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
-
-    companion object {
-        private const val PREFS_NAME = "PdfSettingsPrefs"
-        private const val KEY_BRIGHTNESS = "brightness"
-        private const val KEY_CONTRAST = "contrast"
-        private const val KEY_MARGIN_TOP = "margin_top"
-        private const val KEY_MARGIN_BOTTOM = "margin_bottom"
-        private const val KEY_MARGIN_LEFT = "margin_left"
-        private const val KEY_MARGIN_RIGHT = "margin_right"
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -61,7 +41,6 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        loadSettings()
         setupListeners()
         setupMonthSpinner()
     }
@@ -78,83 +57,24 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.saveSettingsButton.setOnClickListener {
-            saveSettings()
-        }
         binding.generatePdfButton.setOnClickListener {
-            validateStampFieldsAndProceed(isForPreview = false)
+            validateAndProceed(isForPreview = false)
         }
         binding.previewPdfButton.setOnClickListener {
-            validateStampFieldsAndProceed(isForPreview = true)
-        }
-        binding.brightnessEditText.doOnTextChanged { text, _, _, _ ->
-            validateRange(text.toString(), 0, 100)
-        }
-        binding.contrastEditText.doOnTextChanged { text, _, _, _ ->
-            validateRange(text.toString(), 0, 100)
+            validateAndProceed(isForPreview = true)
         }
     }
 
-    private fun validateStampFieldsAndProceed(isForPreview: Boolean) {
-        if (binding.stampEnabledCheckbox.isChecked) {
-            val day = binding.stampDayEditText.text.toString()
-            if (day.isBlank()) {
-                android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Campo Requerido")
-                    .setMessage("Por favor, ingrese un día para el sello antes de continuar.")
-                    .setPositiveButton("Aceptar", null)
-                    .show()
-                return
-            }
+    private fun validateAndProceed(isForPreview: Boolean) {
+        if (binding.stampEnabledCheckbox.isChecked && binding.stampDayEditText.text.toString().isBlank()) {
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Campo Requerido")
+                .setMessage("Por favor, ingrese un día para el sello antes de continuar.")
+                .setPositiveButton("Aceptar", null)
+                .show()
+            return
         }
         showPartidaSelectionDialog(isForPreview)
-    }
-
-    private fun validateRange(text: String, min: Int, max: Int) {
-        val value = text.toIntOrNull()
-        if (value != null && value !in min..max) {
-            binding.brightnessEditText.error = "El valor debe estar entre $min y $max"
-        } else {
-            binding.brightnessEditText.error = null
-        }
-    }
-
-    private fun loadSettings() {
-        val prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        binding.brightnessEditText.setText(prefs.getInt(KEY_BRIGHTNESS, 0).toString())
-        binding.contrastEditText.setText(prefs.getInt(KEY_CONTRAST, 100).toString())
-        binding.marginTopEditText.setText(prefs.getInt(KEY_MARGIN_TOP, 20).toString())
-        binding.marginBottomEditText.setText(prefs.getInt(KEY_MARGIN_BOTTOM, 20).toString())
-        binding.marginLeftEditText.setText(prefs.getInt(KEY_MARGIN_LEFT, 20).toString())
-        binding.marginRightEditText.setText(prefs.getInt(KEY_MARGIN_RIGHT, 20).toString())
-    }
-
-    private fun saveSettings() {
-        val brightnessStr = binding.brightnessEditText.text.toString()
-        val contrastStr = binding.contrastEditText.text.toString()
-
-        val brightness = brightnessStr.toIntOrNull()
-        val contrast = contrastStr.toIntOrNull()
-
-        if (brightness == null || brightness !in 0..100) {
-            Toast.makeText(context, "El valor de brillo no es válido.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (contrast == null || contrast !in 0..100) {
-            Toast.makeText(context, "El valor de contraste no es válido.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
-        prefs.putInt(KEY_BRIGHTNESS, brightness)
-        prefs.putInt(KEY_CONTRAST, contrast)
-        prefs.putInt(KEY_MARGIN_TOP, binding.marginTopEditText.text.toString().toIntOrNull() ?: 20)
-        prefs.putInt(KEY_MARGIN_BOTTOM, binding.marginBottomEditText.text.toString().toIntOrNull() ?: 20)
-        prefs.putInt(KEY_MARGIN_LEFT, binding.marginLeftEditText.text.toString().toIntOrNull() ?: 20)
-        prefs.putInt(KEY_MARGIN_RIGHT, binding.marginRightEditText.text.toString().toIntOrNull() ?: 20)
-        prefs.apply()
-
-        Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
     }
 
     private fun showPartidaSelectionDialog(isForPreview: Boolean) {
@@ -167,16 +87,14 @@ class PdfSettingsFragment : Fragment() {
                 }
 
                 val partidaIds = folders.map { it.partidaId }.toTypedArray()
-                val title = if (isForPreview) "Seleccionar Partida para Previsualizar" else "Seleccionar Partida para PDF"
-
                 android.app.AlertDialog.Builder(requireContext())
-                    .setTitle(title)
+                    .setTitle("Seleccionar Partida")
                     .setItems(partidaIds) { _, which ->
                         val selectedFolder = folders[which]
                         if (isForPreview) {
-                            generatePdfPreview(selectedFolder)
+                            navigateToPreview(selectedFolder)
                         } else {
-                            generatePdfForPartida(selectedFolder)
+                            generateFinalPdf(selectedFolder)
                         }
                     }
                     .setNegativeButton("Cancelar", null)
@@ -185,32 +103,29 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generatePdfPreview(folder: ImageFolder) {
-        if (folder.imageFiles.isEmpty()) {
-            Toast.makeText(context, "La partida no tiene imágenes para previsualizar.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        Toast.makeText(context, "Generando previsualización...", Toast.LENGTH_SHORT).show()
+    private fun navigateToPreview(folder: ImageFolder) {
+        val bundle = Bundle().apply {
+            putString("partidaId", folder.partidaId)
+            putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val pdfFile = createPdf(folder, isPreview = true)
-                withContext(Dispatchers.Main) {
-                    val bundle = Bundle().apply {
-                        putString("pdfPath", pdfFile.absolutePath)
-                        putString("partidaId", folder.partidaId)
-                    }
-                    findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error al generar la previsualización: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+            putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
+            if (binding.stampEnabledCheckbox.isChecked) {
+                val dayInt = binding.stampDayEditText.text.toString().toIntOrNull()
+                val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
+                val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
+                val stampYear = binding.stampYearEditText.text.toString()
+                putString("stampDateText", "$stampDay $stampMonth. $stampYear")
+                putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 50f)
+                putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value / 100f)
+                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
+                putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
             }
         }
+        findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
 
     private fun getCapturedFolders(): List<ImageFolder> {
+        // ... (getCapturedFolders logic remains the same)
         val folders = mutableMapOf<String, MutableList<ImageFile>>()
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -253,13 +168,15 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generatePdfForPartida(folder: ImageFolder) {
-        Toast.makeText(context, "Iniciando generación de PDF para la partida ${folder.partidaId}", Toast.LENGTH_LONG).show()
+    private fun generateFinalPdf(folder: ImageFolder) {
+        Toast.makeText(context, "Generando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val pdfFile = createPdf(folder, isPreview = false)
+                // This function now only creates a basic PDF without a stamp.
+                // The advanced creation is handled by the preview screen.
+                val pdfFile = createPdfWithoutStamp(folder)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "PDF guardado en ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "PDF Básico guardado en ${pdfFile.absolutePath}", Toast.LONG_LONG).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -269,177 +186,23 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generateStampBitmap(dateText: String, fontSize: Float, wearIntensity: Float): Bitmap {
-        val context = requireContext()
-        val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
-        val cleanStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
-
-        val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
-
-        val textPaint = Paint().apply {
-            color = Color.RED
-            textSize = fontSize
-            typeface = customTypeface ?: Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-            isAntiAlias = true
-        }
-
-        val canvas = Canvas(cleanStampBitmap)
-        val x = canvas.width / 2f
-        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
-        canvas.drawText(dateText, x, y, textPaint)
-
-        return applyInkWearMask(cleanStampBitmap, wearIntensity, System.currentTimeMillis())
-    }
-
-    private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
-        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8)
-        val canvas = Canvas(maskBitmap)
-        val random = Random(seed)
-
-        canvas.drawColor(Color.WHITE)
-
-        val erasePaint = Paint().apply {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-            isAntiAlias = true
-        }
-
-        val baseDefects = (width * height / 500)
-        val numDefects = (baseDefects * intensity * 2).toInt()
-
-        for (i in 0 until numDefects) {
-            val x = (random.nextGaussian() * (width / 4) + (width / 2)).toFloat()
-            val y = (random.nextGaussian() * (height / 4) + (height / 2)).toFloat()
-
-            val maxRadius = height / 25f
-            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
-            val numBlobs = random.nextInt(4) + 1
-
-            for (j in 0 until numBlobs) {
-                val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
-                val blobY = y + (random.nextFloat() - 0.5f) * baseRadius * 2
-                val blobRadius = baseRadius * (0.5f + random.nextFloat())
-                canvas.drawCircle(blobX, blobY, blobRadius, erasePaint)
-            }
-        }
-        return maskBitmap
-    }
-
-    private fun applyInkWearMask(sourceBitmap: Bitmap, intensity: Float, seed: Long): Bitmap {
-        if (intensity <= 0f) return sourceBitmap
-
-        val wearMask = generateWearMask(sourceBitmap.width, sourceBitmap.height, intensity, seed)
-
-        val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(resultBitmap)
-
-        canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
-
-        val maskPaint = Paint().apply {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-        }
-        canvas.drawBitmap(wearMask, 0f, 0f, maskPaint)
-        wearMask.recycle()
-
-        return resultBitmap
-    }
-
-    private fun createPdf(folder: ImageFolder, isPreview: Boolean): File {
-        val brightness = binding.brightnessEditText.text.toString().toIntOrNull() ?: 0
-        val contrast = binding.contrastEditText.text.toString().toIntOrNull() ?: 100
-        val marginTop = binding.marginTopEditText.text.toString().toIntOrNull() ?: 20
-        val marginBottom = binding.marginBottomEditText.text.toString().toIntOrNull() ?: 20
-        val marginLeft = binding.marginLeftEditText.text.toString().toIntOrNull() ?: 20
-        val marginRight = binding.marginRightEditText.text.toString().toIntOrNull() ?: 20
-
-        val isStampEnabled = binding.stampEnabledCheckbox.isChecked
-        val dayInt = binding.stampDayEditText.text.toString().toIntOrNull()
-        val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
-        val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
-        val stampYear = binding.stampYearEditText.text.toString()
-
-        val stampDateText = if(stampDay.isNotBlank() && stampMonth.isNotBlank() && stampYear.isNotBlank()) {
-            "$stampDay $stampMonth. $stampYear"
-        } else {
-            ""
-        }
-
-        val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 5
-        val stampFontSize = binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 50f
-        val stampMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
-        val stampWearIntensity = binding.stampWearIntensitySlider.value / 100f
-
-        var stampBitmap: Bitmap? = null
-        if (isStampEnabled && stampDateText.isNotBlank()) {
-            stampBitmap = generateStampBitmap(stampDateText, stampFontSize, stampWearIntensity)
-        }
-
+    private fun createPdfWithoutStamp(folder: ImageFolder): File {
         val pdfDocument = PdfDocument()
-        val imagesToProcess = folder.imageFiles.map { it.path }
-
-        for ((index, imagePath) in imagesToProcess.withIndex()) {
-            val pageWidth = 595
-            val pageHeight = 842
-            val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, index + 1).create()
+        folder.imageFiles.forEachIndexed { index, imageFile ->
+            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
             val canvas = page.canvas
-
-            val bitmap = BitmapFactory.decodeFile(imagePath)
-            val paint = Paint()
-
-            val contrastValue = (contrast / 100.0f) + 1.0f
-            val brightnessValue = (brightness / 100.0f) * 255f
-            paint.colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(
-                contrastValue, 0f, 0f, 0f, brightnessValue,
-                0f, contrastValue, 0f, 0f, brightnessValue,
-                0f, 0f, contrastValue, 0f, brightnessValue,
-                0f, 0f, 0f, 1f, 0f
-            )))
-
-            val drawableWidth = 595 - marginLeft - marginRight
-            val drawableHeight = 842 - marginTop - marginBottom
-            val bitmapRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
-            val drawableRatio = drawableWidth.toFloat() / drawableHeight.toFloat()
-            val finalWidth = if (bitmapRatio > drawableRatio) drawableWidth else (drawableHeight * bitmapRatio).toInt()
-            val finalHeight = if (bitmapRatio > drawableRatio) (drawableWidth / bitmapRatio).toInt() else drawableHeight
-            val left = marginLeft + (drawableWidth - finalWidth) / 2
-            val top = marginTop + (drawableHeight - finalHeight) / 2
-
-            canvas.drawBitmap(bitmap, null, android.graphics.Rect(left, top, left + finalWidth, top + finalHeight), paint)
-
-            if (stampBitmap != null && (index == 0 || index == imagesToProcess.lastIndex)) {
-                val scale = stampSizePercent / 100f
-                val stampWidth = (stampBitmap.width * scale).toInt()
-                val stampHeight = (stampBitmap.height * scale).toInt()
-                val stampLeft = pageWidth - stampWidth - marginRight - 10
-                val stampTop = pageHeight - stampHeight - marginBottom - 10
-
-                val random = Random()
-                canvas.save()
-                val rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
-                canvas.rotate(rotation, (stampLeft + stampWidth / 2).toFloat(), (stampTop + stampHeight / 2).toFloat())
-                canvas.drawBitmap(stampBitmap, null, android.graphics.Rect(stampLeft, stampTop, stampLeft + stampWidth, stampTop + stampHeight), null)
-                canvas.restore()
-            }
-
+            val bitmap = BitmapFactory.decodeFile(imageFile.path)
+            canvas.drawBitmap(bitmap, 0f, 0f, null)
             pdfDocument.finishPage(page)
             bitmap.recycle()
         }
 
-        stampBitmap?.recycle()
-
-        val targetFile = if (isPreview) {
-            val previewDir = File(requireContext().cacheDir, "previews")
-            if (!previewDir.exists()) previewDir.mkdirs()
-            File(previewDir, "preview.pdf")
-        } else {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            File(downloadsDir, "${folder.partidaId}.pdf")
-        }
-
-        pdfDocument.writeTo(FileOutputStream(targetFile))
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val pdfFile = File(downloadsDir, "${folder.partidaId}_simple.pdf")
+        pdfDocument.writeTo(FileOutputStream(pdfFile))
         pdfDocument.close()
-        return targetFile
+        return pdfFile
     }
 
     override fun onDestroyView() {

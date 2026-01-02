@@ -30,6 +30,11 @@
             android:layout_height="match_parent"
             android:background="#CCCCCC" />
 
+        <com.example.imageextractor.StampOverlayView
+            android:id="@+id/stamp_overlay_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
         <ImageButton
             android:id="@+id/previous_page_button"
             android:layout_width="48dp"
