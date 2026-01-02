@@ -349,8 +349,9 @@ class PdfPreviewFragment : Fragment() {
         val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
         resultBitmap.density = sourceBitmap.density
         val canvas = Canvas(resultBitmap)
-        canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
-        val maskPaint = Paint().apply {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        canvas.drawBitmap(sourceBitmap, 0f, 0f, paint) // Use an explicit Paint object
+        val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
         }
         canvas.drawBitmap(wearMask, 0f, 0f, maskPaint)
