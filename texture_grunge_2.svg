@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
-    <path fill="#000000" d="M10,5 L15,15 L5,10 Z" />
-    <path fill="#000000" d="M180,90 L190,95 L185,85 Z" />
-    <path fill="#44000000" d="M30,30 C 40,20 60,20 70,30 S 90,50 80,40" />
-    <path fill="#000000" d="M120,60 Q 130,50 140,60 T 160,60" />
-    <path fill="#000000" d="M5,80 H20 V82 H5 Z" />
-    <path fill="#000000" d="M195,5 H180 V8 L195,5 Z" />
-</svg>

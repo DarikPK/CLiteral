@@ -26,7 +26,6 @@ import java.io.FileOutputStream
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Typeface
@@ -270,10 +269,10 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generateStampBitmap(dateText: String, fontSize: Float): Bitmap {
+    private fun generateStampBitmap(dateText: String, fontSize: Float, wearIntensity: Float): Bitmap {
         val context = requireContext()
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
-        val baseStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val cleanStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
         val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
 
@@ -285,22 +284,64 @@ class PdfSettingsFragment : Fragment() {
             isAntiAlias = true
         }
 
-        val canvas = Canvas(baseStampBitmap)
+        val canvas = Canvas(cleanStampBitmap)
         val x = canvas.width / 2f
         val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
         canvas.drawText(dateText, x, y, textPaint)
 
-        val textureId = if (Random.nextBoolean()) R.drawable.texture_grunge_1 else R.drawable.texture_grunge_2
-        val textureDrawable = ContextCompat.getDrawable(context, textureId)!!
-        val textureBitmap = textureDrawable.toBitmap(baseStampBitmap.width, baseStampBitmap.height, Bitmap.Config.ALPHA_8)
+        return applyInkWearMask(cleanStampBitmap, wearIntensity, System.currentTimeMillis())
+    }
 
-        val maskPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
+        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8)
+        val canvas = Canvas(maskBitmap)
+        val random = Random(seed)
+
+        canvas.drawColor(Color.WHITE)
+
+        val erasePaint = Paint().apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            isAntiAlias = true
+        }
+
+        val baseDefects = (width * height / 500)
+        val numDefects = (baseDefects * intensity * 2).toInt()
+
+        for (i in 0 until numDefects) {
+            val x = (random.nextGaussian() * (width / 4) + (width / 2)).toFloat()
+            val y = (random.nextGaussian() * (height / 4) + (height / 2)).toFloat()
+
+            val maxRadius = height / 25f
+            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
+            val numBlobs = random.nextInt(1, 5)
+
+            for (j in 0 until numBlobs) {
+                val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
+                val blobY = y + (random.nextFloat() - 0.5f) * baseRadius * 2
+                val blobRadius = baseRadius * (0.5f + random.nextFloat())
+                canvas.drawCircle(blobX, blobY, blobRadius, erasePaint)
+            }
+        }
+        return maskBitmap
+    }
+
+    private fun applyInkWearMask(sourceBitmap: Bitmap, intensity: Float, seed: Long): Bitmap {
+        if (intensity <= 0f) return sourceBitmap
+
+        val wearMask = generateWearMask(sourceBitmap.width, sourceBitmap.height, intensity, seed)
+
+        val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+
+        canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
+
+        val maskPaint = Paint().apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
         }
-        canvas.drawBitmap(textureBitmap, 0f, 0f, maskPaint)
-        textureBitmap.recycle()
+        canvas.drawBitmap(wearMask, 0f, 0f, maskPaint)
+        wearMask.recycle()
 
-        return baseStampBitmap
+        return resultBitmap
     }
 
     private fun createPdf(folder: ImageFolder, isPreview: Boolean): File {
@@ -326,10 +367,11 @@ class PdfSettingsFragment : Fragment() {
         val stampSizePercent = binding.stampSizeEditText.text.toString().toIntOrNull() ?: 5
         val stampFontSize = binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 50f
         val stampMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
+        val stampWearIntensity = binding.stampWearIntensitySlider.value / 100f
 
         var stampBitmap: Bitmap? = null
         if (isStampEnabled && stampDateText.isNotBlank()) {
-            stampBitmap = generateStampBitmap(stampDateText, stampFontSize)
+            stampBitmap = generateStampBitmap(stampDateText, stampFontSize, stampWearIntensity)
         }
 
         val pdfDocument = PdfDocument()
