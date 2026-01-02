@@ -122,6 +122,8 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value / 100f)
                 putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
+                putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
+                putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
             }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)

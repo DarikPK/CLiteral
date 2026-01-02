@@ -44,6 +44,8 @@ class PdfPreviewFragment : Fragment() {
     private var stampWearIntensity: Float = 0f
     private var stampSizePercent: Float = 0f
     private var stampMaxRotation: Float = 0f
+    private var stampBrightness: Float = 50f
+    private var stampContrast: Float = 50f
 
     private var brightness: Float = 50f
     private var contrast: Float = 50f
@@ -65,6 +67,8 @@ class PdfPreviewFragment : Fragment() {
                 stampWearIntensity = it.getFloat("stampWearIntensity", 0.3f)
                 stampSizePercent = it.getFloat("stampSizePercent", 5f)
                 stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
+                stampBrightness = it.getFloat("stampBrightness", 50f)
+                stampContrast = it.getFloat("stampContrast", 50f)
             }
         }
     }
@@ -293,7 +297,7 @@ class PdfPreviewFragment : Fragment() {
         val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
         canvas.drawText(stampDateText, x, y, textPaint)
 
-        this.cleanStampBitmap = applyBitmapAdjustments(bitmap)
+        this.cleanStampBitmap = applyStampAdjustments(bitmap)
     }
 
     private fun applyWearEffect() {
@@ -371,6 +375,31 @@ class PdfPreviewFragment : Fragment() {
         ))
 
         val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        adjustedBitmap.density = originalBitmap.density
+        val canvas = Canvas(adjustedBitmap)
+        val paint = Paint()
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return adjustedBitmap
+    }
+
+    private fun applyStampAdjustments(originalBitmap: Bitmap): Bitmap {
+        if (stampBrightness == 50f && stampContrast == 50f) {
+            return originalBitmap
+        }
+
+        val brightnessValue = (stampBrightness - 50) * 2.55f
+        val contrastValue = stampContrast / 50f
+
+        val colorMatrix = ColorMatrix(floatArrayOf(
+            contrastValue, 0f, 0f, 0f, brightnessValue,
+            0f, contrastValue, 0f, 0f, brightnessValue,
+            0f, 0f, contrastValue, 0f, brightnessValue,
+            0f, 0f, 0f, 1f, 0f
+        ))
+
+        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        adjustedBitmap.density = originalBitmap.density
         val canvas = Canvas(adjustedBitmap)
         val paint = Paint()
         paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
