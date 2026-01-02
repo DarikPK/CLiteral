@@ -337,14 +337,8 @@ class PdfPreviewFragment : Fragment() {
             val x = random.nextFloat() * width
             val y = random.nextFloat() * height
             val maxRadius = height / 12f
-            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity) * sizeMultiplier
-            val numBlobs = random.nextInt(4) + 1
-            for (j in 0 until numBlobs) {
-                val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
-                val blobY = y + (random.nextFloat() - 0.5f) * baseRadius * 2
-                val blobRadius = baseRadius * (0.5f + random.nextFloat())
-                canvas.drawCircle(blobX, blobY, blobRadius, erasePaint)
-            }
+            val radius = random.nextFloat() * maxRadius * (0.5f + intensity) * sizeMultiplier
+            canvas.drawCircle(x, y, radius, erasePaint)
         }
         return maskBitmap
     }
