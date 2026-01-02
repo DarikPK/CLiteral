@@ -108,8 +108,8 @@ class PdfSettingsFragment : Fragment() {
             putString("partidaId", folder.partidaId)
             putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-            putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 50f)
-            putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 50f)
+            putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 30f)
+            putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 100f)
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {

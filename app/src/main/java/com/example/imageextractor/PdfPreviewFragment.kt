@@ -213,6 +213,7 @@ class PdfPreviewFragment : Fragment() {
 
         binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
+        binding.applyWearButton.isActivated = wornStampBitmap != null
 
         updateStampOverlay()
     }
@@ -308,6 +309,7 @@ class PdfPreviewFragment : Fragment() {
                 }
                 wornStampBitmap = applyInkWearMask(it, stampWearIntensity, System.currentTimeMillis())
                 withContext(Dispatchers.Main) {
+                    binding.applyWearButton.isActivated = true
                     Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
                     displayPage(currentPageIndex)
                 }

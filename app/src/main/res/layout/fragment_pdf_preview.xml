@@ -62,7 +62,9 @@
             android:layout_height="wrap_content"
             android:text="Desgaste"
             android:layout_marginEnd="8dp"
-            style="?android:attr/borderlessButtonStyle"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:textColor="@color/wear_button_tint"
+            app:iconTint="@color/wear_button_tint"
             app:icon="@android:drawable/ic_menu_gallery"
             app:iconGravity="textStart"/>
     </LinearLayout>
