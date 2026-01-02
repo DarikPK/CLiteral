@@ -320,7 +320,7 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
-        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8)
+        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(maskBitmap)
         val random = Random(seed)
         canvas.drawColor(Color.WHITE)
