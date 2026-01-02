@@ -320,61 +320,66 @@ class PdfPreviewFragment : Fragment() {
     fun applyInkWear(source: Bitmap, intensity: Float, seed: Long): Bitmap {
         if (intensity <= 0.0f) return source
 
-        val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-        resultBitmap.density = source.density
+        // 1. Crear la máscara y llenarla de blanco (opaco).
         val maskBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         maskBitmap.density = source.density
-
         val maskCanvas = Canvas(maskBitmap)
-        maskCanvas.drawColor(Color.BLACK)
+        maskCanvas.drawColor(Color.WHITE)
 
-        val random = Random(seed)
-
-        // Capa 1: Ruido Perlin
-        val perlin = PerlinNoise(seed)
-        val scale = 10.0 + (1.0 - intensity) * 40.0
-        val noisePixels = IntArray(source.width * source.height)
-        for (y in 0 until source.height) {
-            for (x in 0 until source.width) {
-                val n = perlin.noise(x / scale, y / scale, 0.8)
-                val color = ((n + 1) / 2 * 255).toInt()
-                val alpha = (255 * (1.0f - intensity) * 0.5f).toInt()
-                noisePixels[y * source.width + x] = Color.argb(alpha, color, color, color)
-            }
-        }
-        maskBitmap.setPixels(noisePixels, 0, source.width, 0, 0, source.width, source.height)
-
-        // Capa 2: Manchas irregulares
-        val blotchPaint = Paint().apply {
+        // 2. Crear un pincel que "borre" (haga transparente) en la máscara.
+        val erasePaint = Paint().apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
             isAntiAlias = true
             style = Paint.Style.FILL
         }
-        val blotchCount = (20 * intensity).toInt()
+
+        val random = Random(seed)
+
+        // 3. Capa 1: Ruido de grano fino usando pequeños círculos borrados.
+        // La cantidad de ruido aumenta con la intensidad.
+        val noiseCount = (source.width * source.height / 50 * intensity).toInt()
+        for (i in 0..noiseCount) {
+            val x = random.nextFloat() * source.width
+            val y = random.nextFloat() * source.height
+            val radius = random.nextFloat() * 2.5f // Radio pequeño para simular grano
+            maskCanvas.drawCircle(x, y, radius, erasePaint)
+        }
+
+        // 4. Capa 2: Manchas irregulares para áreas de desgaste más grandes.
+        val blotchCount = (30 * intensity).toInt()
         for (i in 0..blotchCount) {
             val path = Path()
             val startX = random.nextFloat() * source.width
             val startY = random.nextFloat() * source.height
             path.moveTo(startX, startY)
-            val segmentCount = random.nextInt(5) + 3 // Generates a number between 3 and 7
+
+            val segmentCount = random.nextInt(5) + 3 // Entre 3 y 7 segmentos
             for (j in 0..segmentCount) {
-                val cpx1 = startX + random.nextFloat() * 80 - 40
-                val cpy1 = startY + random.nextFloat() * 80 - 40
-                val x2 = startX + random.nextFloat() * 80 - 40
-                val y2 = startY + random.nextFloat() * 80 - 40
+                val cpx1 = startX + random.nextFloat() * 100 - 50
+                val cpy1 = startY + random.nextFloat() * 100 - 50
+                val x2 = startX + random.nextFloat() * 100 - 50
+                val y2 = startY + random.nextFloat() * 100 - 50
                 path.quadTo(cpx1, cpy1, x2, y2)
             }
             path.close()
-            val blotchAlpha = (random.nextFloat() * 180 * intensity).toInt()
-            blotchPaint.color = Color.argb(blotchAlpha, 255, 255, 255)
-            maskCanvas.drawPath(path, blotchPaint)
+            maskCanvas.drawPath(path, erasePaint)
         }
 
+        // 5. Combinar el sello con la máscara generada.
+        val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        resultBitmap.density = source.density
         val resultCanvas = Canvas(resultBitmap)
         resultCanvas.drawBitmap(source, 0f, 0f, null)
+
+        // DST_IN mantiene los píxeles del destino (sello) solo donde los píxeles de origen (máscara) son opacos.
+        // Como perforamos agujeros transparentes en la máscara, esas partes del sello se borrarán.
         val maskPaint = Paint().apply {
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
         }
         resultCanvas.drawBitmap(maskBitmap, 0f, 0f, maskPaint)
+
+        maskBitmap.recycle()
+
         return resultBitmap
     }
 
@@ -510,52 +515,5 @@ class PdfPreviewFragment : Fragment() {
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-}
-
-class PerlinNoise(private val seed: Long) {
-    private val p = IntArray(512)
-    init {
-        val random = Random(seed)
-        val permutation = IntArray(256) { it }
-        for (i in 255 downTo 0) {
-            val index = random.nextInt(i + 1)
-            val temp = permutation[i]
-            permutation[i] = permutation[index]
-            permutation[index] = temp
-        }
-        for (i in 0..255) {
-            p[i] = permutation[i]
-            p[256 + i] = permutation[i]
-        }
-    }
-    fun noise(x: Double, y: Double, z: Double): Double {
-        val xi = x.toInt() and 255
-        val yi = y.toInt() and 255
-        val zi = z.toInt() and 255
-        val xf = x - x.toInt()
-        val yf = y - y.toInt()
-        val zf = z - z.toInt()
-        val u = fade(xf)
-        val v = fade(yf)
-        val w = fade(zf)
-        val a = p[xi] + yi
-        val aa = p[a] + zi
-        val ab = p[a + 1] + zi
-        val b = p[xi + 1] + yi
-        val ba = p[b] + zi
-        val bb = p[b + 1] + zi
-        return lerp(w, lerp(v, lerp(u, grad(p[aa], xf, yf, zf), grad(p[ba], xf - 1, yf, zf)),
-            lerp(u, grad(p[ab], xf, yf - 1, zf), grad(p[bb], xf - 1, yf - 1, zf))),
-            lerp(v, lerp(u, grad(p[aa + 1], xf, yf, zf - 1), grad(p[ba + 1], xf - 1, yf, zf - 1)),
-                lerp(u, grad(p[ab + 1], xf, yf - 1, zf - 1), grad(p[bb + 1], xf - 1, yf - 1, zf - 1))))
-    }
-    private fun fade(t: Double): Double = t * t * t * (t * (t * 6 - 15) + 10)
-    private fun lerp(t: Double, a: Double, b: Double): Double = a + t * (b - a)
-    private fun grad(hash: Int, x: Double, y: Double, z: Double): Double {
-        val h = hash and 15
-        val u = if (h < 8) x else y
-        val v = if (h < 4) y else if (h == 12 || h == 14) x else z
-        return ((if ((h and 1) == 0) u else -u) + (if ((h and 2) == 0) v else -v))
     }
 }
