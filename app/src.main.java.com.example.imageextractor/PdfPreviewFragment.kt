@@ -1,14 +1,17 @@
 package com.example.imageextractor
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
+import android.graphics.*
+import android.graphics.pdf.PdfDocument
 import android.os.Bundle
-import android.os.ParcelFileDescriptor
+import android.os.Environment
 import android.view.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -17,25 +20,46 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.util.Random
 
 class PdfPreviewFragment : Fragment() {
 
     private var _binding: FragmentPdfPreviewBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var pdfRenderer: PdfRenderer
-    private lateinit var parcelFileDescriptor: ParcelFileDescriptor
-    private var pdfPath: String? = null
     private var partidaId: String? = null
+    private var imagePaths: Array<String>? = null
     private val pageBitmaps = mutableListOf<Bitmap>()
     private var currentPageIndex = 0
+
+    private var stampBitmap: Bitmap? = null
+    private var firstPageStampState: StampState? = null
+    private var lastPageStampState: StampState? = null
+
+    private var isStampEnabled: Boolean = false
+    private lateinit var stampDateText: String
+    private var stampFontSize: Float = 0f
+    private var stampWearIntensity: Float = 0f
+    private var stampSizePercent: Float = 0f
+    private var stampMaxRotation: Float = 0f
+
+    data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
         arguments?.let {
-            pdfPath = it.getString("pdfPath")
             partidaId = it.getString("partidaId")
+            imagePaths = it.getStringArray("imagePaths")
+            isStampEnabled = it.getBoolean("isStampEnabled")
+            if (isStampEnabled) {
+                stampDateText = it.getString("stampDateText", "")
+                stampFontSize = it.getFloat("stampFontSize")
+                stampWearIntensity = it.getFloat("stampWearIntensity")
+                stampSizePercent = it.getFloat("stampSizePercent")
+                stampMaxRotation = it.getFloat("stampMaxRotation")
+            }
         }
     }
 
@@ -50,17 +74,28 @@ class PdfPreviewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        renderPdf()
+        loadPages()
         setupNavigationButtons()
+        binding.fabSavePdf.setOnClickListener { savePdfWithInteractiveStamp() }
+        binding.stampOverlayView.setOnStampUpdateListener { x, y, rotation ->
+            val currentState = when (currentPageIndex) {
+                0 -> firstPageStampState
+                pageBitmaps.size - 1 -> lastPageStampState
+                else -> null
+            }
+            currentState?.let {
+                it.x = x
+                it.y = y
+                it.rotation = rotation
+            }
+        }
     }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.title = "Previsualización: $partidaId"
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.setNavigationOnClickListener {
-            findNavController().popBackStack()
-        }
+        binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
     }
 
     private fun setupNavigationButtons() {
@@ -78,40 +113,188 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun renderPdf() {
-        if (pdfPath == null) return
+    private fun loadPages() {
+        if (imagePaths == null) return
         lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val file = File(pdfPath!!)
-                parcelFileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-                pdfRenderer = PdfRenderer(parcelFileDescriptor)
+            imagePaths!!.forEach { path ->
+                val bitmap = BitmapFactory.decodeFile(path)
+                pageBitmaps.add(bitmap)
+            }
 
-                for (i in 0 until pdfRenderer.pageCount) {
-                    val page = pdfRenderer.openPage(i)
-                    val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    pageBitmaps.add(bitmap)
-                    page.close()
+            if (isStampEnabled && stampDateText.isNotBlank()) {
+                stampBitmap = generateStampBitmap(stampDateText, stampFontSize, stampWearIntensity)
+                initializeStampStates()
+            }
+
+            withContext(Dispatchers.Main) {
+                if (pageBitmaps.isNotEmpty()) {
+                    displayPage(currentPageIndex)
                 }
-                withContext(Dispatchers.Main) {
-                    if (pageBitmaps.isNotEmpty()) {
-                        displayPage(currentPageIndex)
-                    }
-                }
-            } catch (e: Exception) {
-                // Handle error
+                binding.fabSavePdf.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun initializeStampStates() {
+        stampBitmap?.let { stamp ->
+            val scale = stampSizePercent / 100f
+            val stampWidth = stamp.width * scale
+            val stampHeight = stamp.height * scale
+            val random = Random()
+
+            if (pageBitmaps.isNotEmpty()) {
+                val firstPage = pageBitmaps[0]
+                firstPageStampState = StampState(
+                    x = firstPage.width - stampWidth - 25,
+                    y = firstPage.height - stampHeight - 25,
+                    scale = scale,
+                    rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
+                )
+            }
+
+            if (pageBitmaps.size > 1) {
+                val lastPage = pageBitmaps.last()
+                lastPageStampState = StampState(
+                    x = lastPage.width - stampWidth - 25,
+                    y = lastPage.height - stampHeight - 25,
+                    scale = scale,
+                    rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
+                )
             }
         }
     }
 
     private fun displayPage(index: Int) {
-        if (index >= 0 && index < pageBitmaps.size) {
-            binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
-            binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
-            binding.previousPageButton.visibility = if (index > 0) View.VISIBLE else View.INVISIBLE
-            binding.nextPageButton.visibility = if (index < pageBitmaps.size - 1) View.VISIBLE else View.INVISIBLE
-            binding.pdfPageZoomableImageView.resetZoom()
+        if (index < 0 || index >= pageBitmaps.size) return
+
+        binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
+        binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
+        binding.previousPageButton.visibility = if (index > 0) View.VISIBLE else View.INVISIBLE
+        binding.nextPageButton.visibility = if (index < pageBitmaps.size - 1) View.VISIBLE else View.INVISIBLE
+        binding.pdfPageZoomableImageView.resetZoom()
+
+        val currentState = when (index) {
+            0 -> firstPageStampState
+            pageBitmaps.size - 1 -> lastPageStampState
+            else -> null
         }
+
+        if (currentState != null && stampBitmap != null) {
+            binding.stampOverlayView.visibility = View.VISIBLE
+            binding.stampOverlayView.setStamp(stampBitmap!!, currentState.x, currentState.y, currentState.scale, currentState.rotation)
+        } else {
+            binding.stampOverlayView.visibility = View.GONE
+        }
+    }
+
+    private fun savePdfWithInteractiveStamp() {
+        Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val pdfDocument = PdfDocument()
+            pageBitmaps.forEachIndexed { index, bitmap ->
+                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+                val page = pdfDocument.startPage(pageInfo)
+                page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+                val currentState = when(index) {
+                    0 -> firstPageStampState
+                    pageBitmaps.size - 1 -> lastPageStampState
+                    else -> null
+                }
+
+                if (currentState != null && stampBitmap != null) {
+                    val matrix = Matrix()
+                    matrix.postScale(currentState.scale, currentState.scale)
+                    matrix.postRotate(currentState.rotation, stampBitmap!!.width * currentState.scale / 2, stampBitmap!!.height * currentState.scale / 2)
+                    matrix.postTranslate(currentState.x, currentState.y)
+                    page.canvas.drawBitmap(stampBitmap!!, matrix, null)
+                }
+
+                pdfDocument.finishPage(page)
+            }
+
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val pdfFile = File(downloadsDir, "$partidaId.pdf")
+            pdfDocument.writeTo(FileOutputStream(pdfFile))
+            pdfDocument.close()
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "PDF guardado en ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
+                findNavController().popBackStack(R.id.mainMenuFragment, false)
+            }
+        }
+    }
+
+    private fun generateStampBitmap(dateText: String, fontSize: Float, wearIntensity: Float): Bitmap {
+        val context = requireContext()
+        val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
+        val cleanStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+
+        val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
+
+        val textPaint = Paint().apply {
+            color = Color.RED
+            textSize = fontSize
+            typeface = customTypeface ?: Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+
+        val canvas = Canvas(cleanStampBitmap)
+        val x = canvas.width / 2f
+        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
+        canvas.drawText(dateText, x, y, textPaint)
+
+        return applyInkWearMask(cleanStampBitmap, wearIntensity, System.currentTimeMillis())
+    }
+
+    private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
+        val maskBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ALPHA_8)
+        val canvas = Canvas(maskBitmap)
+        val random = Random(seed)
+        canvas.drawColor(Color.WHITE)
+        val erasePaint = Paint().apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            isAntiAlias = true
+        }
+        val baseDefects = (width * height / 500)
+        val numDefects = (baseDefects * intensity * 2).toInt()
+        for (i in 0 until numDefects) {
+            val x = (random.nextGaussian() * (width / 4) + (width / 2)).toFloat()
+            val y = (random.nextGaussian() * (height / 4) + (height / 2)).toFloat()
+            val maxRadius = height / 25f
+            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
+            val numBlobs = random.nextInt(4) + 1
+            for (j in 0 until numBlobs) {
+                val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
+                val blobY = y + (random.nextFloat() - 0.5f) * baseRadius * 2
+                val blobRadius = baseRadius * (0.5f + random.nextFloat())
+                canvas.drawCircle(blobX, blobY, blobRadius, erasePaint)
+            }
+        }
+        return maskBitmap
+    }
+
+    private fun applyInkWearMask(sourceBitmap: Bitmap, intensity: Float, seed: Long): Bitmap {
+        if (intensity <= 0f) return sourceBitmap
+        val wearMask = generateWearMask(sourceBitmap.width, sourceBitmap.height, intensity, seed)
+        val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
+        val maskPaint = Paint().apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+        }
+        canvas.drawBitmap(wearMask, 0f, 0f, maskPaint)
+        wearMask.recycle()
+        return resultBitmap
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        pageBitmaps.forEach { it.recycle() }
+        pageBitmaps.clear()
+        stampBitmap?.recycle()
+        _binding = null
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -122,7 +305,7 @@ class PdfPreviewFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_share -> {
-                sharePdf()
+                Toast.makeText(context, "Guarda el PDF primero para compartir.", Toast.LENGTH_SHORT).show()
                 true
             }
             R.id.action_zoom_in -> {
@@ -135,36 +318,5 @@ class PdfPreviewFragment : Fragment() {
             }
             else -> super.onOptionsItemSelected(item)
         }
-    }
-
-    private fun sharePdf() {
-        if (pdfPath == null) {
-            Toast.makeText(context, "No hay archivo para compartir.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        try {
-            val file = File(pdfPath!!)
-            val fileUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", file)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_STREAM, fileUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(intent, "Compartir PDF"))
-        } catch (e: Exception) {
-            Toast.makeText(context, "Error al compartir el PDF: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        // Clean up bitmaps
-        pageBitmaps.forEach { it.recycle() }
-        pageBitmaps.clear()
-        if (::pdfRenderer.isInitialized) {
-            pdfRenderer.close()
-            parcelFileDescriptor.close()
-        }
-        _binding = null
     }
 }

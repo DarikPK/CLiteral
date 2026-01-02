@@ -59,14 +59,12 @@ class StampOverlayView @JvmOverloads constructor(
         super.onDraw(canvas)
         stampBitmap?.let {
             matrix.reset()
-            // The matrix is calculated relative to the top-left of the bitmap
             matrix.postScale(scale, scale, 0f, 0f)
             matrix.postRotate(rotation, it.width * scale / 2, it.height * scale / 2)
             matrix.postTranslate(posX, posY)
 
             canvas.drawBitmap(it, matrix, paint)
 
-            // Calculate handle position based on the transformed matrix
             val points = floatArrayOf(it.width.toFloat(), it.height.toFloat())
             matrix.mapPoints(points)
             val handleX = points[0]
@@ -79,7 +77,9 @@ class StampOverlayView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (stampBitmap == null) return false
+        if (stampBitmap == null || visibility != VISIBLE) {
+            return false // Don't handle events if there's no stamp or view is hidden
+        }
 
         val x = event.x
         val y = event.y
@@ -90,15 +90,23 @@ class StampOverlayView @JvmOverloads constructor(
                     mode = Mode.ROTATE
                     pivotX = posX + stampBitmap!!.width * scale / 2
                     pivotY = posY + stampBitmap!!.height * scale / 2
+                    lastTouchX = x
+                    lastTouchY = y
+                    return true // Consume the event
                 } else if (isInStamp(x, y)) {
                     mode = Mode.DRAG
+                    lastTouchX = x
+                    lastTouchY = y
+                    return true // Consume the event
                 }
-                lastTouchX = x
-                lastTouchY = y
-                return true
+                // If touch is outside the stamp, do not consume the event
+                return false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (mode == Mode.NONE) return false
+                if (mode == Mode.NONE) {
+                    return false // Don't do anything if not in a specific mode
+                }
+
                 val dx = x - lastTouchX
                 val dy = y - lastTouchY
 
@@ -110,21 +118,25 @@ class StampOverlayView @JvmOverloads constructor(
                     val lastAngle = atan2(lastTouchY - pivotY, lastTouchX - pivotX) * (180 / Math.PI).toFloat()
                     rotation += angle - lastAngle
                 }
+
                 invalidate()
                 lastTouchX = x
                 lastTouchY = y
-                return true
+                return true // Consume the event as we are actively manipulating the stamp
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (mode != Mode.NONE) {
                     onStampUpdateListener?.invoke(posX, posY, rotation)
+                    mode = Mode.NONE
+                    return true // Consume the event to finalize the action
                 }
-                mode = Mode.NONE
-                return true
+                return false
             }
         }
-        return false
+        return false // Default to not consuming the event
     }
+
+    // --- Helper functions for touch detection ---
 
     private fun getHandlePosition(): PointF {
         stampBitmap?.let {
