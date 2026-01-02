@@ -17,6 +17,16 @@ class ZoomableImageView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
 
+    interface OnMatrixChangedListener {
+        fun onMatrixChanged()
+    }
+
+    private var onMatrixChangedListener: OnMatrixChangedListener? = null
+
+    fun setOnMatrixChangedListener(listener: OnMatrixChangedListener) {
+        this.onMatrixChangedListener = listener
+    }
+
     private val baseMatrix = Matrix()
     private val drawMatrix = Matrix()
     private val startPoint = PointF()
@@ -39,6 +49,7 @@ class ZoomableImageView @JvmOverloads constructor(
                         val dy = event.y - startPoint.y
                         drawMatrix.postTranslate(dx, dy)
                         imageMatrix = drawMatrix
+                        onMatrixChangedListener?.onMatrixChanged()
                         startPoint.set(event.x, event.y)
                         true
                     }
@@ -86,6 +97,7 @@ class ZoomableImageView @JvmOverloads constructor(
             currentScale *= zoomIncrement
             drawMatrix.postScale(zoomIncrement, zoomIncrement, width / 2f, height / 2f)
             imageMatrix = drawMatrix
+            onMatrixChangedListener?.onMatrixChanged()
         }
     }
 
@@ -93,6 +105,7 @@ class ZoomableImageView @JvmOverloads constructor(
         drawMatrix.set(baseMatrix)
         currentScale = 1.0f
         imageMatrix = drawMatrix
+        onMatrixChangedListener?.onMatrixChanged()
     }
 
     fun getDrawMatrix(): Matrix {

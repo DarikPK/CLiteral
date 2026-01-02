@@ -91,6 +91,12 @@ class PdfPreviewFragment : Fragment() {
                 it.rotation = rotation
             }
         }
+
+        binding.pdfPageZoomableImageView.setOnMatrixChangedListener(object : ZoomableImageView.OnMatrixChangedListener {
+            override fun onMatrixChanged() {
+                updateStampOverlay()
+            }
+        })
     }
 
     private fun setupToolbar() {
@@ -341,6 +347,66 @@ class PdfPreviewFragment : Fragment() {
         return resultBitmap
     }
 
+    private fun sharePdf() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val pdfFile = savePdfToDownloads()
+            if (pdfFile != null) {
+                withContext(Dispatchers.Main) {
+                    val uri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", pdfFile)
+                    val shareIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        type = "application/pdf"
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(shareIntent, "Compartir PDF"))
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error al guardar el PDF para compartir.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun savePdfToDownloads(): File? {
+        val finalStampBitmap = wornStampBitmap ?: cleanStampBitmap ?: return null
+        val pdfDocument = PdfDocument()
+
+        pageBitmaps.forEachIndexed { index, bitmap ->
+            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+            val currentState = when(index) {
+                0 -> firstPageStampState
+                pageBitmaps.size - 1 -> lastPageStampState
+                else -> null
+            }
+
+            if (currentState != null) {
+                val matrix = Matrix()
+                matrix.postScale(currentState.scale, currentState.scale)
+                matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
+                matrix.postTranslate(currentState.x, currentState.y)
+                page.canvas.drawBitmap(finalStampBitmap, matrix, null)
+            }
+            pdfDocument.finishPage(page)
+        }
+
+        return try {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val pdfFile = File(downloadsDir, "$partidaId-share.pdf")
+            pdfDocument.writeTo(FileOutputStream(pdfFile))
+            pdfDocument.close()
+            pdfFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            pdfDocument.close()
+            null
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         pageBitmaps.forEach { it.recycle() }
@@ -358,7 +424,7 @@ class PdfPreviewFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_share -> {
-                Toast.makeText(context, "Guarda el PDF primero para compartir.", Toast.LENGTH_SHORT).show()
+                sharePdf()
                 true
             }
             R.id.action_zoom_in -> {
