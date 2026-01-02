@@ -3,10 +3,8 @@ package com.example.imageextractor
 import android.content.Intent
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
-import android.graphics.pdf.PdfRenderer
 import android.os.Bundle
 import android.os.Environment
-import android.os.ParcelFileDescriptor
 import android.view.*
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -35,11 +33,11 @@ class PdfPreviewFragment : Fragment() {
     private val pageBitmaps = mutableListOf<Bitmap>()
     private var currentPageIndex = 0
 
-    private var stampBitmap: Bitmap? = null
+    private var cleanStampBitmap: Bitmap? = null
+    private var wornStampBitmap: Bitmap? = null
     private var firstPageStampState: StampState? = null
     private var lastPageStampState: StampState? = null
 
-    // Stamp parameters received from settings
     private var isStampEnabled: Boolean = false
     private lateinit var stampDateText: String
     private var stampFontSize: Float = 0f
@@ -80,6 +78,7 @@ class PdfPreviewFragment : Fragment() {
         loadPages()
         setupNavigationButtons()
         binding.fabSavePdf.setOnClickListener { savePdfWithInteractiveStamp() }
+        binding.applyWearButton.setOnClickListener { applyWearEffect() }
         binding.stampOverlayView.setOnStampUpdateListener { x, y, rotation ->
             val currentState = when (currentPageIndex) {
                 0 -> firstPageStampState
@@ -124,8 +123,8 @@ class PdfPreviewFragment : Fragment() {
                 pageBitmaps.add(bitmap)
             }
 
-            if (isStampEnabled) {
-                stampBitmap = generateStampBitmap(stampDateText, stampFontSize, stampWearIntensity)
+            if (isStampEnabled && stampDateText.isNotBlank()) {
+                generateCleanStamp()
                 initializeStampStates()
             }
 
@@ -139,7 +138,7 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun initializeStampStates() {
-        stampBitmap?.let { stamp ->
+        cleanStampBitmap?.let { stamp ->
             val scale = stampSizePercent / 100f
             val stampWidth = stamp.width * scale
             val stampHeight = stamp.height * scale
@@ -172,9 +171,6 @@ class PdfPreviewFragment : Fragment() {
 
         binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
-        binding.previousPageButton.visibility = if (index > 0) View.VISIBLE else View.INVISIBLE
-        binding.nextPageButton.visibility = if (index < pageBitmaps.size - 1) View.VISIBLE else View.INVISIBLE
-        binding.pdfPageZoomableImageView.resetZoom()
 
         val currentState = when (index) {
             0 -> firstPageStampState
@@ -182,11 +178,15 @@ class PdfPreviewFragment : Fragment() {
             else -> null
         }
 
-        if (currentState != null && stampBitmap != null) {
+        val bitmapToShow = wornStampBitmap ?: cleanStampBitmap
+
+        if (currentState != null && bitmapToShow != null) {
             binding.stampOverlayView.visibility = View.VISIBLE
-            binding.stampOverlayView.setStamp(stampBitmap!!, currentState.x, currentState.y, currentState.scale, currentState.rotation)
+            binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation)
+            binding.applyWearButton.visibility = View.VISIBLE
         } else {
             binding.stampOverlayView.visibility = View.GONE
+            binding.applyWearButton.visibility = View.GONE
         }
     }
 
@@ -194,6 +194,8 @@ class PdfPreviewFragment : Fragment() {
         Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             val pdfDocument = PdfDocument()
+            val finalStampBitmap = wornStampBitmap ?: cleanStampBitmap
+
             pageBitmaps.forEachIndexed { index, bitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
@@ -205,12 +207,12 @@ class PdfPreviewFragment : Fragment() {
                     else -> null
                 }
 
-                if (currentState != null && stampBitmap != null) {
+                if (currentState != null && finalStampBitmap != null) {
                     val matrix = Matrix()
                     matrix.postScale(currentState.scale, currentState.scale)
-                    matrix.postRotate(currentState.rotation, stampBitmap!!.width * currentState.scale / 2, stampBitmap!!.height * currentState.scale / 2)
+                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
                     matrix.postTranslate(currentState.x, currentState.y)
-                    page.canvas.drawBitmap(stampBitmap!!, matrix, null)
+                    page.canvas.drawBitmap(finalStampBitmap, matrix, null)
                 }
 
                 pdfDocument.finishPage(page)
@@ -228,29 +230,42 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    // --- Stamp Generation Logic (Moved from PdfSettingsFragment) ---
-
-    private fun generateStampBitmap(dateText: String, fontSize: Float, wearIntensity: Float): Bitmap {
+    private fun generateCleanStamp() {
         val context = requireContext()
         val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
-        val cleanStampBitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
 
         val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
 
         val textPaint = Paint().apply {
             color = Color.RED
-            textSize = fontSize
+            textSize = stampFontSize
             typeface = customTypeface ?: Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
             isAntiAlias = true
         }
 
-        val canvas = Canvas(cleanStampBitmap)
+        val canvas = Canvas(bitmap)
         val x = canvas.width / 2f
         val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
-        canvas.drawText(dateText, x, y, textPaint)
+        canvas.drawText(stampDateText, x, y, textPaint)
 
-        return applyInkWearMask(cleanStampBitmap, wearIntensity, System.currentTimeMillis())
+        this.cleanStampBitmap = bitmap
+    }
+
+    private fun applyWearEffect() {
+        cleanStampBitmap?.let {
+            lifecycleScope.launch(Dispatchers.IO) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
+                }
+                wornStampBitmap = applyInkWearMask(it, stampWearIntensity, System.currentTimeMillis())
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
+                    displayPage(currentPageIndex)
+                }
+            }
+        }
     }
 
     private fun generateWearMask(width: Int, height: Int, intensity: Float, seed: Long): Bitmap {
@@ -294,13 +309,12 @@ class PdfPreviewFragment : Fragment() {
         return resultBitmap
     }
 
-    // --- Other Fragment Lifecycle Methods ---
-
     override fun onDestroyView() {
         super.onDestroyView()
         pageBitmaps.forEach { it.recycle() }
         pageBitmaps.clear()
-        stampBitmap?.recycle()
+        cleanStampBitmap?.recycle()
+        wornStampBitmap?.recycle()
         _binding = null
     }
 
@@ -310,10 +324,8 @@ class PdfPreviewFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // ... (options item selected logic remains the same)
         return when (item.itemId) {
             R.id.action_share -> {
-                // This would need to be adapted to save the interactive PDF first
                 Toast.makeText(context, "Guarda el PDF primero para compartir.", Toast.LENGTH_SHORT).show()
                 true
             }

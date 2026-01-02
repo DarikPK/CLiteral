@@ -7,6 +7,7 @@
     tools:context=".PdfPreviewFragment">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
@@ -19,57 +20,71 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- Navigation and Tools Bar -->
+    <LinearLayout
+        android:id="@+id/navigation_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?attr/colorSurface"
+        android:elevation="4dp"
+        android:gravity="center_vertical"
+        app:layout_anchor="@id/appbar"
+        app:layout_anchorGravity="bottom">
+
+        <ImageButton
+            android:id="@+id/previous_page_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_media_previous"
+            android:contentDescription="Página Anterior"
+            style="?android:attr/borderlessButtonStyle"/>
+
+        <TextView
+            android:id="@+id/page_number_text_view"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            tools:text="Página 1 / 10" />
+
+        <ImageButton
+            android:id="@+id/next_page_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_media_next"
+            android:contentDescription="Página Siguiente"
+            style="?android:attr/borderlessButtonStyle"/>
+
+        <Button
+            android:id="@+id/apply_wear_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Desgaste"
+            android:layout_marginEnd="8dp"
+            style="?android:attr/borderlessButtonStyle"
+            app:icon="@android:drawable/ic_menu_gallery"
+            app:iconGravity="textStart"/>
+    </LinearLayout>
+
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:layout_marginTop="?attr/actionBarSize">
 
-        <!-- The zoomable image view is at the bottom of the stack -->
         <com.example.imageextractor.ZoomableImageView
             android:id="@+id/pdf_page_zoomable_image_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#CCCCCC" />
 
-        <!-- The stamp overlay is drawn on top of the image -->
         <com.example.imageextractor.StampOverlayView
             android:id="@+id/stamp_overlay_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
-        <!-- Navigation buttons and text are on the very top to ensure they are clickable -->
-        <ImageButton
-            android:id="@+id/previous_page_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="bottom|start"
-            android:layout_marginStart="16dp"
-            android:layout_marginBottom="16dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:contentDescription="Página Anterior" />
-
-        <ImageButton
-            android:id="@+id/next_page_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
-            android:src="@android:drawable/ic_media_next"
-            android:contentDescription="Página Siguiente" />
-
-        <TextView
-            android:id="@+id/page_number_text_view"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="16dp"
-            android:gravity="center"
-            android:textColor="@android:color/white"
-            android:background="#80000000"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            tools:text="Página 1 / 10" />
 
     </FrameLayout>
 
@@ -80,7 +95,6 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:contentDescription="Guardar PDF Final"
-        app:srcCompat="@android:drawable/ic_menu_save"
-        android:visibility="gone" />
+        app:srcCompat="@android:drawable/ic_menu_save" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
