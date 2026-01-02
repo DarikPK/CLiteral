@@ -65,8 +65,8 @@ class PdfPreviewFragment : Fragment() {
             if (isStampEnabled) {
                 stampDateText = it.getString("stampDateText", "")
                 stampFontSize = it.getFloat("stampFontSize", 220f)
-                stampWearIntensity = it.getFloat("stampWearIntensity", 0.3f)
-                stampWearSize = it.getFloat("stampWearSize", 50f)
+                stampWearIntensity = it.getFloat("stampWearIntensity", 0f)
+                stampWearSize = it.getFloat("stampWearSize", 0f)
                 stampSizePercent = it.getFloat("stampSizePercent", 5f)
                 stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
                 stampBrightness = it.getFloat("stampBrightness", 50f)
@@ -309,7 +309,9 @@ class PdfPreviewFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
                 }
-                wornStampBitmap = applyInkWear(it, stampWearIntensity, stampWearSize, System.currentTimeMillis())
+                val normalizedIntensity = stampWearIntensity / 100.0f
+                val normalizedSize = stampWearSize / 100.0f
+                wornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
                 withContext(Dispatchers.Main) {
                     binding.applyWearButton.isActivated = true
                     Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
