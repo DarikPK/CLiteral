@@ -307,7 +307,7 @@ class PdfPreviewFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
                 }
-                wornStampBitmap = applyInkWear(it, stampWearIntensity, System.currentTimeMillis())
+                wornStampBitmap = applyInkWear(it, stampWearIntensity, stampWearSize, System.currentTimeMillis())
                 withContext(Dispatchers.Main) {
                     binding.applyWearButton.isActivated = true
                     Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
