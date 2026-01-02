@@ -1,4 +1,4 @@
-package com.example.pdfcreator
+package com.example.imageextractor
 
 import android.content.Intent
 import android.graphics.*
@@ -15,8 +15,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.example.pdfcreator.databinding.FragmentPdfPreviewBinding
-import com.example.imageextractor.ZoomableImageView
+import com.example.imageextractor.databinding.FragmentPdfPreviewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -308,7 +307,6 @@ class PdfPreviewFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
                 }
-                // Llama a la nueva función de desgaste procedural
                 wornStampBitmap = applyInkWear(it, stampWearIntensity, System.currentTimeMillis())
                 withContext(Dispatchers.Main) {
                     binding.applyWearButton.isActivated = true
@@ -333,9 +331,9 @@ class PdfPreviewFragment : Fragment() {
         val random = Random(seed)
 
         // Capa 1: Ruido Perlin
-        val noisePixels = IntArray(source.width * source.height)
         val perlin = PerlinNoise(seed)
         val scale = 10.0 + (1.0 - intensity) * 40.0
+        val noisePixels = IntArray(source.width * source.height)
         for (y in 0 until source.height) {
             for (x in 0 until source.width) {
                 val n = perlin.noise(x / scale, y / scale, 0.8)
@@ -357,7 +355,7 @@ class PdfPreviewFragment : Fragment() {
             val startX = random.nextFloat() * source.width
             val startY = random.nextFloat() * source.height
             path.moveTo(startX, startY)
-            val segmentCount = random.nextInt(3, 8)
+            val segmentCount = random.nextInt(5) + 3 // Generates a number between 3 and 7
             for (j in 0..segmentCount) {
                 val cpx1 = startX + random.nextFloat() * 80 - 40
                 val cpy1 = startY + random.nextFloat() * 80 - 40
@@ -379,7 +377,6 @@ class PdfPreviewFragment : Fragment() {
         resultCanvas.drawBitmap(maskBitmap, 0f, 0f, maskPaint)
         return resultBitmap
     }
-
 
     private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {
         if (brightness == 50f && contrast == 50f) {
