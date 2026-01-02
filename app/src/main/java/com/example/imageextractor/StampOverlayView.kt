@@ -66,8 +66,8 @@ class StampOverlayView @JvmOverloads constructor(
             stampMatrix.postRotate(rotation, it.width * scale / 2, it.height * scale / 2)
             stampMatrix.postTranslate(posX, posY)
 
-            totalMatrix.set(imageMatrix)
-            totalMatrix.preConcat(stampMatrix)
+            totalMatrix.set(stampMatrix)
+            totalMatrix.postConcat(imageMatrix)
 
             canvas.drawBitmap(it, totalMatrix, paint)
 
