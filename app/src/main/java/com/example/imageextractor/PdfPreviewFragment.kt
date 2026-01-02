@@ -330,6 +330,7 @@ class PdfPreviewFragment : Fragment() {
         if (intensity <= 0f) return sourceBitmap
         val wearMask = generateWearMask(sourceBitmap.width, sourceBitmap.height, intensity, seed)
         val resultBitmap = Bitmap.createBitmap(sourceBitmap.width, sourceBitmap.height, Bitmap.Config.ARGB_8888)
+        resultBitmap.density = sourceBitmap.density
         val canvas = Canvas(resultBitmap)
         canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
         val maskPaint = Paint().apply {
