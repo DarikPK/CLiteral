@@ -328,8 +328,8 @@ class PdfPreviewFragment : Fragment() {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
             isAntiAlias = true
         }
-        val baseDefects = (width * height / 500)
-        val numDefects = (baseDefects * intensity * 2).toInt()
+        val baseDefects = 2000 // Use a fixed large number of potential defects
+        val numDefects = (baseDefects * intensity).toInt() // Intensity directly controls how many defects are drawn
         // Convert wear size from 0-100 to a 1x to 5x multiplier
         val sizeMultiplier = 1 + (stampWearSize / 100f) * 4
 
