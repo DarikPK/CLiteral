@@ -115,7 +115,7 @@ class PdfSettingsFragment : Fragment() {
                 val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
                 val stampYear = binding.stampYearEditText.text.toString()
                 putString("stampDateText", "$stampDay $stampMonth. $stampYear")
-                putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 50f)
+                putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value / 100f)
                 putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)

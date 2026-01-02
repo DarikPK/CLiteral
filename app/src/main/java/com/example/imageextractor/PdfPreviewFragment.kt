@@ -58,10 +58,10 @@ class PdfPreviewFragment : Fragment() {
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
                 stampDateText = it.getString("stampDateText", "")
-                stampFontSize = it.getFloat("stampFontSize")
-                stampWearIntensity = it.getFloat("stampWearIntensity")
-                stampSizePercent = it.getFloat("stampSizePercent")
-                stampMaxRotation = it.getFloat("stampMaxRotation")
+                stampFontSize = it.getFloat("stampFontSize", 220f)
+                stampWearIntensity = it.getFloat("stampWearIntensity", 0.3f)
+                stampSizePercent = it.getFloat("stampSizePercent", 5f)
+                stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
             }
         }
     }
