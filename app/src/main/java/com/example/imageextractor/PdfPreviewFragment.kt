@@ -45,6 +45,9 @@ class PdfPreviewFragment : Fragment() {
     private var stampSizePercent: Float = 0f
     private var stampMaxRotation: Float = 0f
 
+    private var brightness: Float = 0f
+    private var contrast: Float = 1f
+
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +56,8 @@ class PdfPreviewFragment : Fragment() {
         arguments?.let {
             partidaId = it.getString("partidaId")
             imagePaths = it.getStringArray("imagePaths")
+            brightness = it.getFloat("brightness", 0f)
+            contrast = it.getFloat("contrast", 1f)
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
                 stampDateText = it.getString("stampDateText", "")
@@ -125,8 +130,9 @@ class PdfPreviewFragment : Fragment() {
         if (imagePaths == null) return
         lifecycleScope.launch(Dispatchers.IO) {
             imagePaths!!.forEach { path ->
-                val bitmap = BitmapFactory.decodeFile(path)
-                pageBitmaps.add(bitmap)
+                val originalBitmap = BitmapFactory.decodeFile(path)
+                val adjustedBitmap = applyBitmapAdjustments(originalBitmap)
+                pageBitmaps.add(adjustedBitmap)
             }
 
             if (isStampEnabled && stampDateText.isNotBlank()) {
@@ -345,6 +351,26 @@ class PdfPreviewFragment : Fragment() {
         canvas.drawBitmap(wearMask, 0f, 0f, maskPaint)
         wearMask.recycle()
         return resultBitmap
+    }
+
+    private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {
+        if (brightness == 0f && contrast == 1f) {
+            return originalBitmap
+        }
+
+        val colorMatrix = ColorMatrix(floatArrayOf(
+            contrast, 0f, 0f, 0f, brightness,
+            0f, contrast, 0f, 0f, brightness,
+            0f, 0f, contrast, 0f, brightness,
+            0f, 0f, 0f, 1f, 0f
+        ))
+
+        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        val canvas = Canvas(adjustedBitmap)
+        val paint = Paint()
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return adjustedBitmap
     }
 
     private fun sharePdf() {

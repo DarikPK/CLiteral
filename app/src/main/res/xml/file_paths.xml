@@ -3,4 +3,7 @@
     <cache-path
         name="shared_previews"
         path="previews/" />
+    <external-path
+        name="downloads"
+        path="Download/" />
 </paths>

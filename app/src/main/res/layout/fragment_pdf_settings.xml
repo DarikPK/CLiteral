@@ -150,7 +150,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"
-                    android:maxLength="2"/>
+                    android:maxLength="2"
+                    android:text="1"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout
@@ -203,9 +204,9 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/stamp_size_edit_text"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android.layout_height="wrap_content"
                     android:inputType="number"
-                    android:text="5"/>
+                    android:text="20"/>
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
