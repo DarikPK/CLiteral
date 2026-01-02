@@ -331,7 +331,7 @@ class PdfPreviewFragment : Fragment() {
         for (i in 0 until numDefects) {
             val x = (random.nextGaussian() * (width / 4) + (width / 2)).toFloat()
             val y = (random.nextGaussian() * (height / 4) + (height / 2)).toFloat()
-            val maxRadius = height / 25f
+            val maxRadius = height / 12f
             val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
             val numBlobs = random.nextInt(4) + 1
             for (j in 0 until numBlobs) {
