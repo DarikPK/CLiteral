@@ -21,7 +21,6 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.random.Random
 
-
 class PdfPreviewFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
