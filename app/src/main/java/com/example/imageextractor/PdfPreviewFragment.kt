@@ -139,20 +139,34 @@ class PdfPreviewFragment : Fragment() {
 
     private fun initializeStampStates() {
         cleanStampBitmap?.let { stamp ->
-            val scale = stampSizePercent / 100f
-            val stampWidth = stamp.width * scale
-            val stampHeight = stamp.height * scale
+            if (pageBitmaps.isEmpty()) return
+
+            var scale = stampSizePercent / 100f
+            var stampWidth = stamp.width * scale
+            var stampHeight = stamp.height * scale
+
+            val page = pageBitmaps[0] // Use first page for dimension checks
+            var wasAdjusted = false
+
+            if (stampWidth > page.width || stampHeight > page.height) {
+                val widthScale = page.width.toFloat() / stamp.width
+                val heightScale = page.height.toFloat() / stamp.height
+                scale = minOf(widthScale, heightScale)
+                wasAdjusted = true
+            }
+
+            stampWidth = stamp.width * scale
+            stampHeight = stamp.height * scale
+
             val random = Random()
 
-            if (pageBitmaps.isNotEmpty()) {
-                val firstPage = pageBitmaps[0]
-                firstPageStampState = StampState(
-                    x = firstPage.width - stampWidth - 25,
-                    y = firstPage.height - stampHeight - 25,
-                    scale = scale,
-                    rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
-                )
-            }
+            val firstPage = pageBitmaps[0]
+            firstPageStampState = StampState(
+                x = firstPage.width - stampWidth - 25,
+                y = firstPage.height - stampHeight - 25,
+                scale = scale,
+                rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
+            )
 
             if (pageBitmaps.size > 1) {
                 val lastPage = pageBitmaps.last()
@@ -162,6 +176,12 @@ class PdfPreviewFragment : Fragment() {
                     scale = scale,
                     rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
                 )
+            }
+
+            if (wasAdjusted) {
+                lifecycleScope.launch(Dispatchers.Main) {
+                    Toast.makeText(context, "El tamaño del sello se ajustó para caber en la página.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
