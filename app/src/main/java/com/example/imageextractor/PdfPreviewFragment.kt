@@ -363,7 +363,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Convert brightness from 0-100 range to -255 to 255
-        val brightnessValue = (brightness - 50) * 3f
+        val brightnessValue = (brightness - 50) * 5f
         // Convert contrast from 0-100 range to 0 to 2
         val contrastValue = contrast / 50f
 
@@ -388,7 +388,7 @@ class PdfPreviewFragment : Fragment() {
             return originalBitmap
         }
 
-        val brightnessValue = (stampBrightness - 50) * 3f
+        val brightnessValue = (stampBrightness - 50) * 5f
         val contrastValue = stampContrast / 50f
 
         val colorMatrix = ColorMatrix(floatArrayOf(
