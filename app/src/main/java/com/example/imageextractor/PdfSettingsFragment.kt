@@ -313,7 +313,7 @@ class PdfSettingsFragment : Fragment() {
 
             val maxRadius = height / 25f
             val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
-            val numBlobs = random.nextInt(1, 5)
+            val numBlobs = random.nextInt(4) + 1
 
             for (j in 0 until numBlobs) {
                 val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2
@@ -414,8 +414,9 @@ class PdfSettingsFragment : Fragment() {
                 val stampLeft = pageWidth - stampWidth - marginRight - 10
                 val stampTop = pageHeight - stampHeight - marginBottom - 10
 
+                val random = Random()
                 canvas.save()
-                val rotation = Random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
+                val rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
                 canvas.rotate(rotation, (stampLeft + stampWidth / 2).toFloat(), (stampTop + stampHeight / 2).toFloat())
                 canvas.drawBitmap(stampBitmap, null, android.graphics.Rect(stampLeft, stampTop, stampLeft + stampWidth, stampTop + stampHeight), null)
                 canvas.restore()
