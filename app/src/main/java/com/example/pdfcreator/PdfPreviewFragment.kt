@@ -1,7 +1,6 @@
 package com.example.pdfcreator
 
 import android.graphics.*
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -9,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,8 +19,6 @@ import com.example.pdfcreator.ui.main.SharedViewModel
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.random.Random
 
 
@@ -265,9 +261,6 @@ class PdfPreviewFragment : Fragment() {
         val random = Random(seed)
 
         // 2. Capa 1: Ruido Perlin para simular la porosidad y grano fino.
-        val noisePaint = Paint().apply {
-            isAntiAlias = true
-        }
         val noisePixels = IntArray(source.width * source.height)
         val perlin = PerlinNoise(seed)
         val scale = 10.0 + (1.0 - intensity) * 40.0 // A menor intensidad, mayor escala (ruido más suave)
