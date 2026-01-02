@@ -38,7 +38,6 @@ class ImagePreviewFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         loadImage()
-        setupZoomButtons()
     }
 
     private fun setupToolbar() {
@@ -58,15 +57,6 @@ class ImagePreviewFragment : Fragment() {
         }
     }
 
-    private fun setupZoomButtons() {
-        binding.fabZoomIn.setOnClickListener {
-            binding.previewImageView.zoomIn()
-        }
-
-        binding.fabZoomReset.setOnClickListener {
-            binding.previewImageView.resetZoom()
-        }
-    }
 
     override fun onDestroyView() {
         super.onDestroyView()
