@@ -15,7 +15,9 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Observer
-import com.example.pdfcreator.ui.main.SharedViewModel
+import com.example.imageextractor.SharedViewModel
+import com.example.imageextractor.StampOverlayView
+import com.example.imageextractor.ZoomableImageView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 import java.io.FileOutputStream
