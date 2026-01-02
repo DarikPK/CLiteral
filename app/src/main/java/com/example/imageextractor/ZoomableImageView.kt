@@ -94,4 +94,8 @@ class ZoomableImageView @JvmOverloads constructor(
         currentScale = 1.0f
         imageMatrix = drawMatrix
     }
+
+    fun getDrawMatrix(): Matrix {
+        return Matrix(drawMatrix)
+    }
 }

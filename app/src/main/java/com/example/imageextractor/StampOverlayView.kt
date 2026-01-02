@@ -22,7 +22,9 @@ class StampOverlayView @JvmOverloads constructor(
 
     private var onStampUpdateListener: ((Float, Float, Float) -> Unit)? = null
 
-    private val matrix = Matrix()
+    private val stampMatrix = Matrix()
+    private val imageMatrix = Matrix()
+    private val totalMatrix = Matrix()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#42A5F5") // Light Blue
@@ -33,7 +35,7 @@ class StampOverlayView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = 3f
     }
-    private val handleRadius = 20f
+    private val handleRadius = 30f
 
     private enum class Mode { NONE, DRAG, ROTATE }
     private var mode = Mode.NONE
@@ -42,12 +44,13 @@ class StampOverlayView @JvmOverloads constructor(
     private var pivotX = 0f
     private var pivotY = 0f
 
-    fun setStamp(bitmap: Bitmap, x: Float, y: Float, scale: Float, rotation: Float) {
+    fun setStamp(bitmap: Bitmap, x: Float, y: Float, scale: Float, rotation: Float, imageMatrix: Matrix) {
         this.stampBitmap = bitmap
         this.posX = x
         this.posY = y
         this.scale = scale
         this.rotation = rotation
+        this.imageMatrix.set(imageMatrix)
         invalidate()
     }
 
@@ -58,15 +61,18 @@ class StampOverlayView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         stampBitmap?.let {
-            matrix.reset()
-            matrix.postScale(scale, scale, 0f, 0f)
-            matrix.postRotate(rotation, it.width * scale / 2, it.height * scale / 2)
-            matrix.postTranslate(posX, posY)
+            stampMatrix.reset()
+            stampMatrix.postScale(scale, scale, 0f, 0f)
+            stampMatrix.postRotate(rotation, it.width * scale / 2, it.height * scale / 2)
+            stampMatrix.postTranslate(posX, posY)
 
-            canvas.drawBitmap(it, matrix, paint)
+            totalMatrix.set(imageMatrix)
+            totalMatrix.preConcat(stampMatrix)
+
+            canvas.drawBitmap(it, totalMatrix, paint)
 
             val points = floatArrayOf(it.width.toFloat(), it.height.toFloat())
-            matrix.mapPoints(points)
+            totalMatrix.mapPoints(points)
             val handleX = points[0]
             val handleY = points[1]
 
@@ -77,12 +83,11 @@ class StampOverlayView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (stampBitmap == null || visibility != VISIBLE) {
-            return false // Don't handle events if there's no stamp or view is hidden
-        }
+        if (stampBitmap == null || visibility != VISIBLE) return false
 
-        val x = event.x
-        val y = event.y
+        val transformedPoint = getTransformedPoint(event.x, event.y)
+        val x = transformedPoint.x
+        val y = transformedPoint.y
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -92,20 +97,17 @@ class StampOverlayView @JvmOverloads constructor(
                     pivotY = posY + stampBitmap!!.height * scale / 2
                     lastTouchX = x
                     lastTouchY = y
-                    return true // Consume the event
+                    return true
                 } else if (isInStamp(x, y)) {
                     mode = Mode.DRAG
                     lastTouchX = x
                     lastTouchY = y
-                    return true // Consume the event
+                    return true
                 }
-                // If touch is outside the stamp, do not consume the event
                 return false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (mode == Mode.NONE) {
-                    return false // Don't do anything if not in a specific mode
-                }
+                if (mode == Mode.NONE) return false
 
                 val dx = x - lastTouchX
                 val dy = y - lastTouchY
@@ -122,21 +124,27 @@ class StampOverlayView @JvmOverloads constructor(
                 invalidate()
                 lastTouchX = x
                 lastTouchY = y
-                return true // Consume the event as we are actively manipulating the stamp
+                return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (mode != Mode.NONE) {
                     onStampUpdateListener?.invoke(posX, posY, rotation)
                     mode = Mode.NONE
-                    return true // Consume the event to finalize the action
+                    return true
                 }
                 return false
             }
         }
-        return false // Default to not consuming the event
+        return false
     }
 
-    // --- Helper functions for touch detection ---
+    private fun getTransformedPoint(x: Float, y: Float): PointF {
+        val invertedMatrix = Matrix()
+        imageMatrix.invert(invertedMatrix)
+        val points = floatArrayOf(x, y)
+        invertedMatrix.mapPoints(points)
+        return PointF(points[0], points[1])
+    }
 
     private fun getHandlePosition(): PointF {
         stampBitmap?.let {
@@ -155,7 +163,7 @@ class StampOverlayView @JvmOverloads constructor(
     private fun isInHandle(x: Float, y: Float): Boolean {
         val handlePos = getHandlePosition()
         val distance = sqrt((x - handlePos.x).pow(2) + (y - handlePos.y).pow(2))
-        return distance <= handleRadius * 1.5 // Larger touch area
+        return distance <= handleRadius * 1.5
     }
 
     private fun isInStamp(x: Float, y: Float): Boolean {

@@ -198,7 +198,11 @@ class PdfPreviewFragment : Fragment() {
         binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
 
-        val currentState = when (index) {
+        updateStampOverlay()
+    }
+
+    private fun updateStampOverlay() {
+        val currentState = when (currentPageIndex) {
             0 -> firstPageStampState
             pageBitmaps.size - 1 -> lastPageStampState
             else -> null
@@ -208,7 +212,8 @@ class PdfPreviewFragment : Fragment() {
 
         if (currentState != null && bitmapToShow != null) {
             binding.stampOverlayView.visibility = View.VISIBLE
-            binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation)
+            val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
+            binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation, imageMatrix)
             binding.applyWearButton.visibility = View.VISIBLE
         } else {
             binding.stampOverlayView.visibility = View.GONE
@@ -357,10 +362,12 @@ class PdfPreviewFragment : Fragment() {
             }
             R.id.action_zoom_in -> {
                 binding.pdfPageZoomableImageView.zoomIn()
+                updateStampOverlay()
                 true
             }
             R.id.action_reset_zoom -> {
                 binding.pdfPageZoomableImageView.resetZoom()
+                updateStampOverlay()
                 true
             }
             else -> super.onOptionsItemSelected(item)
