@@ -42,6 +42,7 @@ class PdfPreviewFragment : Fragment() {
     private lateinit var stampDateText: String
     private var stampFontSize: Float = 0f
     private var stampWearIntensity: Float = 0f
+    private var stampWearSize: Float = 50f
     private var stampSizePercent: Float = 0f
     private var stampMaxRotation: Float = 0f
     private var stampBrightness: Float = 50f
@@ -65,6 +66,7 @@ class PdfPreviewFragment : Fragment() {
                 stampDateText = it.getString("stampDateText", "")
                 stampFontSize = it.getFloat("stampFontSize", 220f)
                 stampWearIntensity = it.getFloat("stampWearIntensity", 0.3f)
+                stampWearSize = it.getFloat("stampWearSize", 50f)
                 stampSizePercent = it.getFloat("stampSizePercent", 5f)
                 stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
                 stampBrightness = it.getFloat("stampBrightness", 50f)
@@ -328,11 +330,14 @@ class PdfPreviewFragment : Fragment() {
         }
         val baseDefects = (width * height / 500)
         val numDefects = (baseDefects * intensity * 2).toInt()
+        // Convert wear size from 0-100 to a 1x to 5x multiplier
+        val sizeMultiplier = 1 + (stampWearSize / 100f) * 4
+
         for (i in 0 until numDefects) {
             val x = (random.nextGaussian() * (width / 4) + (width / 2)).toFloat()
             val y = (random.nextGaussian() * (height / 4) + (height / 2)).toFloat()
             val maxRadius = height / 12f
-            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity)
+            val baseRadius = random.nextFloat() * maxRadius * (0.5f + intensity) * sizeMultiplier
             val numBlobs = random.nextInt(4) + 1
             for (j in 0 until numBlobs) {
                 val blobX = x + (random.nextFloat() - 0.5f) * baseRadius * 2

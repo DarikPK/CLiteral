@@ -120,6 +120,7 @@ class PdfSettingsFragment : Fragment() {
                 putString("stampDateText", "$stampDay $stampMonth. $stampYear")
                 putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value / 100f)
+                putFloat("stampWearSize", binding.stampWearSizeSlider.value)
                 putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
