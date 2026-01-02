@@ -176,7 +176,7 @@ class PdfSettingsFragment : Fragment() {
                 // The advanced creation is handled by the preview screen.
                 val pdfFile = createPdfWithoutStamp(folder)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "PDF Básico guardado en ${pdfFile.absolutePath}", Toast.LONG_LONG).show()
+                    Toast.makeText(context, "PDF Básico guardado en ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
