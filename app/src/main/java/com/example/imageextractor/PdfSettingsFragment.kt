@@ -202,6 +202,13 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
             }
         }
+        val marginTopValue = binding.marginTopEditText.text.toString()
+        val marginBottomValue = binding.marginBottomEditText.text.toString()
+        val marginLeftValue = binding.marginLeftEditText.text.toString()
+        val marginRightValue = binding.marginRightEditText.text.toString()
+        val toastMessage = "Márgenes -> T:$marginTopValue, B:$marginBottomValue, L:$marginLeftValue, R:$marginRightValue"
+        Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show()
+
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
 
