@@ -32,6 +32,9 @@ class PdfPreviewFragment : Fragment() {
     private var imagePaths: Array<String>? = null
     private val pageBitmaps = mutableListOf<Bitmap>()
     private var currentPageIndex = 0
+    private var imageToPageMatrix = Matrix()
+
+    private data class PreviewPage(val bitmap: Bitmap, val matrix: Matrix)
 
     private var cleanStampBitmap: Bitmap? = null
     private var firstPageWornStampBitmap: Bitmap? = null
@@ -224,8 +227,10 @@ class PdfPreviewFragment : Fragment() {
         if (index < 0 || index >= pageBitmaps.size) return
 
         val originalBitmap = pageBitmaps[index]
-        val previewPageBitmap = generatePreviewPage(originalBitmap)
-        binding.pdfPageZoomableImageView.setImageBitmap(previewPageBitmap)
+        val previewPage = generatePreviewPage(originalBitmap)
+        imageToPageMatrix = previewPage.matrix
+        binding.pdfPageZoomableImageView.setImageBitmap(previewPage.bitmap)
+
 
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
         binding.applyWearButton.isActivated = firstPageWornStampBitmap != null
@@ -249,8 +254,9 @@ class PdfPreviewFragment : Fragment() {
 
         if (currentState != null && bitmapToShow != null) {
             binding.stampOverlayView.visibility = View.VISIBLE
-            val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation, imageMatrix)
+            val finalMatrix = Matrix(imageToPageMatrix)
+            finalMatrix.postConcat(binding.pdfPageZoomableImageView.getDrawMatrix())
+            binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation, finalMatrix)
             binding.applyWearButton.visibility = View.VISIBLE
         } else {
             binding.stampOverlayView.visibility = View.GONE
@@ -258,7 +264,7 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun generatePreviewPage(originalBitmap: Bitmap): Bitmap {
+    private fun generatePreviewPage(originalBitmap: Bitmap): PreviewPage {
         val a4Ratio = 595f / 842f
         val previewWidth = 1000
         val previewHeight = (previewWidth / a4Ratio).toInt()
@@ -267,18 +273,20 @@ class PdfPreviewFragment : Fragment() {
         val canvas = Canvas(previewBitmap)
         canvas.drawColor(Color.WHITE)
 
-        drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
+        val matrix = drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
 
-        return previewBitmap
+        return PreviewPage(previewBitmap, matrix)
     }
 
-    private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
+    private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int): Matrix {
+        val matrix = Matrix()
         // Regla 1: Si todos los márgenes son 0, dibujar a página completa sin cambios.
         if (marginLeft == 0f && marginRight == 0f && marginTop == 0f && marginBottom == 0f) {
             val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
             val dstRect = RectF(0f, 0f, pageW.toFloat(), pageH.toFloat())
-            canvas.drawBitmap(bitmap, srcRect, dstRect, null)
-            return
+            matrix.setRectToRect(RectF(srcRect), dstRect, Matrix.ScaleToFit.FILL)
+            canvas.drawBitmap(bitmap, matrix, null)
+            return matrix
         }
 
         // --- Normalización de márgenes ---
@@ -327,9 +335,10 @@ class PdfPreviewFragment : Fragment() {
         val top = currentMarginTop + (availableH - finalH) / 2
 
         val dstRect = RectF(left, top, left + finalW, top + finalH)
-        val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
+        val srcRect = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
+        matrix.setRectToRect(srcRect, dstRect, Matrix.ScaleToFit.CENTER)
 
-        canvas.drawBitmap(bitmap, srcRect, dstRect, null)
+        canvas.drawBitmap(bitmap, matrix, null)
 
         // Dibujar el marco de depuración visual
         val debugPaint = Paint().apply {
@@ -339,6 +348,7 @@ class PdfPreviewFragment : Fragment() {
         }
         val marginRect = RectF(currentMarginLeft, currentMarginTop, pageW - currentMarginRight, pageH - currentMarginBottom)
         canvas.drawRect(marginRect, debugPaint)
+        return matrix
     }
 
     private fun savePdfWithInteractiveStamp() {
