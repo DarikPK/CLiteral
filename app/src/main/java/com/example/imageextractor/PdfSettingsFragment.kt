@@ -172,6 +172,12 @@ class PdfSettingsFragment : Fragment() {
             putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 30f)
             putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 100f)
 
+            // Pasar los valores de los márgenes
+            putFloat("marginTop", binding.marginTopEditText.text.toString().toFloatOrNull() ?: 0f)
+            putFloat("marginBottom", binding.marginBottomEditText.text.toString().toFloatOrNull() ?: 0f)
+            putFloat("marginLeft", binding.marginLeftEditText.text.toString().toFloatOrNull() ?: 0f)
+            putFloat("marginRight", binding.marginRightEditText.text.toString().toFloatOrNull() ?: 0f)
+
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
                 val dayInt = binding.stampDayEditText.text.toString().toIntOrNull()

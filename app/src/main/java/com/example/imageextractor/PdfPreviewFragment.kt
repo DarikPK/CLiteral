@@ -52,6 +52,11 @@ class PdfPreviewFragment : Fragment() {
     private var brightness: Float = 50f
     private var contrast: Float = 50f
 
+    private var marginTop: Float = 0f
+    private var marginBottom: Float = 0f
+    private var marginLeft: Float = 0f
+    private var marginRight: Float = 0f
+
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +67,12 @@ class PdfPreviewFragment : Fragment() {
             imagePaths = it.getStringArray("imagePaths")
             brightness = it.getFloat("brightness", 50f)
             contrast = it.getFloat("contrast", 50f)
+
+            marginTop = it.getFloat("marginTop", 0f)
+            marginBottom = it.getFloat("marginBottom", 0f)
+            marginLeft = it.getFloat("marginLeft", 0f)
+            marginRight = it.getFloat("marginRight", 0f)
+
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
                 stampDateText = it.getString("stampDateText", "")
@@ -244,6 +255,41 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
+    private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
+        val availableW = pageW - marginLeft - marginRight
+        val availableH = pageH - marginTop - marginBottom
+
+        if (availableW <= 0 || availableH <= 0) {
+            // Fallback for invalid margins, draw original full size
+            val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
+            val dstRect = RectF(0f, 0f, pageW.toFloat(), pageH.toFloat())
+            canvas.drawBitmap(bitmap, srcRect, dstRect, null)
+            return
+        }
+
+        val bitmapRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        val availableRatio = availableW / availableH
+
+        val finalW: Float
+        val finalH: Float
+
+        if (bitmapRatio > availableRatio) {
+            finalW = availableW
+            finalH = availableW / bitmapRatio
+        } else {
+            finalH = availableH
+            finalW = availableH * bitmapRatio
+        }
+
+        val left = marginLeft + (availableW - finalW) / 2
+        val top = marginTop + (availableH - finalH) / 2
+
+        val dstRect = RectF(left, top, left + finalW, top + finalH)
+        val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
+
+        canvas.drawBitmap(bitmap, srcRect, dstRect, null)
+    }
+
     private fun savePdfWithInteractiveStamp() {
         Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
@@ -252,7 +298,7 @@ class PdfPreviewFragment : Fragment() {
             pageBitmaps.forEachIndexed { index, bitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
-                page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+                drawBitmapWithMargins(page.canvas, bitmap, page.width, page.height)
 
                 val currentState = when(index) {
                     0 -> firstPageStampState
@@ -480,7 +526,7 @@ class PdfPreviewFragment : Fragment() {
         pageBitmaps.forEachIndexed { index, bitmap ->
             val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
-            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+            drawBitmapWithMargins(page.canvas, bitmap, page.width, page.height)
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState
