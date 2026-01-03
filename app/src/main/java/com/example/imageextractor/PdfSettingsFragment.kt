@@ -96,18 +96,18 @@ class PdfSettingsFragment : Fragment() {
     private fun loadSettings() {
         binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "30"))
         binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
-        binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "01"))
-        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2023"))
+        binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "1"))
+        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
-        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "5"))
+        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
         binding.stampBrightnessEditText.setText(sharedPrefs.getString("stamp_brightness", "50"))
         binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
 
-        binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", false)
+        binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", true)
 
-        binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 0f)
-        binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 0f)
+        binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
+        binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
 
         binding.stampMonthSpinner.setSelection(sharedPrefs.getInt("stamp_month_position", 0))
     }
