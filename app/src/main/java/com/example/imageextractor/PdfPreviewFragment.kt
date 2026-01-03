@@ -57,6 +57,15 @@ class PdfPreviewFragment : Fragment() {
     private var marginLeft: Float = 0f
     private var marginRight: Float = 0f
 
+    // Watermark 1 variables
+    private var w1Text: String = ""
+    private var w1Opacity: Float = 50f
+    private var w1Size: Float = 72f
+    private var w1Scale: Float = 100f
+    private var w1Dx: Float = 0f
+    private var w1Dy: Float = 0f
+    private var w1Angle: Float = 0f
+
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +93,14 @@ class PdfPreviewFragment : Fragment() {
                 stampBrightness = it.getFloat("stampBrightness", 50f)
                 stampContrast = it.getFloat("stampContrast", 50f)
             }
+
+            w1Text = it.getString("w1_text", "")
+            w1Opacity = it.getFloat("w1_opacity", 50f)
+            w1Size = it.getFloat("w1_size", 72f)
+            w1Scale = it.getFloat("w1_scale", 100f)
+            w1Dx = it.getFloat("w1_dx", 0f)
+            w1Dy = it.getFloat("w1_dy", 0f)
+            w1Angle = it.getFloat("w1_angle", 0f)
         }
     }
 
@@ -269,6 +286,7 @@ class PdfPreviewFragment : Fragment() {
         canvas.drawColor(Color.WHITE)
 
         drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
+        drawWatermarks(canvas, previewWidth, previewHeight)
 
         return previewBitmap
     }
@@ -346,6 +364,7 @@ class PdfPreviewFragment : Fragment() {
                 val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
                 drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
+                drawWatermarks(page.canvas, 595, 842)
 
                 val currentState = when(index) {
                     0 -> firstPageStampState
@@ -659,5 +678,32 @@ class PdfPreviewFragment : Fragment() {
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int) {
+        if (w1Text.isBlank()) return
+
+        val paint = Paint().apply {
+            color = Color.BLACK
+            alpha = (w1Opacity / 100 * 255).toInt()
+            textSize = w1Size
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("Arial", Typeface.NORMAL)
+        }
+
+        val centerX = pageW / 2f
+        val centerY = pageH / 2f
+
+        val mmToPx = 2.83f
+        val dx = w1Dx * mmToPx
+        val dy = w1Dy * mmToPx
+
+        canvas.save()
+        canvas.translate(centerX + dx, centerY + dy)
+        canvas.rotate(w1Angle)
+        canvas.scale(w1Scale / 100f, w1Scale / 100f)
+
+        canvas.drawText(w1Text, 0f, 0f, paint)
+        canvas.restore()
     }
 }

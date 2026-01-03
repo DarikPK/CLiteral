@@ -32,7 +32,16 @@
         <action
             android:id="@+id/action_pdfSettingsFragment_to_pdfPreviewFragment"
             app:destination="@id/pdfPreviewFragment" />
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_watermarkSettingsFragment"
+            app:destination="@id/watermarkSettingsFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/watermarkSettingsFragment"
+        android:name="com.example.imageextractor.WatermarkSettingsFragment"
+        android:label="Ajustes de Marca de Agua"
+        tools:layout="@layout/fragment_watermark_settings" />
 
     <fragment
         android:id="@+id/pdfPreviewFragment"

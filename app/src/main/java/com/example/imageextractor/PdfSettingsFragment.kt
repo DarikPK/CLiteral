@@ -95,6 +95,10 @@ class PdfSettingsFragment : Fragment() {
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
+
+        binding.watermarkSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_watermarkSettingsFragment)
+        }
     }
 
     private fun loadSettings() {
@@ -173,6 +177,8 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun navigateToPreview(folder: ImageFolder) {
+        val watermarkPrefs = requireActivity().getSharedPreferences("WatermarkSettings", Context.MODE_PRIVATE)
+
         val bundle = Bundle().apply {
             putString("partidaId", folder.partidaId)
             putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
@@ -201,6 +207,15 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
                 putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
             }
+
+            // Watermark 1 data
+            putString("w1_text", watermarkPrefs.getString("w1_text", ""))
+            putFloat("w1_opacity", watermarkPrefs.getString("w1_opacity", "50")?.toFloatOrNull() ?: 50f)
+            putFloat("w1_size", watermarkPrefs.getString("w1_size", "72")?.toFloatOrNull() ?: 72f)
+            putFloat("w1_scale", watermarkPrefs.getString("w1_scale", "100")?.toFloatOrNull() ?: 100f)
+            putFloat("w1_dx", watermarkPrefs.getString("w1_dx", "0")?.toFloatOrNull() ?: 0f)
+            putFloat("w1_dy", watermarkPrefs.getString("w1_dy", "0")?.toFloatOrNull() ?: 0f)
+            putFloat("w1_angle", watermarkPrefs.getString("w1_angle", "0")?.toFloatOrNull() ?: 0f)
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
