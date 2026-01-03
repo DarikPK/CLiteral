@@ -174,8 +174,9 @@ class PdfPreviewFragment : Fragment() {
             var stampWidth = stamp.width * scale
             var stampHeight = stamp.height * scale
 
-            val pageW = 595f
-            val pageH = 842f
+            val a4Ratio = 595f / 842f
+            val pageW = 1000f
+            val pageH = pageW / a4Ratio
             var wasAdjusted = false
 
             if (stampWidth > pageW || stampHeight > pageH) {
@@ -360,10 +361,18 @@ class PdfPreviewFragment : Fragment() {
                 val finalStampBitmap = wornBitmap ?: cleanStampBitmap
 
                 if (currentState != null && finalStampBitmap != null) {
+                    val a4Ratio = 595f / 842f
+                    val previewWidth = 1000f
+                    val previewHeight = previewWidth / a4Ratio
+
+                    val pdfWidth = 595f
+
+                    val scaleFactor = pdfWidth / previewWidth
+
                     val matrix = Matrix()
-                    matrix.postScale(currentState.scale, currentState.scale)
-                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
-                    matrix.postTranslate(currentState.x, currentState.y)
+                    matrix.postScale(currentState.scale * scaleFactor, currentState.scale * scaleFactor)
+                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale * scaleFactor / 2, finalStampBitmap.height * currentState.scale * scaleFactor / 2)
+                    matrix.postTranslate(currentState.x * scaleFactor, currentState.y * scaleFactor)
                     page.canvas.drawBitmap(finalStampBitmap, matrix, null)
                 }
 
