@@ -292,8 +292,7 @@ class PdfPreviewFragment : Fragment() {
         val debugPaint = Paint().apply {
             color = Color.RED
             style = Paint.Style.STROKE
-            strokeWidth = 1f
-            pathEffect = DashPathEffect(floatArrayOf(5f, 5f), 0f)
+            strokeWidth = 4f
         }
         val marginRect = RectF(marginLeft, marginTop, pageW - marginRight, pageH - marginBottom)
         canvas.drawRect(marginRect, debugPaint)
