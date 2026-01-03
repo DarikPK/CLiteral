@@ -34,7 +34,8 @@ class PdfPreviewFragment : Fragment() {
     private var currentPageIndex = 0
 
     private var cleanStampBitmap: Bitmap? = null
-    private var wornStampBitmap: Bitmap? = null
+    private var firstPageWornStampBitmap: Bitmap? = null
+    private var lastPageWornStampBitmap: Bitmap? = null
     private var firstPageStampState: StampState? = null
     private var lastPageStampState: StampState? = null
 
@@ -215,7 +216,7 @@ class PdfPreviewFragment : Fragment() {
 
         binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
-        binding.applyWearButton.isActivated = wornStampBitmap != null
+        binding.applyWearButton.isActivated = firstPageWornStampBitmap != null
 
         updateStampOverlay()
     }
@@ -227,7 +228,12 @@ class PdfPreviewFragment : Fragment() {
             else -> null
         }
 
-        val bitmapToShow = wornStampBitmap ?: cleanStampBitmap
+        val wornBitmap = when (currentPageIndex) {
+            0 -> firstPageWornStampBitmap
+            pageBitmaps.size - 1 -> lastPageWornStampBitmap
+            else -> null
+        }
+        val bitmapToShow = wornBitmap ?: cleanStampBitmap
 
         if (currentState != null && bitmapToShow != null) {
             binding.stampOverlayView.visibility = View.VISIBLE
@@ -244,7 +250,6 @@ class PdfPreviewFragment : Fragment() {
         Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             val pdfDocument = PdfDocument()
-            val finalStampBitmap = wornStampBitmap ?: cleanStampBitmap
 
             pageBitmaps.forEachIndexed { index, bitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
@@ -256,6 +261,13 @@ class PdfPreviewFragment : Fragment() {
                     pageBitmaps.size - 1 -> lastPageStampState
                     else -> null
                 }
+
+                val wornBitmap = when (index) {
+                    0 -> firstPageWornStampBitmap
+                    pageBitmaps.size - 1 -> lastPageWornStampBitmap
+                    else -> null
+                }
+                val finalStampBitmap = wornBitmap ?: cleanStampBitmap
 
                 if (currentState != null && finalStampBitmap != null) {
                     val matrix = Matrix()
@@ -309,9 +321,20 @@ class PdfPreviewFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
                 }
+
                 val normalizedIntensity = stampWearIntensity / 100.0f
                 val normalizedSize = stampWearSize / 100.0f
-                wornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+
+                // Generate wear for the first page
+                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+
+                // If there is more than one page, generate a different wear pattern for the last page
+                if (pageBitmaps.size > 1) {
+                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1) // Different seed
+                } else {
+                    lastPageWornStampBitmap = null // No last page wear if there's only one page
+                }
+
                 withContext(Dispatchers.Main) {
                     binding.applyWearButton.isActivated = true
                     Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
@@ -454,7 +477,6 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun savePdfToDownloads(): File? {
-        val finalStampBitmap = wornStampBitmap ?: cleanStampBitmap ?: return null
         val pdfDocument = PdfDocument()
 
         pageBitmaps.forEachIndexed { index, bitmap ->
@@ -466,7 +488,15 @@ class PdfPreviewFragment : Fragment() {
                 pageBitmaps.size - 1 -> lastPageStampState
                 else -> null
             }
-            if (currentState != null) {
+
+            val wornBitmap = when (index) {
+                0 -> firstPageWornStampBitmap
+                pageBitmaps.size - 1 -> lastPageWornStampBitmap
+                else -> null
+            }
+            val finalStampBitmap = wornBitmap ?: cleanStampBitmap
+
+            if (currentState != null && finalStampBitmap != null) {
                 val matrix = Matrix()
                 matrix.postScale(currentState.scale, currentState.scale)
                 matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
@@ -494,7 +524,8 @@ class PdfPreviewFragment : Fragment() {
         pageBitmaps.forEach { it.recycle() }
         pageBitmaps.clear()
         cleanStampBitmap?.recycle()
-        wornStampBitmap?.recycle()
+        firstPageWornStampBitmap?.recycle()
+        lastPageWornStampBitmap?.recycle()
         _binding = null
     }
 
