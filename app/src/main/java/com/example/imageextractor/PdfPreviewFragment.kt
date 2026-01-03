@@ -89,7 +89,6 @@ class PdfPreviewFragment : Fragment() {
         setupToolbar()
         loadPages()
         setupNavigationButtons()
-        binding.fabSavePdf.setOnClickListener { savePdfWithInteractiveStamp() }
         binding.applyWearButton.setOnClickListener { applyWearEffect() }
         binding.stampOverlayView.setOnStampUpdateListener { x, y, rotation ->
             val currentState = when (currentPageIndex) {

@@ -1,18 +1,11 @@
 package com.example.imageextractor
 
 import android.content.Context
-import android.graphics.BitmapFactory
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
-import android.graphics.pdf.PdfDocument
 import android.os.Bundle
-import android.os.Environment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -22,14 +15,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import android.content.ContentUris
 import android.provider.MediaStore
+import com.google.android.material.slider.Slider
 
 class PdfSettingsFragment : Fragment() {
 
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private val sharedPrefs by lazy {
+        requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -41,8 +43,15 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupListeners()
+        setupToolbar()
         setupMonthSpinner()
+        loadSettings()
+        setupListeners()
+    }
+
+    private fun setupToolbar() {
+        (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
+        (activity as? AppCompatActivity)?.supportActionBar?.title = "Generar PDF"
     }
 
     private fun setupMonthSpinner() {
@@ -57,15 +66,71 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.generatePdfButton.setOnClickListener {
-            validateAndProceed(isForPreview = false)
-        }
-        binding.previewPdfButton.setOnClickListener {
-            validateAndProceed(isForPreview = true)
+        // Auto-save for all EditTexts
+        binding.brightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("brightness", text.toString()) }
+        binding.contrastEditText.doOnTextChanged { text, _, _, _ -> saveString("contrast", text.toString()) }
+        binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) }
+        binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
+        binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
+        binding.stampSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_size", text.toString()) }
+        binding.stampRotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_rotation", text.toString()) }
+        binding.stampBrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_brightness", text.toString()) }
+        binding.stampContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_contrast", text.toString()) }
+
+        // Auto-save for CheckBox
+        binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
+
+        // Auto-save for Sliders
+        binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_intensity", value) })
+        binding.stampWearSizeSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_size", value) })
+
+        // Auto-save for Spinner
+        binding.stampMonthSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                saveInt("stamp_month_position", position)
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
     }
 
-    private fun validateAndProceed(isForPreview: Boolean) {
+    private fun loadSettings() {
+        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "30"))
+        binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
+        binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "01"))
+        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2023"))
+        binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
+        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "5"))
+        binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
+        binding.stampBrightnessEditText.setText(sharedPrefs.getString("stamp_brightness", "50"))
+        binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
+
+        binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", false)
+
+        binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 0f)
+        binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 0f)
+
+        binding.stampMonthSpinner.setSelection(sharedPrefs.getInt("stamp_month_position", 0))
+    }
+
+    // SharedPreferences helpers
+    private fun saveString(key: String, value: String) {
+        sharedPrefs.edit().putString(key, value).apply()
+    }
+
+    private fun saveBoolean(key: String, value: Boolean) {
+        sharedPrefs.edit().putBoolean(key, value).apply()
+    }
+
+    private fun saveFloat(key: String, value: Float) {
+        sharedPrefs.edit().putFloat(key, value).apply()
+    }
+
+    private fun saveInt(key: String, value: Int) {
+        sharedPrefs.edit().putInt(key, value).apply()
+    }
+
+
+    private fun validateAndProceed() {
         if (binding.stampEnabledCheckbox.isChecked && binding.stampDayEditText.text.toString().isBlank()) {
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Campo Requerido")
@@ -74,10 +139,10 @@ class PdfSettingsFragment : Fragment() {
                 .show()
             return
         }
-        showPartidaSelectionDialog(isForPreview)
+        showPartidaSelectionDialog()
     }
 
-    private fun showPartidaSelectionDialog(isForPreview: Boolean) {
+    private fun showPartidaSelectionDialog() {
         lifecycleScope.launch(Dispatchers.IO) {
             val folders = getCapturedFolders()
             withContext(Dispatchers.Main) {
@@ -91,11 +156,7 @@ class PdfSettingsFragment : Fragment() {
                     .setTitle("Seleccionar Partida")
                     .setItems(partidaIds) { _, which ->
                         val selectedFolder = folders[which]
-                        if (isForPreview) {
-                            navigateToPreview(selectedFolder)
-                        } else {
-                            generateFinalPdf(selectedFolder)
-                        }
+                        navigateToPreview(selectedFolder)
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
@@ -119,7 +180,7 @@ class PdfSettingsFragment : Fragment() {
                 val stampYear = binding.stampYearEditText.text.toString()
                 putString("stampDateText", "$stampDay $stampMonth. $stampYear")
                 putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
-                putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value / 100f)
+                putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
                 putFloat("stampWearSize", binding.stampWearSizeSlider.value)
                 putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
@@ -131,7 +192,6 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun getCapturedFolders(): List<ImageFolder> {
-        // ... (getCapturedFolders logic remains the same)
         val folders = mutableMapOf<String, MutableList<ImageFile>>()
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -174,41 +234,19 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
-    private fun generateFinalPdf(folder: ImageFolder) {
-        Toast.makeText(context, "Generando PDF final...", Toast.LENGTH_SHORT).show()
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                // This function now only creates a basic PDF without a stamp.
-                // The advanced creation is handled by the preview screen.
-                val pdfFile = createPdfWithoutStamp(folder)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "PDF Básico guardado en ${pdfFile.absolutePath}", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error al generar el PDF: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.pdf_settings_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
     }
 
-    private fun createPdfWithoutStamp(folder: ImageFolder): File {
-        val pdfDocument = PdfDocument()
-        folder.imageFiles.forEachIndexed { index, imageFile ->
-            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
-            val page = pdfDocument.startPage(pageInfo)
-            val canvas = page.canvas
-            val bitmap = BitmapFactory.decodeFile(imageFile.path)
-            canvas.drawBitmap(bitmap, 0f, 0f, null)
-            pdfDocument.finishPage(page)
-            bitmap.recycle()
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_preview -> {
+                validateAndProceed()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val pdfFile = File(downloadsDir, "${folder.partidaId}_simple.pdf")
-        pdfDocument.writeTo(FileOutputStream(pdfFile))
-        pdfDocument.close()
-        return pdfFile
     }
 
     override fun onDestroyView() {
