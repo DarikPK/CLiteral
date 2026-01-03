@@ -97,6 +97,9 @@ class PdfPreviewFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val toastMessage = "Márgenes Recibidos -> T:$marginTop, B:$marginBottom, L:$marginLeft, R:$marginRight"
+        Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show()
+
         setupToolbar()
         loadPages()
         setupNavigationButtons()
