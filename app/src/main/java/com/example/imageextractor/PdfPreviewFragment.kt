@@ -174,12 +174,13 @@ class PdfPreviewFragment : Fragment() {
             var stampWidth = stamp.width * scale
             var stampHeight = stamp.height * scale
 
-            val page = pageBitmaps[0] // Use first page for dimension checks
+            val pageW = 595f
+            val pageH = 842f
             var wasAdjusted = false
 
-            if (stampWidth > page.width || stampHeight > page.height) {
-                val widthScale = page.width.toFloat() / stamp.width
-                val heightScale = page.height.toFloat() / stamp.height
+            if (stampWidth > pageW || stampHeight > pageH) {
+                val widthScale = pageW / stamp.width
+                val heightScale = pageH / stamp.height
                 scale = minOf(widthScale, heightScale)
                 wasAdjusted = true
             }
@@ -189,9 +190,8 @@ class PdfPreviewFragment : Fragment() {
 
             val random = Random()
 
-            val firstPage = pageBitmaps[0]
-            var xPos = firstPage.width - stampWidth - 25
-            var yPos = firstPage.height - stampHeight - 25
+            var xPos = pageW - stampWidth - 25
+            var yPos = pageH - stampHeight - 25
 
             firstPageStampState = StampState(
                 x = maxOf(0f, xPos),
@@ -201,9 +201,8 @@ class PdfPreviewFragment : Fragment() {
             )
 
             if (pageBitmaps.size > 1) {
-                val lastPage = pageBitmaps.last()
-                xPos = lastPage.width - stampWidth - 25
-                yPos = lastPage.height - stampHeight - 25
+                xPos = pageW - stampWidth - 25
+                yPos = pageH - stampHeight - 25
 
                 lastPageStampState = StampState(
                     x = maxOf(0f, xPos),
