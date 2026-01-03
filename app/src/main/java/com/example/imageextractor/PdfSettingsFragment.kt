@@ -181,10 +181,10 @@ class PdfSettingsFragment : Fragment() {
             putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 100f)
 
             // Pasar los valores de los márgenes
-            putFloat("marginTop", binding.marginTopEditText.text.toString().toFloatOrNull() ?: 0f)
-            putFloat("marginBottom", binding.marginBottomEditText.text.toString().toFloatOrNull() ?: 0f)
-            putFloat("marginLeft", binding.marginLeftEditText.text.toString().toFloatOrNull() ?: 0f)
-            putFloat("marginRight", binding.marginRightEditText.text.toString().toFloatOrNull() ?: 0f)
+            putFloat("marginTop", binding.marginTopEditText.text.toString().toFloatOrNull() ?: 10f)
+            putFloat("marginBottom", binding.marginBottomEditText.text.toString().toFloatOrNull() ?: 10f)
+            putFloat("marginLeft", binding.marginLeftEditText.text.toString().toFloatOrNull() ?: 10f)
+            putFloat("marginRight", binding.marginRightEditText.text.toString().toFloatOrNull() ?: 10f)
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
@@ -202,13 +202,6 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
             }
         }
-        val marginTopValue = binding.marginTopEditText.text.toString()
-        val marginBottomValue = binding.marginBottomEditText.text.toString()
-        val marginLeftValue = binding.marginLeftEditText.text.toString()
-        val marginRightValue = binding.marginRightEditText.text.toString()
-        val toastMessage = "Márgenes -> T:$marginTopValue, B:$marginBottomValue, L:$marginLeftValue, R:$marginRightValue"
-        Toast.makeText(requireContext(), toastMessage, Toast.LENGTH_LONG).show()
-
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
 
