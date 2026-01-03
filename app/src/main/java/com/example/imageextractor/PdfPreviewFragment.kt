@@ -256,16 +256,41 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
-        val availableW = pageW - marginLeft - marginRight
-        val availableH = pageH - marginTop - marginBottom
-
-        if (availableW <= 0 || availableH <= 0) {
-            // Fallback for invalid margins, draw original full size
+        // Regla 1: Si todos los márgenes son 0, dibujar a página completa sin cambios.
+        if (marginLeft == 0f && marginRight == 0f && marginTop == 0f && marginBottom == 0f) {
             val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
             val dstRect = RectF(0f, 0f, pageW.toFloat(), pageH.toFloat())
             canvas.drawBitmap(bitmap, srcRect, dstRect, null)
             return
         }
+
+        // --- Normalización de márgenes ---
+        var currentMarginLeft = marginLeft
+        var currentMarginRight = marginRight
+        var currentMarginTop = marginTop
+        var currentMarginBottom = marginBottom
+
+        val totalHorizontalMargin = currentMarginLeft + currentMarginRight
+        val totalVerticalMargin = currentMarginTop + currentMarginBottom
+
+        // Si los márgenes horizontales son inválidos, normalizarlos.
+        if (totalHorizontalMargin >= pageW) {
+            val ratio = (pageW - 1).toFloat() / totalHorizontalMargin
+            currentMarginLeft *= ratio
+            currentMarginRight *= ratio
+        }
+
+        // Si los márgenes verticales son inválidos, normalizarlos.
+        if (totalVerticalMargin >= pageH) {
+            val ratio = (pageH - 1).toFloat() / totalVerticalMargin
+            currentMarginTop *= ratio
+            currentMarginBottom *= ratio
+        }
+        // --- Fin de la normalización ---
+
+        // Regla 2: Calcular el área disponible con los márgenes (normalizados o no).
+        val availableW = pageW - currentMarginLeft - currentMarginRight
+        val availableH = pageH - currentMarginTop - currentMarginBottom
 
         val bitmapRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
         val availableRatio = availableW / availableH
@@ -281,20 +306,21 @@ class PdfPreviewFragment : Fragment() {
             finalW = availableH * bitmapRatio
         }
 
-        val left = marginLeft + (availableW - finalW) / 2
-        val top = marginTop + (availableH - finalH) / 2
+        val left = currentMarginLeft + (availableW - finalW) / 2
+        val top = currentMarginTop + (availableH - finalH) / 2
 
         val dstRect = RectF(left, top, left + finalW, top + finalH)
         val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
 
         canvas.drawBitmap(bitmap, srcRect, dstRect, null)
 
+        // Dibujar el marco de depuración visual
         val debugPaint = Paint().apply {
             color = Color.RED
             style = Paint.Style.STROKE
             strokeWidth = 4f
         }
-        val marginRect = RectF(marginLeft, marginTop, pageW - marginRight, pageH - marginBottom)
+        val marginRect = RectF(currentMarginLeft, currentMarginTop, pageW - currentMarginRight, pageH - currentMarginBottom)
         canvas.drawRect(marginRect, debugPaint)
     }
 
