@@ -223,7 +223,10 @@ class PdfPreviewFragment : Fragment() {
     private fun displayPage(index: Int) {
         if (index < 0 || index >= pageBitmaps.size) return
 
-        binding.pdfPageZoomableImageView.setImageBitmap(pageBitmaps[index])
+        val originalBitmap = pageBitmaps[index]
+        val previewPageBitmap = generatePreviewPage(originalBitmap)
+        binding.pdfPageZoomableImageView.setImageBitmap(previewPageBitmap)
+
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
         binding.applyWearButton.isActivated = firstPageWornStampBitmap != null
 
@@ -253,6 +256,20 @@ class PdfPreviewFragment : Fragment() {
             binding.stampOverlayView.visibility = View.GONE
             binding.applyWearButton.visibility = View.GONE
         }
+    }
+
+    private fun generatePreviewPage(originalBitmap: Bitmap): Bitmap {
+        val a4Ratio = 595f / 842f
+        val previewWidth = 1000
+        val previewHeight = (previewWidth / a4Ratio).toInt()
+
+        val previewBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(previewBitmap)
+        canvas.drawColor(Color.WHITE)
+
+        drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
+
+        return previewBitmap
     }
 
     private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
