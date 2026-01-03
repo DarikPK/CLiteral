@@ -337,30 +337,30 @@ class PdfPreviewFragment : Fragment() {
 
         val random = Random(seed)
 
-        // Calibrated multipliers for a balanced and visible effect
-        val baseSize = 1.5f + size * 10f // Controla el tamaño máximo de los defectos
-        val intensityMultiplier = intensity * 2.0f // Controla la cantidad de defectos
+        // Re-calibrated formula for a more pronounced 'middle ground' effect
+        val baseSize = 2.0f + size * 25f
+        val intensityMultiplier = 0.2f + intensity * 4.0f
 
         // Layer 1: Fine grain noise
-        val noiseCount = (source.width * source.height / 75 * intensityMultiplier).toInt()
+        val noiseCount = (source.width * source.height / 50 * intensityMultiplier).toInt()
         for (i in 0..noiseCount) {
             val x = random.nextFloat() * source.width
             val y = random.nextFloat() * source.height
-            val radius = random.nextFloat() * (baseSize * 0.5f)
+            val radius = random.nextFloat() * (baseSize * 0.4f)
             maskCanvas.drawCircle(x, y, radius, erasePaint)
         }
 
         // Layer 2: Irregular blotches
-        val blotchCount = (30 * intensityMultiplier).toInt()
+        val blotchCount = (40 * intensityMultiplier).toInt()
         for (i in 0..blotchCount) {
             val path = Path()
             val startX = random.nextFloat() * source.width
             val startY = random.nextFloat() * source.height
             path.moveTo(startX, startY)
 
-            val segmentCount = random.nextInt(5) + 3
+            val segmentCount = random.nextInt(5) + 4
             for (j in 0..segmentCount) {
-                val pathSize = baseSize * 20f
+                val pathSize = baseSize * 15f
                 val cpx1 = startX + random.nextFloat() * pathSize - (pathSize / 2)
                 val cpy1 = startY + random.nextFloat() * pathSize - (pathSize / 2)
                 val x2 = startX + random.nextFloat() * pathSize - (pathSize / 2)
