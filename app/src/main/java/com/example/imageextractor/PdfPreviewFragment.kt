@@ -256,6 +256,17 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
+        // --- Debug: Dibuja un rectángulo rojo punteado para visualizar los márgenes ---
+        val debugPaint = Paint().apply {
+            color = Color.RED
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+            pathEffect = DashPathEffect(floatArrayOf(10f, 5f), 0f)
+        }
+        val debugRect = RectF(marginLeft, marginTop, pageW - marginRight, pageH - marginBottom)
+        canvas.drawRect(debugRect, debugPaint)
+        // --- Fin del código de depuración ---
+
         val availableW = pageW - marginLeft - marginRight
         val availableH = pageH - marginTop - marginBottom
 
