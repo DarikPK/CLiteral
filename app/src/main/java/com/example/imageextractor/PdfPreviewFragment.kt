@@ -68,10 +68,10 @@ class PdfPreviewFragment : Fragment() {
             brightness = it.getFloat("brightness", 50f)
             contrast = it.getFloat("contrast", 50f)
 
-            marginTop = it.getFloat("marginTop", 0f)
-            marginBottom = it.getFloat("marginBottom", 0f)
-            marginLeft = it.getFloat("marginLeft", 0f)
-            marginRight = it.getFloat("marginRight", 0f)
+            marginTop = it.getFloat("marginTop", 10f)
+            marginBottom = it.getFloat("marginBottom", 10f)
+            marginLeft = it.getFloat("marginLeft", 10f)
+            marginRight = it.getFloat("marginRight", 10f)
 
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
@@ -288,6 +288,15 @@ class PdfPreviewFragment : Fragment() {
         val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
 
         canvas.drawBitmap(bitmap, srcRect, dstRect, null)
+
+        val debugPaint = Paint().apply {
+            color = Color.RED
+            style = Paint.Style.STROKE
+            strokeWidth = 1f
+            pathEffect = DashPathEffect(floatArrayOf(5f, 5f), 0f)
+        }
+        val marginRect = RectF(marginLeft, marginTop, pageW - marginRight, pageH - marginBottom)
+        canvas.drawRect(marginRect, debugPaint)
     }
 
     private fun savePdfWithInteractiveStamp() {
