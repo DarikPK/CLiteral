@@ -119,6 +119,7 @@ class PdfPreviewFragment : Fragment() {
                 updateStampOverlay()
             }
         })
+        binding.stampOverlayView.bringToFront()
     }
 
     private fun setupToolbar() {
