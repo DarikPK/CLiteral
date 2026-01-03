@@ -150,7 +150,6 @@ class PdfPreviewFragment : Fragment() {
                 if (pageBitmaps.isNotEmpty()) {
                     displayPage(currentPageIndex)
                 }
-                binding.fabSavePdf.visibility = View.VISIBLE
             }
         }
     }
