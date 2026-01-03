@@ -296,9 +296,9 @@ class PdfPreviewFragment : Fragment() {
             val pdfDocument = PdfDocument()
 
             pageBitmaps.forEachIndexed { index, bitmap ->
-                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
-                drawBitmapWithMargins(page.canvas, bitmap, page.canvas.width, page.canvas.height)
+                drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
 
                 val currentState = when(index) {
                     0 -> firstPageStampState
@@ -524,9 +524,9 @@ class PdfPreviewFragment : Fragment() {
         val pdfDocument = PdfDocument()
 
         pageBitmaps.forEachIndexed { index, bitmap ->
-            val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+            val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
-            drawBitmapWithMargins(page.canvas, bitmap, page.canvas.width, page.canvas.height)
+            drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState
