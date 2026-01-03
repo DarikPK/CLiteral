@@ -69,6 +69,10 @@ class PdfSettingsFragment : Fragment() {
         // Auto-save for all EditTexts
         binding.brightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("brightness", text.toString()) }
         binding.contrastEditText.doOnTextChanged { text, _, _, _ -> saveString("contrast", text.toString()) }
+        binding.marginTopEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_top", text.toString()) }
+        binding.marginBottomEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_bottom", text.toString()) }
+        binding.marginLeftEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_left", text.toString()) }
+        binding.marginRightEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_right", text.toString()) }
         binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) }
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
@@ -96,6 +100,10 @@ class PdfSettingsFragment : Fragment() {
     private fun loadSettings() {
         binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "30"))
         binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
+        binding.marginTopEditText.setText(sharedPrefs.getString("margin_top", "0"))
+        binding.marginBottomEditText.setText(sharedPrefs.getString("margin_bottom", "0"))
+        binding.marginLeftEditText.setText(sharedPrefs.getString("margin_left", "0"))
+        binding.marginRightEditText.setText(sharedPrefs.getString("margin_right", "0"))
         binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "1"))
         binding.stampYearEditText.setText("2026")
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
