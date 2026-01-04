@@ -717,21 +717,29 @@ class PdfPreviewFragment : Fragment() {
 
             canvas.save()
             canvas.translate(centerX + dx, centerY + dy)
-            canvas.rotate(watermark.angle)
 
-            // Apply clipping for watermark 2 if rightCrop is set
+            // --- Clipping Logic ---
+            // Apply clipping BEFORE rotating the canvas. This ensures the clip is a straight vertical cut.
             if (index == 1 && watermark.rightCrop > 0) {
-                // The crop value is now in points, no mmToPx conversion needed.
                 val cropPoints = watermark.rightCrop
-                // Define the clipping rectangle in the watermark's local coordinates.
-                // This rectangle defines the visible area.
-                canvas.clipRect(
-                    -centerX,               // Left edge of the canvas
-                    -centerY,               // Top edge of the canvas
-                    centerX - cropPoints, // Right edge of the canvas minus the crop value
-                    centerY                 // Bottom edge of the canvas
-                )
+                val textWidth = paint.measureText(watermark.text.split("\n").maxByOrNull { it.length } ?: "")
+
+                // Define the visible area. It starts from the left and stops short of the right edge.
+                val clipLeft = -textWidth / 2
+                val clipRight = (textWidth / 2) - cropPoints
+                val clipTop = -centerY
+                val clipBottom = centerY
+
+                // Only apply clip if the resulting area is valid
+                if (clipLeft < clipRight) {
+                    canvas.clipRect(clipLeft, clipTop, clipRight, clipBottom)
+                } else {
+                    // If crop is larger than width, clip everything
+                    canvas.clipRect(0f, 0f, 0f, 0f)
+                }
             }
+
+            canvas.rotate(watermark.angle)
 
             if (index == 1 && watermark.text.contains("\n")) { // index 1 is Watermark 2
                 val lines = watermark.text.split("\n")
