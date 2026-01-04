@@ -252,7 +252,8 @@ class PdfPreviewFragment : Fragment() {
         if (index < 0 || index >= pageBitmaps.size) return
 
         val originalBitmap = pageBitmaps[index]
-        val previewPageBitmap = generatePreviewPage(originalBitmap)
+        // Pass the page index to generatePreviewPage
+        val previewPageBitmap = generatePreviewPage(originalBitmap, index)
         binding.pdfPageZoomableImageView.setImageBitmap(previewPageBitmap)
 
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
@@ -286,7 +287,7 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun generatePreviewPage(originalBitmap: Bitmap): Bitmap {
+    private fun generatePreviewPage(originalBitmap: Bitmap, pageIndex: Int): Bitmap {
         val a4Ratio = 595f / 842f
         val previewWidth = 1000
         val previewHeight = (previewWidth / a4Ratio).toInt()
@@ -297,6 +298,27 @@ class PdfPreviewFragment : Fragment() {
 
         drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
         drawWatermarks(canvas, previewWidth, previewHeight)
+
+        // Draw the stamp directly onto the preview bitmap
+        val currentState = when(pageIndex) {
+            0 -> firstPageStampState
+            pageBitmaps.size - 1 -> lastPageStampState
+            else -> null
+        }
+        val wornBitmap = when (pageIndex) {
+            0 -> firstPageWornStampBitmap
+            pageBitmaps.size - 1 -> lastPageWornStampBitmap
+            else -> null
+        }
+        val finalStampBitmap = wornBitmap ?: cleanStampBitmap
+
+        if (currentState != null && finalStampBitmap != null) {
+            val matrix = Matrix()
+            matrix.postScale(currentState.scale, currentState.scale)
+            matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
+            matrix.postTranslate(currentState.x, currentState.y)
+            canvas.drawBitmap(finalStampBitmap, matrix, null)
+        }
 
         return previewBitmap
     }
@@ -373,8 +395,12 @@ class PdfPreviewFragment : Fragment() {
             pageBitmaps.forEachIndexed { index, bitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
-                drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
-                drawWatermarks(page.canvas, 595, 842)
+
+                // Render the preview page to a bitmap first
+                val previewPageBitmap = generatePreviewPage(bitmap, index)
+                // Draw that bitmap onto the PDF page, making it an exact copy
+                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+                previewPageBitmap.recycle()
 
                 val currentState = when(index) {
                     0 -> firstPageStampState
@@ -387,24 +413,7 @@ class PdfPreviewFragment : Fragment() {
                     pageBitmaps.size - 1 -> lastPageWornStampBitmap
                     else -> null
                 }
-                val finalStampBitmap = wornBitmap ?: cleanStampBitmap
-
-                if (currentState != null && finalStampBitmap != null) {
-                    val a4Ratio = 595f / 842f
-                    val previewWidth = 1000f
-                    val previewHeight = previewWidth / a4Ratio
-
-                    val pdfWidth = 595f
-
-                    val scaleFactor = pdfWidth / previewWidth
-
-                    val matrix = Matrix()
-                    matrix.postScale(currentState.scale * scaleFactor, currentState.scale * scaleFactor)
-                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale * scaleFactor / 2, finalStampBitmap.height * currentState.scale * scaleFactor / 2)
-                    matrix.postTranslate(currentState.x * scaleFactor, currentState.y * scaleFactor)
-                    page.canvas.drawBitmap(finalStampBitmap, matrix, null)
-                }
-
+                // The stamp is now part of the previewPageBitmap, so this is no longer needed.
                 pdfDocument.finishPage(page)
             }
 
@@ -610,8 +619,13 @@ class PdfPreviewFragment : Fragment() {
         pageBitmaps.forEachIndexed { index, bitmap ->
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
-            drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
-            drawWatermarks(page.canvas, 595, 842)
+
+            // Render the preview page to a bitmap first
+            val previewPageBitmap = generatePreviewPage(bitmap, index)
+            // Draw that bitmap onto the PDF page, making it an exact copy
+            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+            previewPageBitmap.recycle()
+
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState
@@ -623,23 +637,7 @@ class PdfPreviewFragment : Fragment() {
                 pageBitmaps.size - 1 -> lastPageWornStampBitmap
                 else -> null
             }
-            val finalStampBitmap = wornBitmap ?: cleanStampBitmap
-
-            if (currentState != null && finalStampBitmap != null) {
-                val a4Ratio = 595f / 842f
-                val previewWidth = 1000f
-                val previewHeight = previewWidth / a4Ratio
-
-                val pdfWidth = 595f
-
-                val scaleFactor = pdfWidth / previewWidth
-
-                val matrix = Matrix()
-                matrix.postScale(currentState.scale * scaleFactor, currentState.scale * scaleFactor)
-                matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale * scaleFactor / 2, finalStampBitmap.height * currentState.scale * scaleFactor / 2)
-                matrix.postTranslate(currentState.x * scaleFactor, currentState.y * scaleFactor)
-                page.canvas.drawBitmap(finalStampBitmap, matrix, null)
-            }
+            // The stamp is now part of the previewPageBitmap, so this is no longer needed.
             pdfDocument.finishPage(page)
         }
 
