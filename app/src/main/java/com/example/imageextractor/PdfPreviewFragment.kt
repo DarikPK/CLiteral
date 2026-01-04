@@ -57,14 +57,17 @@ class PdfPreviewFragment : Fragment() {
     private var marginLeft: Float = 0f
     private var marginRight: Float = 0f
 
-    // Watermark 1 variables
-    private var w1Text: String = ""
-    private var w1Opacity: Float = 50f
-    private var w1Size: Float = 72f
-    private var w1Scale: Float = 100f
-    private var w1Dx: Float = 0f
-    private var w1Dy: Float = 0f
-    private var w1Angle: Float = 0f
+    data class Watermark(
+        val text: String,
+        val opacity: Float,
+        val size: Float,
+        val scale: Float,
+        val dx: Float,
+        val dy: Float,
+        val angle: Float
+    )
+
+    private val watermarks = mutableListOf<Watermark>()
 
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
@@ -94,13 +97,20 @@ class PdfPreviewFragment : Fragment() {
                 stampContrast = it.getFloat("stampContrast", 50f)
             }
 
-            w1Text = it.getString("w1_text", "")
-            w1Opacity = it.getFloat("w1_opacity", 50f)
-            w1Size = it.getFloat("w1_size", 72f)
-            w1Scale = it.getFloat("w1_scale", 100f)
-            w1Dx = it.getFloat("w1_dx", 0f)
-            w1Dy = it.getFloat("w1_dy", 0f)
-            w1Angle = it.getFloat("w1_angle", 0f)
+            for (i in 1..4) {
+                val text = it.getString("w${i}_text", "")
+                if (text.isNotBlank()) {
+                    watermarks.add(Watermark(
+                        text = text,
+                        opacity = it.getFloat("w${i}_opacity", 50f),
+                        size = it.getFloat("w${i}_size", 72f),
+                        scale = it.getFloat("w${i}_scale", 100f),
+                        dx = it.getFloat("w${i}_dx", 0f),
+                        dy = it.getFloat("w${i}_dy", 0f),
+                        angle = it.getFloat("w${i}_angle", 0f)
+                    ))
+                }
+            }
         }
     }
 
@@ -681,29 +691,29 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int) {
-        if (w1Text.isBlank()) return
+        watermarks.forEach { watermark ->
+            val paint = Paint().apply {
+                color = Color.BLACK
+                alpha = (watermark.opacity / 100 * 255).toInt()
+                textSize = watermark.size
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.create("Arial", Typeface.NORMAL)
+            }
 
-        val paint = Paint().apply {
-            color = Color.BLACK
-            alpha = (w1Opacity / 100 * 255).toInt()
-            textSize = w1Size
-            textAlign = Paint.Align.CENTER
-            typeface = Typeface.create("Arial", Typeface.NORMAL)
+            val centerX = pageW / 2f
+            val centerY = pageH / 2f
+
+            val mmToPx = 2.83f
+            val dx = watermark.dx * mmToPx
+            val dy = watermark.dy * mmToPx
+
+            canvas.save()
+            canvas.translate(centerX + dx, centerY + dy)
+            canvas.rotate(watermark.angle)
+            canvas.scale(watermark.scale / 100f, watermark.scale / 100f)
+
+            canvas.drawText(watermark.text, 0f, 0f, paint)
+            canvas.restore()
         }
-
-        val centerX = pageW / 2f
-        val centerY = pageH / 2f
-
-        val mmToPx = 2.83f
-        val dx = w1Dx * mmToPx
-        val dy = w1Dy * mmToPx
-
-        canvas.save()
-        canvas.translate(centerX + dx, centerY + dy)
-        canvas.rotate(w1Angle)
-        canvas.scale(w1Scale / 100f, w1Scale / 100f)
-
-        canvas.drawText(w1Text, 0f, 0f, paint)
-        canvas.restore()
     }
 }

@@ -8,8 +8,17 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import android.content.Context
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentWatermarkSettingsBinding
+import com.google.android.material.button.MaterialButton
 
 class WatermarkSettingsFragment : Fragment() {
 
@@ -19,6 +28,9 @@ class WatermarkSettingsFragment : Fragment() {
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("WatermarkSettings", Context.MODE_PRIVATE)
     }
+
+    private var currentWatermark = 1
+    private lateinit var buttons: List<Button>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -30,9 +42,10 @@ class WatermarkSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        buttons = listOf(binding.buttonWatermark1, binding.buttonWatermark2, binding.buttonWatermark3, binding.buttonWatermark4)
         setupToolbar()
-        loadSettings()
-        setupListeners()
+        setupTabButtons()
+        loadSettingsForWatermark(currentWatermark)
     }
 
     private fun setupToolbar() {
@@ -42,32 +55,67 @@ class WatermarkSettingsFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
     }
 
+    private fun setupTabButtons() {
+        buttons.forEachIndexed { index, button ->
+            button.setOnClickListener {
+                saveSettingsForWatermark(currentWatermark)
+                currentWatermark = index + 1
+                loadSettingsForWatermark(currentWatermark)
+            }
+        }
+    }
+
+    private fun updateButtonStyles() {
+        buttons.forEachIndexed { index, button ->
+            if (index + 1 == currentWatermark) {
+                (button as? MaterialButton)?.icon = null // Or set a specific style for selected
+                button.setTextAppearance(R.style.Widget_MaterialComponents_Button)
+            } else {
+                (button as? MaterialButton)?.icon = null // Or set a specific style for unselected
+                button.setTextAppearance(R.style.Widget_MaterialComponents_Button_OutlinedButton)
+
+            }
+        }
+    }
+
+    private fun loadSettingsForWatermark(index: Int) {
+        val defaultText = if (index == 1) "Certificado Literal" else ""
+        val defaultOpacity = if (index == 1) "25" else "50"
+        val defaultSize = if (index == 1) "114" else "72"
+        val defaultDx = if (index == 1) "-15" else "0"
+        val defaultDy = if (index == 1) "-14" else "0"
+        val defaultAngle = if (index == 1) "-55" else "0"
+
+        binding.watermark1TextEditText.setText(sharedPrefs.getString("w${index}_text", defaultText))
+        binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w${index}_opacity", defaultOpacity))
+        binding.watermark1SizeEditText.setText(sharedPrefs.getString("w${index}_size", defaultSize))
+        binding.watermark1ScaleEditText.setText(sharedPrefs.getString("w${index}_scale", "100"))
+        binding.watermark1DxEditText.setText(sharedPrefs.getString("w${index}_dx", defaultDx))
+        binding.watermark1DyEditText.setText(sharedPrefs.getString("w${index}_dy", defaultDy))
+        binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))
+        updateButtonStyles()
+    }
+
+    private fun saveSettingsForWatermark(index: Int) {
+        with(sharedPrefs.edit()) {
+            putString("w${index}_text", binding.watermark1TextEditText.text.toString())
+            putString("w${index}_opacity", binding.watermark1OpacityEditText.text.toString())
+            putString("w${index}_size", binding.watermark1SizeEditText.text.toString())
+            putString("w${index}_scale", binding.watermark1ScaleEditText.text.toString())
+            putString("w${index}_dx", binding.watermark1DxEditText.text.toString())
+            putString("w${index}_dy", binding.watermark1DyEditText.text.toString())
+            putString("w${index}_angle", binding.watermark1AngleEditText.text.toString())
+            apply()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        saveSettingsForWatermark(currentWatermark)
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    private fun setupListeners() {
-        binding.watermark1TextEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_text", text.toString()) }
-        binding.watermark1OpacityEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_opacity", text.toString()) }
-        binding.watermark1SizeEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_size", text.toString()) }
-        binding.watermark1ScaleEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_scale", text.toString()) }
-        binding.watermark1DxEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_dx", text.toString()) }
-        binding.watermark1DyEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_dy", text.toString()) }
-        binding.watermark1AngleEditText.doOnTextChanged { text, _, _, _ -> saveString("w1_angle", text.toString()) }
-    }
-
-    private fun loadSettings() {
-        binding.watermark1TextEditText.setText(sharedPrefs.getString("w1_text", "Certificado Literal"))
-        binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w1_opacity", "25"))
-        binding.watermark1SizeEditText.setText(sharedPrefs.getString("w1_size", "114"))
-        binding.watermark1ScaleEditText.setText(sharedPrefs.getString("w1_scale", "100"))
-        binding.watermark1DxEditText.setText(sharedPrefs.getString("w1_dx", "-15"))
-        binding.watermark1DyEditText.setText(sharedPrefs.getString("w1_dy", "-14"))
-        binding.watermark1AngleEditText.setText(sharedPrefs.getString("w1_angle", "-55"))
-    }
-
-    private fun saveString(key: String, value: String) {
-        sharedPrefs.edit().putString(key, value).apply()
     }
 }

@@ -209,13 +209,24 @@ class PdfSettingsFragment : Fragment() {
             }
 
             // Watermark 1 data
-            putString("w1_text", watermarkPrefs.getString("w1_text", ""))
-            putFloat("w1_opacity", watermarkPrefs.getString("w1_opacity", "50")?.toFloatOrNull() ?: 50f)
-            putFloat("w1_size", watermarkPrefs.getString("w1_size", "72")?.toFloatOrNull() ?: 72f)
+            putString("w1_text", watermarkPrefs.getString("w1_text", "Certificado Literal"))
+            putFloat("w1_opacity", watermarkPrefs.getString("w1_opacity", "25")?.toFloatOrNull() ?: 25f)
+            putFloat("w1_size", watermarkPrefs.getString("w1_size", "114")?.toFloatOrNull() ?: 114f)
             putFloat("w1_scale", watermarkPrefs.getString("w1_scale", "100")?.toFloatOrNull() ?: 100f)
-            putFloat("w1_dx", watermarkPrefs.getString("w1_dx", "0")?.toFloatOrNull() ?: 0f)
-            putFloat("w1_dy", watermarkPrefs.getString("w1_dy", "0")?.toFloatOrNull() ?: 0f)
-            putFloat("w1_angle", watermarkPrefs.getString("w1_angle", "0")?.toFloatOrNull() ?: 0f)
+            putFloat("w1_dx", watermarkPrefs.getString("w1_dx", "-15")?.toFloatOrNull() ?: -15f)
+            putFloat("w1_dy", watermarkPrefs.getString("w1_dy", "-14")?.toFloatOrNull() ?: -14f)
+            putFloat("w1_angle", watermarkPrefs.getString("w1_angle", "-55")?.toFloatOrNull() ?: -55f)
+
+            // Pass data for all 4 watermarks
+            for (i in 1..4) {
+                putString("w${i}_text", watermarkPrefs.getString("w${i}_text", if (i == 1) "Certificado Literal" else ""))
+                putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", if (i == 1) "25" else "50")?.toFloatOrNull() ?: 50f)
+                putFloat("w${i}_size", watermarkPrefs.getString("w${i}_size", if (i == 1) "114" else "72")?.toFloatOrNull() ?: 72f)
+                putFloat("w${i}_scale", watermarkPrefs.getString("w${i}_scale", "100")?.toFloatOrNull() ?: 100f)
+                putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", if (i == 1) "-15" else "0")?.toFloatOrNull() ?: 0f)
+                putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", if (i == 1) "-14" else "0")?.toFloatOrNull() ?: 0f)
+                putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", if (i == 1) "-55" else "0")?.toFloatOrNull() ?: 0f)
+            }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
