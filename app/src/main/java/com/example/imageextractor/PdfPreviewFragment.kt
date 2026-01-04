@@ -692,35 +692,44 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int) {
-        val previewWidth = 1000f // Ancho de referencia de la previsualización
+        val previewWidth = 1000f
         val scaleFactor = pageW / previewWidth
 
-        watermarks.forEach { watermark ->
-            // Unificar el escalado en el tamaño de la fuente
-            val finalSize = watermark.size * (watermark.scale / 100f) * scaleFactor
+        canvas.save()
+        // Aplica una escala global al lienzo. Todo lo que se dibuje a partir de ahora
+        // se escalará automáticamente desde el sistema de coordenadas de la previsualización (1000px)
+        // al sistema de coordenadas del lienzo de destino (ej. 595pt para el PDF).
+        canvas.scale(scaleFactor, scaleFactor)
 
+        // Ahora, todos los cálculos se hacen en el sistema de coordenadas de la previsualización (1000px)
+        val previewHeight = pageH / scaleFactor
+
+        watermarks.forEach { watermark ->
             val paint = Paint().apply {
                 color = Color.BLACK
                 alpha = (watermark.opacity / 100 * 255).toInt()
-                textSize = finalSize // Usar el tamaño final calculado
+                // El tamaño de la fuente se calcula de forma absoluta para la previsualización
+                textSize = watermark.size * (watermark.scale / 100f)
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.create("Arial", Typeface.NORMAL)
             }
 
-            val centerX = pageW / 2f
-            val centerY = pageH / 2f
-
+            // Las coordenadas del centro y los desplazamientos son absolutos para la previsualización
+            val centerX = previewWidth / 2f
+            val centerY = previewHeight / 2f
             val mmToPx = 2.83f
-            val dx = watermark.dx * mmToPx * scaleFactor // Escalar desplazamiento X
-            val dy = watermark.dy * mmToPx * scaleFactor // Escalar desplazamiento Y
+            val dx = watermark.dx * mmToPx
+            val dy = watermark.dy * mmToPx
 
             canvas.save()
             canvas.translate(centerX + dx, centerY + dy)
             canvas.rotate(watermark.angle)
-            // Ya no se necesita canvas.scale, el escalado está en textSize
 
+            // Dibuja el texto. La escala global del lienzo se encargará del resto.
             canvas.drawText(watermark.text, 0f, 0f, paint)
             canvas.restore()
         }
+        // Restaura el lienzo a su estado original
+        canvas.restore()
     }
 }
