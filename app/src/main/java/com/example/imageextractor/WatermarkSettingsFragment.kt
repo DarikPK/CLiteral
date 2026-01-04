@@ -87,12 +87,37 @@ class WatermarkSettingsFragment : Fragment() {
 
         binding.textAlignRadioGroup.visibility = if (index == 2) View.VISIBLE else View.GONE
 
-        val defaultText = if (index == 1) "Certificado Literal" else ""
-        val defaultOpacity = if (index == 1) "25" else "50"
-        val defaultSize = if (index == 1) "114" else "72"
-        val defaultDx = if (index == 1) "-15" else "0"
-        val defaultDy = if (index == 1) "-14" else "0"
-        val defaultAngle = if (index == 1) "-55" else "0"
+        val defaultText = when (index) {
+            1 -> "Certificado Literal"
+            2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
+            else -> ""
+        }
+        val defaultOpacity = when (index) {
+            1 -> "25"
+            2 -> "25"
+            else -> "50"
+        }
+        val defaultSize = when (index) {
+            1 -> "114"
+            2 -> "71"
+            else -> "72"
+        }
+        val defaultScale = if (index == 2) "80" else "100"
+        val defaultDx = when (index) {
+            1 -> "-15"
+            2 -> "29"
+            else -> "0"
+        }
+        val defaultDy = when (index) {
+            1 -> "-14"
+            2 -> "19"
+            else -> "0"
+        }
+        val defaultAngle = when (index) {
+            1 -> "-55"
+            2 -> "55"
+            else -> "0"
+        }
 
         // Update title
         binding.watermarkTitle.text = "Marca de Agua $index"
@@ -100,7 +125,7 @@ class WatermarkSettingsFragment : Fragment() {
         binding.watermark1TextEditText.setText(sharedPrefs.getString("w${index}_text", defaultText))
         binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w${index}_opacity", defaultOpacity))
         binding.watermark1SizeEditText.setText(sharedPrefs.getString("w${index}_size", defaultSize))
-        binding.watermark1ScaleEditText.setText(sharedPrefs.getString("w${index}_scale", "100"))
+        binding.watermark1ScaleEditText.setText(sharedPrefs.getString("w${index}_scale", defaultScale))
         binding.watermark1DxEditText.setText(sharedPrefs.getString("w${index}_dx", defaultDx))
         binding.watermark1DyEditText.setText(sharedPrefs.getString("w${index}_dy", defaultDy))
         binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))

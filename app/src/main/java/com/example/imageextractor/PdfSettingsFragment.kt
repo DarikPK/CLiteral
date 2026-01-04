@@ -102,7 +102,7 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
-        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "30"))
+        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "60"))
         binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
         binding.marginTopEditText.setText(sharedPrefs.getString("margin_top", "55"))
         binding.marginBottomEditText.setText(sharedPrefs.getString("margin_bottom", "50"))
@@ -183,7 +183,7 @@ class PdfSettingsFragment : Fragment() {
             putString("partidaId", folder.partidaId)
             putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-            putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 30f)
+            putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 60f)
             putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 100f)
 
             // Pasar los valores de los márgenes
@@ -219,13 +219,26 @@ class PdfSettingsFragment : Fragment() {
 
             // Pass data for all 4 watermarks
             for (i in 1..4) {
-                putString("w${i}_text", watermarkPrefs.getString("w${i}_text", if (i == 1) "Certificado Literal" else ""))
-                putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", if (i == 1) "25" else "50")?.toFloatOrNull() ?: 50f)
-                putFloat("w${i}_size", watermarkPrefs.getString("w${i}_size", if (i == 1) "114" else "72")?.toFloatOrNull() ?: 72f)
-                putFloat("w${i}_scale", watermarkPrefs.getString("w${i}_scale", "100")?.toFloatOrNull() ?: 100f)
-                putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", if (i == 1) "-15" else "0")?.toFloatOrNull() ?: 0f)
-                putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", if (i == 1) "-14" else "0")?.toFloatOrNull() ?: 0f)
-                putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", if (i == 1) "-55" else "0")?.toFloatOrNull() ?: 0f)
+                val defaultText = when (i) {
+                    1 -> "Certificado Literal"
+                    2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
+                    else -> ""
+                }
+                val defaultOpacity = if (i <= 2) "25" else "50"
+                val defaultSize = if (i == 1) "114" else "71"
+                val defaultScale = if (i == 2) "80" else "100"
+                val defaultDx = if (i == 1) "-15" else if (i == 2) "29" else "0"
+                val defaultDy = if (i == 1) "-14" else if (i == 2) "19" else "0"
+                val defaultAngle = if (i == 1) "-55" else if (i == 2) "55" else "0"
+
+                putString("w${i}_text", watermarkPrefs.getString("w${i}_text", defaultText))
+                putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", defaultOpacity)?.toFloatOrNull() ?: 50f)
+                putFloat("w${i}_size", watermarkPrefs.getString("w${i}_size", defaultSize)?.toFloatOrNull() ?: 72f)
+                putFloat("w${i}_scale", watermarkPrefs.getString("w${i}_scale", defaultScale)?.toFloatOrNull() ?: 100f)
+                putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", defaultDx)?.toFloatOrNull() ?: 0f)
+                putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", defaultDy)?.toFloatOrNull() ?: 0f)
+                putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", defaultAngle)?.toFloatOrNull() ?: 0f)
+
                 if (i == 2) {
                     putInt("w2_align", watermarkPrefs.getInt("w2_align", 1)) // 1 = Center
                 }
