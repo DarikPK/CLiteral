@@ -68,6 +68,7 @@
 
 
             <TextView
+                android:id="@+id/watermark_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Marca de Agua 1"
@@ -82,8 +83,42 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/watermark1_text_edit_text"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:gravity="top"
+                    android:inputType="textMultiLine"
+                    android:lines="3" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <RadioGroup
+                android:id="@+id/textAlignRadioGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <RadioButton
+                    android:id="@+id/alignLeftRadioButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Izquierda" />
+
+                <RadioButton
+                    android:id="@+id/alignCenterRadioButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checked="true"
+                    android:text="Centro" />
+
+                <RadioButton
+                    android:id="@+id/alignRightRadioButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Derecha" />
+            </RadioGroup>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"

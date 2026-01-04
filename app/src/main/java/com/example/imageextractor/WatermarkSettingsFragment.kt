@@ -59,12 +59,28 @@ class WatermarkSettingsFragment : Fragment() {
     }
 
     private fun loadSettingsForWatermark(index: Int) {
+        // Update button styles
+        buttons.forEachIndexed { i, button ->
+            if (i + 1 == index) {
+                button.setTextAppearance(R.style.Widget_MaterialComponents_Button)
+                (button as MaterialButton).icon = null // Or set a specific icon if you have one
+            } else {
+                button.setTextAppearance(R.style.Widget_MaterialComponents_Button_OutlinedButton)
+                (button as MaterialButton).icon = null
+            }
+        }
+
+        binding.textAlignRadioGroup.visibility = if (index == 2) View.VISIBLE else View.GONE
+
         val defaultText = if (index == 1) "Certificado Literal" else ""
         val defaultOpacity = if (index == 1) "25" else "50"
         val defaultSize = if (index == 1) "114" else "72"
         val defaultDx = if (index == 1) "-15" else "0"
         val defaultDy = if (index == 1) "-14" else "0"
         val defaultAngle = if (index == 1) "-55" else "0"
+
+        // Update title
+        binding.watermarkTitle.text = "Marca de Agua $index"
 
         binding.watermark1TextEditText.setText(sharedPrefs.getString("w${index}_text", defaultText))
         binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w${index}_opacity", defaultOpacity))
@@ -73,6 +89,15 @@ class WatermarkSettingsFragment : Fragment() {
         binding.watermark1DxEditText.setText(sharedPrefs.getString("w${index}_dx", defaultDx))
         binding.watermark1DyEditText.setText(sharedPrefs.getString("w${index}_dy", defaultDy))
         binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))
+
+        if (index == 2) {
+            val align = sharedPrefs.getInt("w2_align", 1) // 1 = Center default
+            when (align) {
+                0 -> binding.alignLeftRadioButton.isChecked = true
+                1 -> binding.alignCenterRadioButton.isChecked = true
+                2 -> binding.alignRightRadioButton.isChecked = true
+            }
+        }
     }
 
     private fun saveSettingsForWatermark(index: Int) {
@@ -84,6 +109,16 @@ class WatermarkSettingsFragment : Fragment() {
             putString("w${index}_dx", binding.watermark1DxEditText.text.toString())
             putString("w${index}_dy", binding.watermark1DyEditText.text.toString())
             putString("w${index}_angle", binding.watermark1AngleEditText.text.toString())
+
+            if (index == 2) {
+                val align = when {
+                    binding.alignLeftRadioButton.isChecked -> 0
+                    binding.alignCenterRadioButton.isChecked -> 1
+                    binding.alignRightRadioButton.isChecked -> 2
+                    else -> 1 // Default to center
+                }
+                putInt("w2_align", align)
+            }
             apply()
         }
     }

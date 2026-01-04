@@ -64,7 +64,8 @@ class PdfPreviewFragment : Fragment() {
         val scale: Float,
         val dx: Float,
         val dy: Float,
-        val angle: Float
+        val angle: Float,
+        val align: Int
     )
 
     private val watermarks = mutableListOf<Watermark>()
@@ -107,7 +108,8 @@ class PdfPreviewFragment : Fragment() {
                         scale = it.getFloat("w${i}_scale", 100f),
                         dx = it.getFloat("w${i}_dx", 0f),
                         dy = it.getFloat("w${i}_dy", 0f),
-                        angle = it.getFloat("w${i}_angle", 0f)
+                        angle = it.getFloat("w${i}_angle", 0f),
+                        align = if (i == 2) it.getInt("w2_align", 1) else 1
                     ))
                 }
             }
@@ -694,25 +696,18 @@ class PdfPreviewFragment : Fragment() {
         val scaleFactor = pageW / previewWidth
 
         canvas.save()
-        // Aplica una escala global al lienzo. Todo lo que se dibuje a partir de ahora
-        // se escalará automáticamente desde el sistema de coordenadas de la previsualización (1000px)
-        // al sistema de coordenadas del lienzo de destino (ej. 595pt para el PDF).
         canvas.scale(scaleFactor, scaleFactor)
 
-        // Ahora, todos los cálculos se hacen en el sistema de coordenadas de la previsualización (1000px)
         val previewHeight = pageH / scaleFactor
 
-        watermarks.forEach { watermark ->
+        watermarks.forEachIndexed { index, watermark ->
             val paint = Paint().apply {
                 color = Color.BLACK
                 alpha = (watermark.opacity / 100 * 255).toInt()
-                // El tamaño de la fuente se calcula de forma absoluta para la previsualización
                 textSize = watermark.size * (watermark.scale / 100f)
-                textAlign = Paint.Align.CENTER
                 typeface = Typeface.create("Arial", Typeface.NORMAL)
             }
 
-            // Las coordenadas del centro y los desplazamientos son absolutos para la previsualización
             val centerX = previewWidth / 2f
             val centerY = previewHeight / 2f
             val mmToPx = 2.83f
@@ -723,11 +718,33 @@ class PdfPreviewFragment : Fragment() {
             canvas.translate(centerX + dx, centerY + dy)
             canvas.rotate(watermark.angle)
 
-            // Dibuja el texto. La escala global del lienzo se encargará del resto.
-            canvas.drawText(watermark.text, 0f, 0f, paint)
+            if (index == 1 && watermark.text.contains("\n")) { // index 1 is Watermark 2
+                val lines = watermark.text.split("\n")
+                paint.textAlign = when (watermark.align) {
+                    0 -> Paint.Align.LEFT
+                    2 -> Paint.Align.RIGHT
+                    else -> Paint.Align.CENTER
+                }
+                val textHeight = paint.descent() - paint.ascent()
+                val totalTextHeight = lines.size * textHeight
+                var yPos = -(totalTextHeight / 2f) + textHeight / 2f
+
+                for (line in lines) {
+                    val xPos = when (watermark.align) {
+                        0 -> -centerX + 20 // Margin for left align
+                        2 -> centerX - 20 // Margin for right align
+                        else -> 0f
+                    }
+                    canvas.drawText(line, xPos, yPos, paint)
+                    yPos += textHeight
+                }
+            } else {
+                paint.textAlign = Paint.Align.CENTER
+                canvas.drawText(watermark.text, 0f, 0f, paint)
+            }
+
             canvas.restore()
         }
-        // Restaura el lienzo a su estado original
         canvas.restore()
     }
 }

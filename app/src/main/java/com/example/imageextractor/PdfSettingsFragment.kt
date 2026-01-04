@@ -226,6 +226,9 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", if (i == 1) "-15" else "0")?.toFloatOrNull() ?: 0f)
                 putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", if (i == 1) "-14" else "0")?.toFloatOrNull() ?: 0f)
                 putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", if (i == 1) "-55" else "0")?.toFloatOrNull() ?: 0f)
+                if (i == 2) {
+                    putInt("w2_align", watermarkPrefs.getInt("w2_align", 1)) // 1 = Center
+                }
             }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
