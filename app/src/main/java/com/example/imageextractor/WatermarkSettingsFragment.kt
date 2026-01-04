@@ -1,7 +1,10 @@
 package com.example.imageextractor
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -59,14 +62,26 @@ class WatermarkSettingsFragment : Fragment() {
     }
 
     private fun loadSettingsForWatermark(index: Int) {
-        // Update button styles
+        // Get theme colors
+        val typedValue = TypedValue()
+        requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, typedValue, true)
+        val colorPrimary = typedValue.data
+        requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorOnPrimary, typedValue, true)
+        val colorOnPrimary = typedValue.data
+
         buttons.forEachIndexed { i, button ->
+            val materialButton = button as MaterialButton
             if (i + 1 == index) {
-                button.setTextAppearance(R.style.Widget_MaterialComponents_Button)
-                (button as MaterialButton).icon = null // Or set a specific icon if you have one
+                // Style for selected button (filled)
+                materialButton.backgroundTintList = ColorStateList.valueOf(colorPrimary)
+                materialButton.setTextColor(colorOnPrimary)
+                materialButton.strokeWidth = 0
             } else {
-                button.setTextAppearance(R.style.Widget_MaterialComponents_Button_OutlinedButton)
-                (button as MaterialButton).icon = null
+                // Style for unselected buttons (outlined)
+                materialButton.backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+                materialButton.setTextColor(colorPrimary)
+                materialButton.strokeColor = ColorStateList.valueOf(colorPrimary)
+                materialButton.strokeWidth = 2
             }
         }
 
