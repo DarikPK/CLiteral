@@ -58,13 +58,13 @@ class WatermarkSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
-        binding.watermark1TextEditText.setText(sharedPrefs.getString("w1_text", ""))
-        binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w1_opacity", "50"))
-        binding.watermark1SizeEditText.setText(sharedPrefs.getString("w1_size", "72"))
+        binding.watermark1TextEditText.setText(sharedPrefs.getString("w1_text", "Certificado Literal"))
+        binding.watermark1OpacityEditText.setText(sharedPrefs.getString("w1_opacity", "25"))
+        binding.watermark1SizeEditText.setText(sharedPrefs.getString("w1_size", "114"))
         binding.watermark1ScaleEditText.setText(sharedPrefs.getString("w1_scale", "100"))
-        binding.watermark1DxEditText.setText(sharedPrefs.getString("w1_dx", "0"))
-        binding.watermark1DyEditText.setText(sharedPrefs.getString("w1_dy", "0"))
-        binding.watermark1AngleEditText.setText(sharedPrefs.getString("w1_angle", "0"))
+        binding.watermark1DxEditText.setText(sharedPrefs.getString("w1_dx", "-15"))
+        binding.watermark1DyEditText.setText(sharedPrefs.getString("w1_dy", "-14"))
+        binding.watermark1AngleEditText.setText(sharedPrefs.getString("w1_angle", "-55"))
     }
 
     private fun saveString(key: String, value: String) {
