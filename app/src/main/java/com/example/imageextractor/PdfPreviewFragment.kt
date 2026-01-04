@@ -696,10 +696,13 @@ class PdfPreviewFragment : Fragment() {
         val scaleFactor = pageW / previewWidth
 
         watermarks.forEach { watermark ->
+            // Unificar el escalado en el tamaño de la fuente
+            val finalSize = watermark.size * (watermark.scale / 100f) * scaleFactor
+
             val paint = Paint().apply {
                 color = Color.BLACK
                 alpha = (watermark.opacity / 100 * 255).toInt()
-                textSize = watermark.size * scaleFactor // Escalar tamaño de fuente
+                textSize = finalSize // Usar el tamaño final calculado
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.create("Arial", Typeface.NORMAL)
             }
@@ -714,7 +717,7 @@ class PdfPreviewFragment : Fragment() {
             canvas.save()
             canvas.translate(centerX + dx, centerY + dy)
             canvas.rotate(watermark.angle)
-            canvas.scale(watermark.scale / 100f, watermark.scale / 100f)
+            // Ya no se necesita canvas.scale, el escalado está en textSize
 
             canvas.drawText(watermark.text, 0f, 0f, paint)
             canvas.restore()
