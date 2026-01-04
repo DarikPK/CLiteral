@@ -65,7 +65,8 @@ class PdfPreviewFragment : Fragment() {
         val dx: Float,
         val dy: Float,
         val angle: Float,
-        val align: Int
+        val align: Int,
+        val leftCrop: Float
     )
 
     private val watermarks = mutableListOf<Watermark>()
@@ -109,7 +110,8 @@ class PdfPreviewFragment : Fragment() {
                         dx = it.getFloat("w${i}_dx", 0f),
                         dy = it.getFloat("w${i}_dy", 0f),
                         angle = it.getFloat("w${i}_angle", 0f),
-                        align = if (i == 2) it.getInt("w2_align", 1) else 1
+                        align = if (i == 2) it.getInt("w2_align", 1) else 1,
+                        leftCrop = if (i == 2) it.getFloat("w2_left_crop", 0f) else 0f
                     ))
                 }
             }
@@ -716,6 +718,20 @@ class PdfPreviewFragment : Fragment() {
             canvas.save()
             canvas.translate(centerX + dx, centerY + dy)
             canvas.rotate(watermark.angle)
+
+            // Apply clipping for watermark 2 if leftCrop is set
+            if (index == 1 && watermark.leftCrop > 0) {
+                val cropPx = watermark.leftCrop * mmToPx
+                // Define the clipping rectangle in the watermark's local coordinates
+                // The rectangle starts from the left edge and extends infinitely to the right.
+                // It covers the full vertical space.
+                canvas.clipRect(
+                    -centerX + cropPx, // Start clipping from the left edge + crop value
+                    -centerY,        // Top of the canvas
+                    centerX,         // Right edge of the canvas
+                    centerY          // Bottom of the canvas
+                )
+            }
 
             if (index == 1 && watermark.text.contains("\n")) { // index 1 is Watermark 2
                 val lines = watermark.text.split("\n")
