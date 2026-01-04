@@ -66,7 +66,7 @@ class PdfPreviewFragment : Fragment() {
         val dy: Float,
         val angle: Float,
         val align: Int,
-        val leftCrop: Float
+        val rightCrop: Float
     )
 
     private val watermarks = mutableListOf<Watermark>()
@@ -111,7 +111,7 @@ class PdfPreviewFragment : Fragment() {
                         dy = it.getFloat("w${i}_dy", 0f),
                         angle = it.getFloat("w${i}_angle", 0f),
                         align = if (i == 2) it.getInt("w2_align", 1) else 1,
-                        leftCrop = if (i == 2) it.getFloat("w2_left_crop", 0f) else 0f
+                        rightCrop = if (i == 2) it.getFloat("w2_right_crop", 0f) else 0f
                     ))
                 }
             }
@@ -719,17 +719,17 @@ class PdfPreviewFragment : Fragment() {
             canvas.translate(centerX + dx, centerY + dy)
             canvas.rotate(watermark.angle)
 
-            // Apply clipping for watermark 2 if leftCrop is set
-            if (index == 1 && watermark.leftCrop > 0) {
-                val cropPx = watermark.leftCrop * mmToPx
-                // Define the clipping rectangle in the watermark's local coordinates
-                // The rectangle starts from the left edge and extends infinitely to the right.
-                // It covers the full vertical space.
+            // Apply clipping for watermark 2 if rightCrop is set
+            if (index == 1 && watermark.rightCrop > 0) {
+                // The crop value is now in points, no mmToPx conversion needed.
+                val cropPoints = watermark.rightCrop
+                // Define the clipping rectangle in the watermark's local coordinates.
+                // This rectangle defines the visible area.
                 canvas.clipRect(
-                    -centerX + cropPx, // Start clipping from the left edge + crop value
-                    -centerY,        // Top of the canvas
-                    centerX,         // Right edge of the canvas
-                    centerY          // Bottom of the canvas
+                    -centerX,               // Left edge of the canvas
+                    -centerY,               // Top edge of the canvas
+                    centerX - cropPoints, // Right edge of the canvas minus the crop value
+                    centerY                 // Bottom edge of the canvas
                 )
             }
 

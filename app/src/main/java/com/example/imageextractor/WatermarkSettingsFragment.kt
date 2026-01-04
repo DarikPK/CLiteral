@@ -87,7 +87,7 @@ class WatermarkSettingsFragment : Fragment() {
 
         val showWatermark2Controls = index == 2
         binding.textAlignRadioGroup.visibility = if (showWatermark2Controls) View.VISIBLE else View.GONE
-        binding.watermarkLeftCropInputLayout.visibility = if (showWatermark2Controls) View.VISIBLE else View.GONE
+        binding.watermarkRightCropInputLayout.visibility = if (showWatermark2Controls) View.VISIBLE else View.GONE
 
         val defaultText = when (index) {
             1 -> "Certificado Literal"
@@ -133,7 +133,7 @@ class WatermarkSettingsFragment : Fragment() {
         binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))
 
         if (index == 2) {
-            binding.watermarkLeftCropEditText.setText(sharedPrefs.getString("w2_left_crop", "0"))
+            binding.watermarkRightCropEditText.setText(sharedPrefs.getString("w2_right_crop", "0"))
             val align = sharedPrefs.getInt("w2_align", 1) // 1 = Center default
             when (align) {
                 0 -> binding.alignLeftRadioButton.isChecked = true
@@ -161,7 +161,7 @@ class WatermarkSettingsFragment : Fragment() {
                     else -> 1 // Default to center
                 }
                 putInt("w2_align", align)
-                putString("w2_left_crop", binding.watermarkLeftCropEditText.text.toString())
+                putString("w2_right_crop", binding.watermarkRightCropEditText.text.toString())
             }
             apply()
         }
