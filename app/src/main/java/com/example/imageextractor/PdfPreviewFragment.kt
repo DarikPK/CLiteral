@@ -692,11 +692,14 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int) {
+        val previewWidth = 1000f // Ancho de referencia de la previsualización
+        val scaleFactor = pageW / previewWidth
+
         watermarks.forEach { watermark ->
             val paint = Paint().apply {
                 color = Color.BLACK
                 alpha = (watermark.opacity / 100 * 255).toInt()
-                textSize = watermark.size
+                textSize = watermark.size * scaleFactor // Escalar tamaño de fuente
                 textAlign = Paint.Align.CENTER
                 typeface = Typeface.create("Arial", Typeface.NORMAL)
             }
@@ -705,8 +708,8 @@ class PdfPreviewFragment : Fragment() {
             val centerY = pageH / 2f
 
             val mmToPx = 2.83f
-            val dx = watermark.dx * mmToPx
-            val dy = watermark.dy * mmToPx
+            val dx = watermark.dx * mmToPx * scaleFactor // Escalar desplazamiento X
+            val dy = watermark.dy * mmToPx * scaleFactor // Escalar desplazamiento Y
 
             canvas.save()
             canvas.translate(centerX + dx, centerY + dy)
