@@ -5,16 +5,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.doOnTextChanged
-import androidx.fragment.app.Fragment
-import android.content.Context
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentWatermarkSettingsBinding
@@ -65,19 +58,6 @@ class WatermarkSettingsFragment : Fragment() {
         }
     }
 
-    private fun updateButtonStyles() {
-        buttons.forEachIndexed { index, button ->
-            if (index + 1 == currentWatermark) {
-                (button as? MaterialButton)?.icon = null // Or set a specific style for selected
-                button.setTextAppearance(R.style.Widget_MaterialComponents_Button)
-            } else {
-                (button as? MaterialButton)?.icon = null // Or set a specific style for unselected
-                button.setTextAppearance(R.style.Widget_MaterialComponents_Button_OutlinedButton)
-
-            }
-        }
-    }
-
     private fun loadSettingsForWatermark(index: Int) {
         val defaultText = if (index == 1) "Certificado Literal" else ""
         val defaultOpacity = if (index == 1) "25" else "50"
@@ -93,7 +73,6 @@ class WatermarkSettingsFragment : Fragment() {
         binding.watermark1DxEditText.setText(sharedPrefs.getString("w${index}_dx", defaultDx))
         binding.watermark1DyEditText.setText(sharedPrefs.getString("w${index}_dy", defaultDy))
         binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))
-        updateButtonStyles()
     }
 
     private fun saveSettingsForWatermark(index: Int) {
