@@ -611,6 +611,7 @@ class PdfPreviewFragment : Fragment() {
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
             drawBitmapWithMargins(page.canvas, bitmap, 595, 842)
+            drawWatermarks(page.canvas, 595, 842)
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState

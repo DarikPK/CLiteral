@@ -109,7 +109,7 @@ class PdfSettingsFragment : Fragment() {
         binding.marginLeftEditText.setText(sharedPrefs.getString("margin_left", "0"))
         binding.marginRightEditText.setText(sharedPrefs.getString("margin_right", "15"))
         binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "1"))
-        binding.stampYearEditText.setText("2026")
+        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
         binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
