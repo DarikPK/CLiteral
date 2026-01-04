@@ -301,27 +301,8 @@ class PdfPreviewFragment : Fragment() {
         drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
         drawWatermarks(canvas, previewWidth, previewHeight)
 
-        // Draw the stamp directly onto the preview bitmap
-        val currentState = when(pageIndex) {
-            0 -> firstPageStampState
-            pageBitmaps.size - 1 -> lastPageStampState
-            else -> null
-        }
-        val wornBitmap = when (pageIndex) {
-            0 -> firstPageWornStampBitmap
-            pageBitmaps.size - 1 -> lastPageWornStampBitmap
-            else -> null
-        }
-        val finalStampBitmap = wornBitmap ?: cleanStampBitmap
-
-        if (currentState != null && finalStampBitmap != null) {
-            val matrix = Matrix()
-            matrix.postScale(currentState.scale, currentState.scale)
-            matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
-            matrix.postTranslate(currentState.x, currentState.y)
-            canvas.drawBitmap(finalStampBitmap, matrix, null)
-        }
-
+        // The stamp is no longer drawn here to avoid the "ghost" image effect.
+        // It's now drawn only in the interactive overlay and during the final PDF save.
         return previewBitmap
     }
 
@@ -400,22 +381,31 @@ class PdfPreviewFragment : Fragment() {
 
                 // Render the preview page to a bitmap first
                 val previewPageBitmap = generatePreviewPage(bitmap, index)
-                // Draw that bitmap onto the PDF page, making it an exact copy
-                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
-                previewPageBitmap.recycle()
 
+                // Draw the stamp onto the preview bitmap before saving to PDF
+                val canvas = Canvas(previewPageBitmap)
                 val currentState = when(index) {
                     0 -> firstPageStampState
                     pageBitmaps.size - 1 -> lastPageStampState
                     else -> null
                 }
-
                 val wornBitmap = when (index) {
                     0 -> firstPageWornStampBitmap
                     pageBitmaps.size - 1 -> lastPageWornStampBitmap
                     else -> null
                 }
-                // The stamp is now part of the previewPageBitmap, so this is no longer needed.
+                val finalStampBitmap = wornBitmap ?: cleanStampBitmap
+                if (currentState != null && finalStampBitmap != null) {
+                    val matrix = Matrix()
+                    matrix.postScale(currentState.scale, currentState.scale)
+                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
+                    matrix.postTranslate(currentState.x, currentState.y)
+                    canvas.drawBitmap(finalStampBitmap, matrix, null)
+                }
+
+                // Draw the final composited bitmap onto the PDF page
+                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+                previewPageBitmap.recycle()
                 pdfDocument.finishPage(page)
             }
 
@@ -624,22 +614,31 @@ class PdfPreviewFragment : Fragment() {
 
             // Render the preview page to a bitmap first
             val previewPageBitmap = generatePreviewPage(bitmap, index)
-            // Draw that bitmap onto the PDF page, making it an exact copy
-            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
-            previewPageBitmap.recycle()
 
+            // Draw the stamp onto the preview bitmap before saving to PDF
+            val canvas = Canvas(previewPageBitmap)
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState
                 else -> null
             }
-
             val wornBitmap = when (index) {
                 0 -> firstPageWornStampBitmap
                 pageBitmaps.size - 1 -> lastPageWornStampBitmap
                 else -> null
             }
-            // The stamp is now part of the previewPageBitmap, so this is no longer needed.
+            val finalStampBitmap = wornBitmap ?: cleanStampBitmap
+            if (currentState != null && finalStampBitmap != null) {
+                val matrix = Matrix()
+                matrix.postScale(currentState.scale, currentState.scale)
+                matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
+                matrix.postTranslate(currentState.x, currentState.y)
+                canvas.drawBitmap(finalStampBitmap, matrix, null)
+            }
+
+            // Draw the final composited bitmap onto the PDF page
+            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+            previewPageBitmap.recycle()
             pdfDocument.finishPage(page)
         }
 
