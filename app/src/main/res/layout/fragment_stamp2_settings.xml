@@ -174,7 +174,6 @@
                         android:inputType="number" />
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
-        </LinearLayout>
 
             <TextView
                 style="@style/TextAppearance.Material3.TitleMedium"
@@ -211,5 +210,6 @@
                 android:valueFrom="0.0"
                 android:valueTo="100.0"
                 android:stepSize="1.0" />
+        </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
