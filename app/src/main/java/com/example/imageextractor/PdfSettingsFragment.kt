@@ -255,6 +255,15 @@ class PdfSettingsFragment : Fragment() {
         sharedPrefs.edit().putInt(key, value).apply()
     }
 
+    private fun getFloatPreferenceSafely(key: String, defaultValue: Float): Float {
+        val value = sharedPrefs.all[key]
+        return when (value) {
+            is Float -> value
+            is String -> value.toFloatOrNull() ?: defaultValue
+            else -> defaultValue
+        }
+    }
+
 
     private fun validateAndProceed() {
         if (binding.stampEnabledCheckbox.isChecked && binding.stampDayTextView.text.toString().isBlank()) {
@@ -337,8 +346,8 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
                 putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
                 putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
-                putFloat("stamp2_dot_count", sharedPrefs.getString("stamp2_dot_count", "3")?.toFloatOrNull() ?: 3f)
-                putFloat("stamp2_dot_size", sharedPrefs.getString("stamp2_dot_size", "13")?.toFloatOrNull() ?: 13f)
+                putFloat("stamp2_dot_count", getFloatPreferenceSafely("stamp2_dot_count", 3f))
+                putFloat("stamp2_dot_size", getFloatPreferenceSafely("stamp2_dot_size", 13f))
             }
 
             // Watermark 1 data
