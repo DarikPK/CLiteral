@@ -58,6 +58,9 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
 
+        binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
+        binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
+
         // Initialize first click tracker based on default values
         if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
         if (binding.stamp2PositionEditText.text.toString() == "CARGO") firstClickTracker.add(binding.stamp2PositionEditText.id)
@@ -81,6 +84,10 @@ class Stamp2SettingsFragment : Fragment() {
         setupFirstClickListener(binding.stamp2NameEditText)
         setupFirstClickListener(binding.stamp2PositionEditText)
         setupFirstClickListener(binding.stamp2AreaEditText)
+
+        // Auto-save for Sliders
+        binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
+        binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
     }
 
     private fun setupFirstClickListener(editText: TextInputEditText) {
@@ -99,6 +106,10 @@ class Stamp2SettingsFragment : Fragment() {
 
     private fun saveBoolean(key: String, value: Boolean) {
         sharedPrefs.edit().putBoolean(key, value).apply()
+    }
+
+    private fun saveFloat(key: String, value: Float) {
+        sharedPrefs.edit().putFloat(key, value).apply()
     }
 
     override fun onDestroyView() {

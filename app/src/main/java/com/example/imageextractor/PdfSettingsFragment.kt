@@ -335,6 +335,8 @@ class PdfSettingsFragment : Fragment() {
                 putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
                 putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
                 putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
+                putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
+                putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
             }
 
             // Watermark 1 data

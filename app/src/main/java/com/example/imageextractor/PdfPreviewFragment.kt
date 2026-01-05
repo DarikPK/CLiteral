@@ -52,6 +52,8 @@ class PdfPreviewFragment : Fragment() {
     private var stamp2VariableRotation: Boolean = false
     private var stamp2Rotation: Float = 0f
     private var stamp2RotationTolerance: Float = 5f
+    private var stamp2WearIntensity: Float = 30f
+    private var stamp2WearSize: Float = 50f
 
 
     private var isStampEnabled: Boolean = false
@@ -135,6 +137,8 @@ class PdfPreviewFragment : Fragment() {
                 stamp2VariableRotation = it.getBoolean("stamp2VariableRotation", true)
                 stamp2Rotation = it.getFloat("stamp2Rotation", 0f)
                 stamp2RotationTolerance = it.getFloat("stamp2RotationTolerance", 5f)
+                stamp2WearIntensity = it.getFloat("stamp2WearIntensity", 30f)
+                stamp2WearSize = it.getFloat("stamp2WearSize", 50f)
             }
 
             for (i in 1..4) {
@@ -503,7 +507,7 @@ class PdfPreviewFragment : Fragment() {
 
                 // Draw Stamp 2
                 if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
-                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stampWearIntensity / 100.0f, stampWearSize / 100.0f, System.currentTimeMillis() + index)
+                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stamp2WearIntensity / 100.0f, stamp2WearSize / 100.0f, System.currentTimeMillis() + index)
 
                     val matrix = Matrix()
                     matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
@@ -799,7 +803,7 @@ class PdfPreviewFragment : Fragment() {
 
                 // Draw Stamp 2
                 if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
-                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stampWearIntensity / 100.0f, stampWearSize / 100.0f, System.currentTimeMillis() + index)
+                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stamp2WearIntensity / 100.0f, stamp2WearSize / 100.0f, System.currentTimeMillis() + index)
 
                     val matrix = Matrix()
                     matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
