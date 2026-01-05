@@ -241,7 +241,7 @@ class PdfSettingsFragment : Fragment() {
 
                 if (i == 2) {
                     putInt("w2_align", watermarkPrefs.getInt("w2_align", 1)) // 1 = Center
-                    putFloat("w2_right_crop", watermarkPrefs.getString("w2_right_crop", "0")?.toFloatOrNull() ?: 0f)
+                    putFloat("w2_right_crop", watermarkPrefs.getString("w2_right_crop", "319")?.toFloatOrNull() ?: 319f)
                 }
             }
         }

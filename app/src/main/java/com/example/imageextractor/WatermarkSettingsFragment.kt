@@ -133,7 +133,7 @@ class WatermarkSettingsFragment : Fragment() {
         binding.watermark1AngleEditText.setText(sharedPrefs.getString("w${index}_angle", defaultAngle))
 
         if (index == 2) {
-            binding.watermarkRightCropEditText.setText(sharedPrefs.getString("w2_right_crop", "0"))
+            binding.watermarkRightCropEditText.setText(sharedPrefs.getString("w2_right_crop", "319"))
             val align = sharedPrefs.getInt("w2_align", 1) // 1 = Center default
             when (align) {
                 0 -> binding.alignLeftRadioButton.isChecked = true
