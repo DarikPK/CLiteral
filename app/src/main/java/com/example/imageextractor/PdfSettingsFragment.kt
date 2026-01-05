@@ -138,18 +138,8 @@ class PdfSettingsFragment : Fragment() {
         }
 
         binding.stamp2SettingsButton.setOnClickListener {
-            binding.stamp2SettingsLayout.visibility = if (binding.stamp2SettingsLayout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_stamp2SettingsFragment)
         }
-
-        // Auto-save for Sello 2 fields
-        binding.stamp2EnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp2_enabled", isChecked) }
-        binding.stamp2NameEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_name", text.toString()) }
-        binding.stamp2PositionEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_position", text.toString()) }
-        binding.stamp2AreaEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_area", text.toString()) }
-        binding.stamp2FontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_font_size", text.toString()) }
-        binding.stamp2VariableRotationCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp2_variable_rotation", isChecked) }
-        binding.stamp2RotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation", text.toString()) }
-        binding.stamp2RotationToleranceEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation_tolerance", text.toString()) }
     }
 
     private fun loadSettings() {
@@ -181,16 +171,6 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
         binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
         binding.dynamicHora.setText(sharedPrefs.getString("dynamic_hora", "08:00:00"))
-
-        // Load Sello 2 settings
-        binding.stamp2EnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_enabled", true)
-        binding.stamp2NameEditText.setText(sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
-        binding.stamp2PositionEditText.setText(sharedPrefs.getString("stamp2_position", "CARGO"))
-        binding.stamp2AreaEditText.setText(sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
-        binding.stamp2FontSizeEditText.setText(sharedPrefs.getString("stamp2_font_size", "13"))
-        binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
-        binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
-        binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
     }
 
     private fun showDatePicker() {
@@ -343,15 +323,18 @@ class PdfSettingsFragment : Fragment() {
             }
 
             // Sello 2 data
-            putBoolean("isStamp2Enabled", binding.stamp2EnabledCheckbox.isChecked)
-            if (binding.stamp2EnabledCheckbox.isChecked) {
-                putString("stamp2Name", binding.stamp2NameEditText.text.toString())
-                putString("stamp2Position", binding.stamp2PositionEditText.text.toString())
-                putString("stamp2Area", binding.stamp2AreaEditText.text.toString())
-                putFloat("stamp2FontSize", binding.stamp2FontSizeEditText.text.toString().toFloatOrNull() ?: 13f)
-                putBoolean("stamp2VariableRotation", binding.stamp2VariableRotationCheckbox.isChecked)
-                putFloat("stamp2Rotation", binding.stamp2RotationEditText.text.toString().toFloatOrNull() ?: 0f)
-                putFloat("stamp2RotationTolerance", binding.stamp2RotationToleranceEditText.text.toString().toFloatOrNull() ?: 5f)
+            val isStamp2Enabled = sharedPrefs.getBoolean("stamp2_enabled", true)
+            putBoolean("isStamp2Enabled", isStamp2Enabled)
+            if (isStamp2Enabled) {
+                putString("stamp2Name", sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
+                putString("stamp2Position", sharedPrefs.getString("stamp2_position", "CARGO"))
+                putString("stamp2Area", sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
+                putFloat("stamp2FontSize", sharedPrefs.getString("stamp2_font_size", "13")?.toFloatOrNull() ?: 13f)
+                putFloat("stamp2OffsetX", sharedPrefs.getString("stamp2_offset_x", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("stamp2OffsetY", sharedPrefs.getString("stamp2_offset_y", "0")?.toFloatOrNull() ?: 0f)
+                putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
+                putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
             }
 
             // Watermark 1 data

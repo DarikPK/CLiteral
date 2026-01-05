@@ -35,7 +35,16 @@
         <action
             android:id="@+id/action_pdfSettingsFragment_to_watermarkSettingsFragment"
             app:destination="@id/watermarkSettingsFragment" />
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_stamp2SettingsFragment"
+            app:destination="@id/stamp2SettingsFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/stamp2SettingsFragment"
+        android:name="com.example.imageextractor.Stamp2SettingsFragment"
+        android:label="Ajustes del Sello 2"
+        tools:layout="@layout/fragment_stamp2_settings" />
 
     <fragment
         android:id="@+id/watermarkSettingsFragment"
