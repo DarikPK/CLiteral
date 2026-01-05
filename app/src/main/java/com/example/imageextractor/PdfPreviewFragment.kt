@@ -732,6 +732,7 @@ class PdfPreviewFragment : Fragment() {
                 textToDraw = textToDraw.replace("Digito 2", dynamicDigito2 ?: "", true)
                 textToDraw = textToDraw.replace("número partida", dynamicNumeroPartida ?: "", true)
                 textToDraw = textToDraw.replace("Tipo partida", dynamicTipoPartida ?: "", true)
+                textToDraw = textToDraw.replace("\"", "")
             }
 
             val centerX = previewWidth / 2f
