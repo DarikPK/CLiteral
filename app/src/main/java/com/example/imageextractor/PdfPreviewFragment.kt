@@ -43,6 +43,7 @@ class PdfPreviewFragment : Fragment() {
 
     // Sello 2
     private var stamp2Bitmap: Bitmap? = null
+    private var wornStamp2Bitmap: Bitmap? = null
     private var stamp2State: StampState? = null
     private var isStamp2Enabled: Boolean = false
     private lateinit var stamp2Name: String
@@ -143,8 +144,8 @@ class PdfPreviewFragment : Fragment() {
                 stamp2RotationTolerance = it.getFloat("stamp2RotationTolerance", 5f)
                 stamp2WearIntensity = it.getFloat("stamp2WearIntensity", 30f)
                 stamp2WearSize = it.getFloat("stamp2WearSize", 50f)
-                stamp2DotCount = it.getFloat("stamp2_dot_count", 3f).toInt()
-                stamp2DotSize = it.getFloat("stamp2_dot_size", 13f)
+                stamp2DotCount = it.getFloat("stamp2DotCount", 3f).toInt()
+                stamp2DotSize = it.getFloat("stamp2DotSize", 13f)
             }
 
             for (i in 1..4) {
@@ -391,10 +392,11 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Update Stamp 2 Overlay
-        if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
+        val bitmapToShow2 = wornStamp2Bitmap ?: stamp2Bitmap
+        if (isStamp2Enabled && stamp2State != null && bitmapToShow2 != null) {
             binding.stamp2OverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.stamp2OverlayView.setStamp(stamp2Bitmap!!, stamp2State!!.x, stamp2State!!.y, stamp2State!!.scale, stamp2State!!.rotation, imageMatrix)
+            binding.stamp2OverlayView.setStamp(bitmapToShow2, stamp2State!!.x, stamp2State!!.y, stamp2State!!.scale, stamp2State!!.rotation, imageMatrix)
         } else {
             binding.stamp2OverlayView.visibility = View.GONE
         }
@@ -515,22 +517,20 @@ class PdfPreviewFragment : Fragment() {
                 }
 
                 // Draw Stamp 2
-                if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
-                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stamp2WearIntensity / 100.0f, stamp2WearSize / 100.0f, System.currentTimeMillis() + index)
-
+                val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
+                if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
                     val matrix = Matrix()
                     matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
 
                     var finalRotation = stamp2State!!.rotation
-                    if (stamp2VariableRotation) {
+                    if (stamp2VariableRotation && wornStamp2Bitmap != null) { // Apply variable rotation only if wear is applied
                         val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
                         finalRotation += randomRotation
                     }
 
-                    matrix.postRotate(finalRotation, wornStamp2Bitmap.width * stamp2State!!.scale / 2, wornStamp2Bitmap.height * stamp2State!!.scale / 2)
+                    matrix.postRotate(finalRotation, finalStamp2Bitmap.width * stamp2State!!.scale / 2, finalStamp2Bitmap.height * stamp2State!!.scale / 2)
                     matrix.postTranslate(stamp2State!!.x, stamp2State!!.y)
-                    canvas.drawBitmap(wornStamp2Bitmap, matrix, null)
-                    wornStamp2Bitmap.recycle()
+                    canvas.drawBitmap(finalStamp2Bitmap, matrix, null)
                 }
 
                 // Draw the final composited bitmap onto the PDF page
@@ -637,30 +637,34 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun applyWearEffect() {
-        cleanStampBitmap?.let {
-            lifecycleScope.launch(Dispatchers.IO) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
-                }
+        lifecycleScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
+            }
 
+            // Apply wear to Stamp 1
+            cleanStampBitmap?.let {
                 val normalizedIntensity = stampWearIntensity / 100.0f
                 val normalizedSize = stampWearSize / 100.0f
-
-                // Generate wear for the first page
                 firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
-
-                // If there is more than one page, generate a different wear pattern for the last page
                 if (pageBitmaps.size > 1) {
-                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1) // Different seed
+                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
                 } else {
-                    lastPageWornStampBitmap = null // No last page wear if there's only one page
+                    lastPageWornStampBitmap = null
                 }
+            }
 
-                withContext(Dispatchers.Main) {
-                    binding.applyWearButton.isActivated = true
-                    Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
-                    displayPage(currentPageIndex)
-                }
+            // Apply wear to Stamp 2
+            stamp2Bitmap?.let {
+                val normalizedIntensity = stamp2WearIntensity / 100.0f
+                val normalizedSize = stamp2WearSize / 100.0f
+                wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
+            }
+
+            withContext(Dispatchers.Main) {
+                binding.applyWearButton.isActivated = true
+                Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
+                displayPage(currentPageIndex)
             }
         }
     }
@@ -829,22 +833,20 @@ class PdfPreviewFragment : Fragment() {
             }
 
                 // Draw Stamp 2
-                if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
-                    val wornStamp2Bitmap = applyInkWear(stamp2Bitmap!!, stamp2WearIntensity / 100.0f, stamp2WearSize / 100.0f, System.currentTimeMillis() + index)
-
+                val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
+                if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
                     val matrix = Matrix()
                     matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
 
                     var finalRotation = stamp2State!!.rotation
-                    if (stamp2VariableRotation) {
+                    if (stamp2VariableRotation && wornStamp2Bitmap != null) { // Apply variable rotation only if wear is applied
                         val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
                         finalRotation += randomRotation
                     }
 
-                    matrix.postRotate(finalRotation, wornStamp2Bitmap.width * stamp2State!!.scale / 2, wornStamp2Bitmap.height * stamp2State!!.scale / 2)
+                    matrix.postRotate(finalRotation, finalStamp2Bitmap.width * stamp2State!!.scale / 2, finalStamp2Bitmap.height * stamp2State!!.scale / 2)
                     matrix.postTranslate(stamp2State!!.x, stamp2State!!.y)
-                    canvas.drawBitmap(wornStamp2Bitmap, matrix, null)
-                    wornStamp2Bitmap.recycle()
+                    canvas.drawBitmap(finalStamp2Bitmap, matrix, null)
                 }
 
             // Draw the final composited bitmap onto the PDF page
@@ -868,12 +870,42 @@ class PdfPreviewFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+
+        // Save Stamp 2 position
+        stamp2State?.let {
+            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val editor = sharedPrefs.edit()
+
+            val pageW = 1000f
+            val pageH = pageW / (595f / 842f)
+            val centerX = pageW / 2
+            val centerY = pageH / 2
+            val mmToPx = 2.83f
+
+            val stampWidth = stamp2Bitmap!!.width * it.scale
+            val stampHeight = stamp2Bitmap!!.height * it.scale
+
+            val finalStampCenterX = it.x + stampWidth / 2
+            val finalStampCenterY = it.y + stampHeight / 2
+
+            val offsetXInPx = finalStampCenterX - centerX
+            val offsetYInPx = finalStampCenterY - centerY
+
+            val offsetXInMm = offsetXInPx / mmToPx
+            val offsetYInMm = offsetYInPx / mmToPx
+
+            editor.putString("stamp2_offset_x", offsetXInMm.toInt().toString())
+            editor.putString("stamp2_offset_y", offsetYInMm.toInt().toString())
+            editor.apply()
+        }
+
         pageBitmaps.forEach { it.recycle() }
         pageBitmaps.clear()
         cleanStampBitmap?.recycle()
         firstPageWornStampBitmap?.recycle()
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
+        wornStamp2Bitmap?.recycle()
         _binding = null
     }
 
