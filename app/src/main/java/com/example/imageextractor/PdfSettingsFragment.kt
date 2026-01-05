@@ -171,14 +171,21 @@ class PdfSettingsFragment : Fragment() {
 
     private fun showDatePicker() {
         val dateSetListener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
-            selectedDate.set(Calendar.YEAR, year)
-            selectedDate.set(Calendar.MONTH, month)
-            selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            val tempDate = Calendar.getInstance()
+            tempDate.set(year, month, dayOfMonth)
 
-            binding.stampDayTextView.text = dayOfMonth.toString()
-            binding.stampMonthSpinner.setSelection(month)
-            binding.stampYearEditText.setText(year.toString())
-            validateTime() // Re-validate time when date changes
+            if (tempDate.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY) {
+                Toast.makeText(requireContext(), "No se pueden seleccionar domingos", Toast.LENGTH_SHORT).show()
+            } else {
+                selectedDate.set(Calendar.YEAR, year)
+                selectedDate.set(Calendar.MONTH, month)
+                selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                binding.stampDayTextView.text = dayOfMonth.toString()
+                binding.stampMonthSpinner.setSelection(month)
+                binding.stampYearEditText.setText(year.toString())
+                validateTime() // Re-validate time when date changes
+            }
         }
 
         val datePickerDialog = DatePickerDialog(
@@ -188,9 +195,6 @@ class PdfSettingsFragment : Fragment() {
             selectedDate.get(Calendar.MONTH),
             selectedDate.get(Calendar.DAY_OF_MONTH)
         )
-
-        datePickerDialog.datePicker.minDate = System.currentTimeMillis() - 1000
-        datePickerDialog.datePicker.dayOfWeekNotHighlighted = Calendar.SUNDAY
 
         datePickerDialog.show()
     }
