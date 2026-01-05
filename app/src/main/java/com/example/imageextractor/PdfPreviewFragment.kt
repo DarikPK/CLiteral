@@ -170,28 +170,6 @@ class PdfPreviewFragment : Fragment() {
             dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
         }
 
-        stamp2Bitmap?.let { stamp ->
-            if (pageBitmaps.isEmpty()) return
-
-            val mmToPx = 2.83f
-            val offsetX = stamp2OffsetX * mmToPx
-            val offsetY = stamp2OffsetY * mmToPx
-
-            // For Stamp 2, we don't scale it with stampSizePercent, we use its generated size.
-            // Let's assume a default scale of 1 for now, and handle positioning.
-            val scale = 1.0f
-            val stampWidth = stamp.width * scale
-
-            val pageW = 1000f
-            val xPos = pageW - stampWidth - offsetX
-            val yPos = offsetY
-
-            stamp2State = StampState(
-                x = xPos,
-                y = yPos,
-                scale = scale,
-                rotation = stamp2Rotation
-            )
         }
     }
 
