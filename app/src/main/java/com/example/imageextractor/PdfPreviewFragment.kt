@@ -657,8 +657,8 @@ class PdfPreviewFragment : Fragment() {
 
             // Apply wear to Stamp 2
             stamp2Bitmap?.let {
-                val normalizedIntensity = stamp2WearIntensity / 100.0f
-                val normalizedSize = stamp2WearSize / 100.0f
+                val normalizedIntensity = (stamp2WearIntensity / 2.0f) / 100.0f
+                val normalizedSize = (stamp2WearSize / 2.0f) / 100.0f
                 wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
             }
 

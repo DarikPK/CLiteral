@@ -57,8 +57,8 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
         binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
-        binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2_dot_count", "3"))
-        binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2_dot_size", "13"))
+        binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2DotCount", "stamp2_dot_count", "3"))
+        binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2DotSize", "stamp2_dot_size", "13"))
 
         binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
         binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
@@ -87,8 +87,8 @@ class Stamp2SettingsFragment : Fragment() {
         setupFirstClickListener(binding.stamp2PositionEditText)
         setupFirstClickListener(binding.stamp2AreaEditText)
 
-        binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_dot_count", text.toString()) }
-        binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_dot_size", text.toString()) }
+        binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotCount", text.toString()) }
+        binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotSize", text.toString()) }
 
         // Auto-save for Sliders
         binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
@@ -117,11 +117,11 @@ class Stamp2SettingsFragment : Fragment() {
         sharedPrefs.edit().putFloat(key, value).apply()
     }
 
-    private fun getStringPreferenceSafely(key: String, defaultValue: String): String {
-        val value = sharedPrefs.all[key]
+    private fun getStringPreferenceSafely(newKey: String, oldKey: String, defaultValue: String): String {
+        val value = sharedPrefs.all[newKey] ?: sharedPrefs.all[oldKey]
         return when (value) {
             is String -> value
-            is Float -> value.toInt().toString() // Convert old float to string
+            is Float -> value.toInt().toString()
             else -> defaultValue
         }
     }
