@@ -587,16 +587,12 @@ class PdfPreviewFragment : Fragment() {
 
         val dotPaint = Paint().apply {
             color = Color.parseColor("#0047AB")
-            textSize = stamp2DotSize
-            typeface = Typeface.create("Arial", Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
+            style = Paint.Style.FILL
             isAntiAlias = true
         }
 
-        // 2. Prepare text lines
-        val dots = ".".repeat(stamp2DotCount.coerceIn(1, 10))
+        // 2. Prepare text lines (no dots)
         val textLines = listOf(
-            dots,
             stamp2Name.uppercase(),
             stamp2Position.uppercase(),
             stamp2Area.uppercase()
@@ -604,33 +600,51 @@ class PdfPreviewFragment : Fragment() {
 
         // 3. Calculate dimensions
         val textBounds = Rect()
-        textPaint.getTextBounds("A", 0, 1, textBounds) // Use a standard char for height
+        textPaint.getTextBounds("A", 0, 1, textBounds)
         val lineHeight = textBounds.height() * 1.5f
         val totalTextHeight = textLines.size * lineHeight
 
-        val dotWidth = dotPaint.measureText(dots)
-        val nameWidth = textPaint.measureText(textLines[1])
-        val posWidth = textPaint.measureText(textLines[2])
-        val areaWidth = textPaint.measureText(textLines[3])
-        val maxWidth = maxOf(dotWidth, nameWidth, posWidth, areaWidth)
+        val nameWidth = textPaint.measureText(textLines[0])
+        val posWidth = textPaint.measureText(textLines[1])
+        val areaWidth = textPaint.measureText(textLines[2])
+        val maxTextWidth = maxOf(nameWidth, posWidth, areaWidth)
 
-        val bitmapWidth = (maxWidth + 40).toInt() // Add more padding for center align
-        val bitmapHeight = (totalTextHeight + 20).toInt()
+        val radius = stamp2DotSize / 2f
+        val spacing = radius * 2.5f
+        val totalDotsWidth = if (stamp2DotCount > 0) (stamp2DotCount - 1) * spacing + (radius * 2) else 0f
+
+        val bitmapWidth = (maxOf(maxTextWidth, totalDotsWidth) + 40).toInt()
+        val dotsHeight = if (stamp2DotCount > 0) (radius * 2) + 10f else 0f
+        val bitmapHeight = (totalTextHeight + dotsHeight + 20).toInt()
 
         val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val xPos = bitmapWidth / 2f
 
-        // 4. Draw lines
-        var yPos = 20 + lineHeight - textBounds.bottom // Start with more top padding
+        // 4. Draw dynamic dots
+        var yPos = 20f
+        if (stamp2DotCount > 0) {
+            val startX = xPos - ((stamp2DotCount - 1) * spacing) / 2f
+            yPos = radius + 10f
+            repeat(stamp2DotCount) { i ->
+                canvas.drawCircle(startX + i * spacing, yPos, radius, dotPaint)
+            }
+            yPos += (radius * 2) + 10f
+        } else {
+             yPos = 10 + lineHeight - textBounds.bottom
+        }
 
-        // Draw dots with its own paint
-        canvas.drawText(dots, xPos, yPos, dotPaint)
-        yPos += lineHeight
+        // Adjust yPos for text drawing
+        if (stamp2DotCount > 0) {
+            yPos = dotsHeight + 10 + lineHeight - textBounds.bottom
+        } else {
+            yPos = 10 + lineHeight - textBounds.bottom
+        }
 
-        // Draw other lines with the main text paint
-        for (i in 1 until textLines.size) {
-            canvas.drawText(textLines[i], xPos, yPos, textPaint)
+
+        // 5. Draw text lines
+        for (line in textLines) {
+            canvas.drawText(line, xPos, yPos, textPaint)
             yPos += lineHeight
         }
 
