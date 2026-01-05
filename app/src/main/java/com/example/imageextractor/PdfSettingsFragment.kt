@@ -254,14 +254,41 @@ class PdfSettingsFragment : Fragment() {
                 val defaultText = when (i) {
                     1 -> "Certificado Literal"
                     2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
+                    3 -> "PUBLICIDAD : \"Número publicidad\" Recibo N° \"Año\"-\"Digito 1\"-\"Digito 2\" Partida N° \"número partida\" CERTI. LITERAL - \"Tipo partida\""
                     else -> ""
                 }
-                val defaultOpacity = if (i <= 2) "25" else "50"
-                val defaultSize = if (i == 1) "114" else "71"
-                val defaultScale = if (i == 2) "80" else "100"
-                val defaultDx = if (i == 1) "-15" else if (i == 2) "29" else "0"
-                val defaultDy = if (i == 1) "-14" else if (i == 2) "19" else "0"
-                val defaultAngle = if (i == 1) "-55" else if (i == 2) "55" else "0"
+                val defaultOpacity = when (i) {
+                    1, 2 -> "25"
+                    3 -> "90"
+                    else -> "50"
+                }
+                val defaultSize = when (i) {
+                    1 -> "114"
+                    2 -> "71"
+                    3 -> "23"
+                    else -> "72"
+                }
+                val defaultScale = when (i) {
+                    2 -> "80"
+                    3 -> "90"
+                    else -> "100"
+                }
+                val defaultDx = when (i) {
+                    1 -> "-15"
+                    2 -> "29"
+                    else -> "0" // For WM3 and WM4
+                }
+                val defaultDy = when (i) {
+                    1 -> "-14"
+                    2 -> "19"
+                    3 -> "-232"
+                    else -> "0"
+                }
+                val defaultAngle = when (i) {
+                    1 -> "-55"
+                    2 -> "55"
+                    else -> "0" // For WM3 and WM4
+                }
 
                 putString("w${i}_text", watermarkPrefs.getString("w${i}_text", defaultText))
                 putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", defaultOpacity)?.toFloatOrNull() ?: 50f)
