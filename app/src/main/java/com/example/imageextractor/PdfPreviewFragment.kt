@@ -60,6 +60,8 @@ class PdfPreviewFragment : Fragment() {
     private var stamp2WearSize: Float = 50f
     private var stamp2DotCount: Int = 3
     private var stamp2DotSize: Float = 13f
+    private var stamp2Brightness: Float = 50f
+    private var stamp2Contrast: Float = 50f
 
 
     private var isStampEnabled: Boolean = false
@@ -147,6 +149,8 @@ class PdfPreviewFragment : Fragment() {
                 stamp2WearSize = it.getFloat("stamp2WearSize", 50f)
                 stamp2DotCount = it.getFloat("stamp2DotCount", 3f).toInt()
                 stamp2DotSize = it.getFloat("stamp2DotSize", 13f)
+                stamp2Brightness = it.getFloat("stamp2Brightness", 50f)
+                stamp2Contrast = it.getFloat("stamp2Contrast", 50f)
             }
 
             for (i in 1..4) {
@@ -614,7 +618,7 @@ class PdfPreviewFragment : Fragment() {
         val totalDotsWidth = if (stamp2DotCount > 0) (stamp2DotCount - 1) * spacing + (radius * 2) else 0f
 
         val bitmapWidth = (maxOf(maxTextWidth, totalDotsWidth) + 40).toInt()
-        val dotsHeight = if (stamp2DotCount > 0) (radius * 2) + 10f else 0f
+        val dotsHeight = if (stamp2DotCount > 0) (radius * 2) + 5f else 0f // Reduced space
         val bitmapHeight = (totalTextHeight + dotsHeight + 20).toInt()
 
         val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
@@ -622,23 +626,20 @@ class PdfPreviewFragment : Fragment() {
         val xPos = bitmapWidth / 2f
 
         // 4. Draw dynamic dots
-        var yPos = 20f
+        var yPos: Float
         if (stamp2DotCount > 0) {
             val startX = xPos - ((stamp2DotCount - 1) * spacing) / 2f
-            yPos = radius + 10f
+            yPos = radius + 5f // Reduced padding
             repeat(stamp2DotCount) { i ->
                 canvas.drawCircle(startX + i * spacing, yPos, radius, dotPaint)
             }
-            yPos += (radius * 2) + 10f
-        } else {
-             yPos = 10 + lineHeight - textBounds.bottom
         }
 
-        // Adjust yPos for text drawing
-        if (stamp2DotCount > 0) {
-            yPos = dotsHeight + 10 + lineHeight - textBounds.bottom
+        // 5. Draw text lines
+        yPos = if (stamp2DotCount > 0) {
+            dotsHeight + 5 + lineHeight - textBounds.bottom // Reduced gap
         } else {
-            yPos = 10 + lineHeight - textBounds.bottom
+            10 + lineHeight - textBounds.bottom
         }
 
 
@@ -648,7 +649,7 @@ class PdfPreviewFragment : Fragment() {
             yPos += lineHeight
         }
 
-        this.stamp2Bitmap = bitmap
+        this.stamp2Bitmap = applyStamp2Adjustments(bitmap)
     }
 
     private fun applyWearEffect() {
@@ -779,6 +780,27 @@ class PdfPreviewFragment : Fragment() {
         }
         val brightnessValue = (stampBrightness - 50) * 5f
         val contrastValue = stampContrast / 50f
+        val colorMatrix = ColorMatrix(floatArrayOf(
+            contrastValue, 0f, 0f, 0f, brightnessValue,
+            0f, contrastValue, 0f, 0f, brightnessValue,
+            0f, 0f, contrastValue, 0f, brightnessValue,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        adjustedBitmap.density = originalBitmap.density
+        val canvas = Canvas(adjustedBitmap)
+        val paint = Paint()
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return adjustedBitmap
+    }
+
+    private fun applyStamp2Adjustments(originalBitmap: Bitmap): Bitmap {
+        if (stamp2Brightness == 50f && stamp2Contrast == 50f) {
+            return originalBitmap
+        }
+        val brightnessValue = (stamp2Brightness - 50) * 5f
+        val contrastValue = stamp2Contrast / 50f
         val colorMatrix = ColorMatrix(floatArrayOf(
             contrastValue, 0f, 0f, 0f, brightnessValue,
             0f, contrastValue, 0f, 0f, brightnessValue,

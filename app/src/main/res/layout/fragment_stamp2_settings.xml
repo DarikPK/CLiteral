@@ -236,6 +236,36 @@
                 android:valueFrom="0.0"
                 android:valueTo="100.0"
                 android:stepSize="1.0" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Brillo"
+                style="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_marginTop="16dp"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/stamp2_brightness_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="0.0"
+                android:valueTo="100.0"
+                android:stepSize="1.0"
+                android:value="50.0"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Contraste"
+                style="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_marginTop="16dp"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/stamp2_contrast_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="0.0"
+                android:valueTo="100.0"
+                android:stepSize="1.0"
+                android:value="50.0"/>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
