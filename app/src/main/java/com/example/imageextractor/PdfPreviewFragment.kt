@@ -742,13 +742,10 @@ class PdfPreviewFragment : Fragment() {
                     textToDraw = textToDraw.replace("\"", "")
                 }
                 3 -> { // Watermark 4
-                    textToDraw = textToDraw.replace("fecha", dynamicFecha ?: "", true)
-                    textToDraw = textToDraw.replace("Hora", dynamicHoraWm4 ?: "", true)
+                    textToDraw = textToDraw.replace("\"fecha\"", dynamicFecha ?: "", true)
+                    textToDraw = textToDraw.replace("\"Hora\"", dynamicHoraWm4 ?: "", true)
                     textToDraw = textToDraw.replace("\"x\"", currentPage.toString(), true)
                     textToDraw = textToDraw.replace("\"y\"", totalPages.toString(), true)
-                    // Después de reemplazar los placeholders con comillas, eliminamos las comillas restantes
-                    // de otros elementos del texto si es necesario, aunque el enfoque anterior era propenso a errores.
-                    // El reemplazo específico de arriba es más seguro.
                 }
             }
 
