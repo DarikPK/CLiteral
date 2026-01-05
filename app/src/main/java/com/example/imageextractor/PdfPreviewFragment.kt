@@ -22,6 +22,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Random
+import kotlin.math.max
+import kotlin.math.min
 
 class PdfPreviewFragment : Fragment() {
 
@@ -253,6 +255,7 @@ class PdfPreviewFragment : Fragment() {
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
             }
+            initializeStamp2State()
             initializeStampStates()
 
 
@@ -317,6 +320,32 @@ class PdfPreviewFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun initializeStamp2State() {
+        if (!isStamp2Enabled || stamp2Bitmap == null || pageBitmaps.isEmpty()) return
+
+        val pageW = 1000f
+        val pageH = pageW / (595f / 842f)
+
+        val mmToPx = 2.83f
+        val dx = stamp2OffsetX * mmToPx
+        val dy = stamp2OffsetY * mmToPx
+
+        val scale = 1f
+        val stampWidth = stamp2Bitmap!!.width * scale
+        val stampHeight = stamp2Bitmap!!.height * scale
+
+        val centerX = pageW / 2
+        val centerY = pageH / 2
+
+        var x = centerX + dx - stampWidth / 2
+        var y = centerY + dy - stampHeight / 2
+
+        x = clamp(x, 0f, pageW - stampWidth)
+        y = clamp(y, 0f, pageH - stampHeight)
+
+        stamp2State = StampState(x, y, scale, stamp2Rotation)
     }
 
     private fun displayPage(index: Int) {
@@ -948,4 +977,6 @@ class PdfPreviewFragment : Fragment() {
         }
         canvas.restore()
     }
+
+    private fun clamp(v: Float, min: Float, max: Float) = max(min, min(v, max))
 }
