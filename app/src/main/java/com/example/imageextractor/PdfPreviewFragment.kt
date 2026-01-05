@@ -746,6 +746,7 @@ class PdfPreviewFragment : Fragment() {
                     textToDraw = textToDraw.replace("Hora", dynamicHoraWm4 ?: "", true)
                     textToDraw = textToDraw.replace("x", currentPage.toString(), true)
                     textToDraw = textToDraw.replace("y", totalPages.toString(), true)
+                    textToDraw = textToDraw.replace("\"", "")
                 }
             }
 

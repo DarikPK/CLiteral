@@ -205,13 +205,13 @@ class PdfSettingsFragment : Fragment() {
 
         val (isValid, message) = when (dayOfWeek) {
             Calendar.SATURDAY -> {
-                isTimeInValidRange(timeString, "09:00:00", "13:00:00") to "Hora fuera del rango de Sábado (09:00 - 13:00)"
+                isTimeInValidRange(timeString, "08:30:00", "13:00:00") to "Hora fuera del rango de Sábado (08:30 - 13:00)"
             }
             Calendar.SUNDAY -> {
-                false to "No se permite seleccionar Domingo"
+                true to "" // La validación del domingo ya se hace en el DatePicker
             }
             else -> { // Monday to Friday
-                isTimeInValidRange(timeString, "08:00:00", "17:00:00") to "Hora fuera del rango de Lunes a Viernes (08:00 - 17:00)"
+                isTimeInValidRange(timeString, "08:30:00", "17:00:00") to "Hora fuera del rango de Lunes a Viernes (08:30 - 17:00)"
             }
         }
 
