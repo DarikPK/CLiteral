@@ -93,41 +93,48 @@ class WatermarkSettingsFragment : Fragment() {
             1 -> "Certificado Literal"
             2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
             3 -> "PUBLICIDAD : \"Número publicidad\" Recibo N° \"Año\"-\"Digito 1\"-\"Digito 2\" Partida N° \"número partida\" CERTI. LITERAL - \"Tipo partida\""
+            4 -> "Pág. Solicitadas : Todas  IMPRESION :  \"fecha\" \"Hora\" Página \"x\" de \"y\"\nNo existen Títulos Pendientes y/o Suspendidos  Inmovilización: Ninguno"
             else -> ""
         }
         val defaultOpacity = when (index) {
             1 -> "25"
             2 -> "25"
             3 -> "90"
+            4 -> "80"
             else -> "50"
         }
         val defaultSize = when (index) {
             1 -> "114"
             2 -> "71"
             3 -> "23"
+            4 -> "15"
             else -> "72"
         }
         val defaultScale = when (index) {
             2 -> "80"
             3 -> "90"
+            4 -> "100"
             else -> "100"
         }
         val defaultDx = when (index) {
             1 -> "-15"
             2 -> "29"
             3 -> "0"
+            4 -> "165"
             else -> "0"
         }
         val defaultDy = when (index) {
             1 -> "-14"
             2 -> "19"
             3 -> "-232"
+            4 -> "0"
             else -> "0"
         }
         val defaultAngle = when (index) {
             1 -> "-55"
             2 -> "55"
             3 -> "0"
+            4 -> "-90"
             else -> "0"
         }
 
