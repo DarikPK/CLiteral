@@ -71,6 +71,14 @@ class PdfPreviewFragment : Fragment() {
 
     private val watermarks = mutableListOf<Watermark>()
 
+    // Dynamic fields for watermark 3
+    private var dynamicNumeroPublicidad: String? = null
+    private var dynamicAno: String? = null
+    private var dynamicDigito1: String? = null
+    private var dynamicDigito2: String? = null
+    private var dynamicNumeroPartida: String? = null
+    private var dynamicTipoPartida: String? = null
+
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,6 +123,13 @@ class PdfPreviewFragment : Fragment() {
                     ))
                 }
             }
+            // Read dynamic values for watermark 3
+            dynamicNumeroPublicidad = it.getString("dynamic_numero_publicidad")
+            dynamicAno = it.getString("dynamic_ano")
+            dynamicDigito1 = it.getString("dynamic_digito1")
+            dynamicDigito2 = it.getString("dynamic_digito2")
+            dynamicNumeroPartida = it.getString("dynamic_numero_partida")
+            dynamicTipoPartida = it.getString("dynamic_tipo_partida")
         }
     }
 
@@ -706,7 +721,17 @@ class PdfPreviewFragment : Fragment() {
                 color = Color.BLACK
                 alpha = (watermark.opacity / 100 * 255).toInt()
                 textSize = watermark.size * (watermark.scale / 100f)
-                typeface = Typeface.create("Arial", Typeface.NORMAL)
+                typeface = if (index == 2) Typeface.create("Arial", Typeface.BOLD) else Typeface.create("Arial", Typeface.NORMAL)
+            }
+
+            var textToDraw = watermark.text
+            if (index == 2) { // Watermark 3 is at index 2
+                textToDraw = textToDraw.replace("Número publicidad", dynamicNumeroPublicidad ?: "", true)
+                textToDraw = textToDraw.replace("Año", dynamicAno ?: "", true)
+                textToDraw = textToDraw.replace("Digito 1", dynamicDigito1 ?: "", true)
+                textToDraw = textToDraw.replace("Digito 2", dynamicDigito2 ?: "", true)
+                textToDraw = textToDraw.replace("número partida", dynamicNumeroPartida ?: "", true)
+                textToDraw = textToDraw.replace("Tipo partida", dynamicTipoPartida ?: "", true)
             }
 
             val centerX = previewWidth / 2f
@@ -741,8 +766,8 @@ class PdfPreviewFragment : Fragment() {
 
             canvas.rotate(watermark.angle)
 
-            if (index == 1 && watermark.text.contains("\n")) { // index 1 is Watermark 2
-                val lines = watermark.text.split("\n")
+            if (index == 1 && textToDraw.contains("\n")) { // index 1 is Watermark 2
+                val lines = textToDraw.split("\n")
                 paint.textAlign = when (watermark.align) {
                     0 -> Paint.Align.LEFT
                     2 -> Paint.Align.RIGHT
@@ -763,7 +788,7 @@ class PdfPreviewFragment : Fragment() {
                 }
             } else {
                 paint.textAlign = Paint.Align.CENTER
-                canvas.drawText(watermark.text, 0f, 0f, paint)
+                canvas.drawText(textToDraw, 0f, 0f, paint)
             }
 
             canvas.restore()

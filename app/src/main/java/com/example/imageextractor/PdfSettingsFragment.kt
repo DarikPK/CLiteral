@@ -45,6 +45,7 @@ class PdfSettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         setupMonthSpinner()
+        setupDynamicFields()
         loadSettings()
         setupListeners()
     }
@@ -65,6 +66,17 @@ class PdfSettingsFragment : Fragment() {
         }
     }
 
+    private fun setupDynamicFields() {
+        ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.tipo_partida_array,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            binding.dynamicTipoPartidaSpinner.adapter = adapter
+        }
+    }
+
     private fun setupListeners() {
         // Auto-save for all EditTexts
         binding.brightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("brightness", text.toString()) }
@@ -81,6 +93,12 @@ class PdfSettingsFragment : Fragment() {
         binding.stampBrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_brightness", text.toString()) }
         binding.stampContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_contrast", text.toString()) }
 
+        // Dynamic fields auto-save
+        binding.dynamicNumeroPublicidad.doOnTextChanged { text, _, _, _ -> saveString("dynamic_numero_publicidad", text.toString()) }
+        binding.dynamicAno.doOnTextChanged { text, _, _, _ -> saveString("dynamic_ano", text.toString()) }
+        binding.dynamicDigito1.doOnTextChanged { text, _, _, _ -> saveString("dynamic_digito1", text.toString()) }
+        binding.dynamicDigito2.doOnTextChanged { text, _, _, _ -> saveString("dynamic_digito2", text.toString()) }
+
         // Auto-save for CheckBox
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
 
@@ -92,6 +110,13 @@ class PdfSettingsFragment : Fragment() {
         binding.stampMonthSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 saveInt("stamp_month_position", position)
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        binding.dynamicTipoPartidaSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                saveInt("dynamic_tipo_partida_position", position)
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
@@ -122,6 +147,13 @@ class PdfSettingsFragment : Fragment() {
         binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
 
         binding.stampMonthSpinner.setSelection(sharedPrefs.getInt("stamp_month_position", 0))
+
+        // Load dynamic fields
+        binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
+        binding.dynamicAno.setText(sharedPrefs.getString("dynamic_ano", "2026"))
+        binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
+        binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
+        binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
     }
 
     // SharedPreferences helpers
@@ -244,6 +276,14 @@ class PdfSettingsFragment : Fragment() {
                     putFloat("w2_right_crop", watermarkPrefs.getString("w2_right_crop", "319")?.toFloatOrNull() ?: 319f)
                 }
             }
+
+            // Pass dynamic values for watermark 3
+            putString("dynamic_numero_publicidad", binding.dynamicNumeroPublicidad.text.toString())
+            putString("dynamic_ano", binding.dynamicAno.text.toString())
+            putString("dynamic_digito1", binding.dynamicDigito1.text.toString())
+            putString("dynamic_digito2", binding.dynamicDigito2.text.toString())
+            putString("dynamic_numero_partida", folder.partidaId)
+            putString("dynamic_tipo_partida", binding.dynamicTipoPartidaSpinner.selectedItem.toString())
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
