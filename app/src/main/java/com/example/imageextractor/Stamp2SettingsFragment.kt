@@ -57,12 +57,11 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
         binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
+        binding.stamp2DotCountEditText.setText(sharedPrefs.getString("stamp2_dot_count", "3"))
+        binding.stamp2DotSizeEditText.setText(sharedPrefs.getString("stamp2_dot_size", "13"))
 
         binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
         binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
-
-        binding.dotCountSlider.value = sharedPrefs.getFloat("stamp2_dot_count", 3f)
-        binding.dotSizeSlider.value = sharedPrefs.getFloat("stamp2_dot_size", 13f)
 
         // Initialize first click tracker based on default values
         if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
@@ -88,11 +87,12 @@ class Stamp2SettingsFragment : Fragment() {
         setupFirstClickListener(binding.stamp2PositionEditText)
         setupFirstClickListener(binding.stamp2AreaEditText)
 
+        binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_dot_count", text.toString()) }
+        binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_dot_size", text.toString()) }
+
         // Auto-save for Sliders
         binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
         binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
-        binding.dotCountSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_dot_count", value) }
-        binding.dotSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_dot_size", value) }
     }
 
     private fun setupFirstClickListener(editText: TextInputEditText) {

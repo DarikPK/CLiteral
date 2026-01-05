@@ -337,8 +337,8 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
                 putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
                 putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
-                putFloat("stamp2_dot_count", sharedPrefs.getFloat("stamp2_dot_count", 3f))
-                putFloat("stamp2_dot_size", sharedPrefs.getFloat("stamp2_dot_size", 13f))
+                putFloat("stamp2_dot_count", sharedPrefs.getString("stamp2_dot_count", "3")?.toFloatOrNull() ?: 3f)
+                putFloat("stamp2_dot_size", sharedPrefs.getString("stamp2_dot_size", "13")?.toFloatOrNull() ?: 13f)
             }
 
             // Watermark 1 data
