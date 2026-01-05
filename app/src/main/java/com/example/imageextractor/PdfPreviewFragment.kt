@@ -78,6 +78,8 @@ class PdfPreviewFragment : Fragment() {
     private var dynamicDigito2: String? = null
     private var dynamicNumeroPartida: String? = null
     private var dynamicTipoPartida: String? = null
+    private var dynamicFecha: String? = null
+    private var dynamicHoraWm4: String? = null
 
     data class StampState(var x: Float, var y: Float, var scale: Float, var rotation: Float)
 
@@ -130,6 +132,10 @@ class PdfPreviewFragment : Fragment() {
             dynamicDigito2 = it.getString("dynamic_digito2")
             dynamicNumeroPartida = it.getString("dynamic_numero_partida")
             dynamicTipoPartida = it.getString("dynamic_tipo_partida")
+
+            // Read data for watermark 4
+            dynamicFecha = it.getString("dynamic_fecha")
+            dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
         }
     }
 
@@ -316,7 +322,7 @@ class PdfPreviewFragment : Fragment() {
         canvas.drawColor(Color.WHITE)
 
         drawBitmapWithMargins(canvas, originalBitmap, previewWidth, previewHeight)
-        drawWatermarks(canvas, previewWidth, previewHeight)
+        drawWatermarks(canvas, previewWidth, previewHeight, pageIndex + 1, pageBitmaps.size)
 
         // The stamp is no longer drawn here to avoid the "ghost" image effect.
         // It's now drawn only in the interactive overlay and during the final PDF save.
@@ -707,7 +713,7 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int) {
+    private fun drawWatermarks(canvas: Canvas, pageW: Int, pageH: Int, currentPage: Int, totalPages: Int) {
         val previewWidth = 1000f
         val scaleFactor = pageW / previewWidth
 
@@ -725,14 +731,22 @@ class PdfPreviewFragment : Fragment() {
             }
 
             var textToDraw = watermark.text
-            if (index == 2) { // Watermark 3 is at index 2
-                textToDraw = textToDraw.replace("Número publicidad", dynamicNumeroPublicidad ?: "", true)
-                textToDraw = textToDraw.replace("Año", dynamicAno ?: "", true)
-                textToDraw = textToDraw.replace("Digito 1", dynamicDigito1 ?: "", true)
-                textToDraw = textToDraw.replace("Digito 2", dynamicDigito2 ?: "", true)
-                textToDraw = textToDraw.replace("número partida", dynamicNumeroPartida ?: "", true)
-                textToDraw = textToDraw.replace("Tipo partida", dynamicTipoPartida ?: "", true)
-                textToDraw = textToDraw.replace("\"", "")
+            when (index) {
+                2 -> { // Watermark 3
+                    textToDraw = textToDraw.replace("Número publicidad", dynamicNumeroPublicidad ?: "", true)
+                    textToDraw = textToDraw.replace("Año", dynamicAno ?: "", true)
+                    textToDraw = textToDraw.replace("Digito 1", dynamicDigito1 ?: "", true)
+                    textToDraw = textToDraw.replace("Digito 2", dynamicDigito2 ?: "", true)
+                    textToDraw = textToDraw.replace("número partida", dynamicNumeroPartida ?: "", true)
+                    textToDraw = textToDraw.replace("Tipo partida", dynamicTipoPartida ?: "", true)
+                    textToDraw = textToDraw.replace("\"", "")
+                }
+                3 -> { // Watermark 4
+                    textToDraw = textToDraw.replace("fecha", dynamicFecha ?: "", true)
+                    textToDraw = textToDraw.replace("Hora", dynamicHoraWm4 ?: "", true)
+                    textToDraw = textToDraw.replace("x", currentPage.toString(), true)
+                    textToDraw = textToDraw.replace("y", totalPages.toString(), true)
+                }
             }
 
             val centerX = previewWidth / 2f
@@ -767,7 +781,7 @@ class PdfPreviewFragment : Fragment() {
 
             canvas.rotate(watermark.angle)
 
-            if (index == 1 && textToDraw.contains("\n")) { // index 1 is Watermark 2
+            if ((index == 1 || index == 3) && textToDraw.contains("\n")) { // WM2 or WM4 with newlines
                 val lines = textToDraw.split("\n")
                 paint.textAlign = when (watermark.align) {
                     0 -> Paint.Align.LEFT

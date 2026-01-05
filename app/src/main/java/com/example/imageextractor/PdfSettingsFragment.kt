@@ -15,14 +15,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.app.DatePickerDialog
 import android.content.ContentUris
 import android.provider.MediaStore
 import com.google.android.material.slider.Slider
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class PdfSettingsFragment : Fragment() {
 
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private val selectedDate = Calendar.getInstance()
 
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
@@ -85,7 +91,7 @@ class PdfSettingsFragment : Fragment() {
         binding.marginBottomEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_bottom", text.toString()) }
         binding.marginLeftEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_left", text.toString()) }
         binding.marginRightEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_right", text.toString()) }
-        binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) }
+        // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
         binding.stampSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_size", text.toString()) }
@@ -98,6 +104,12 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicAno.doOnTextChanged { text, _, _, _ -> saveString("dynamic_ano", text.toString()) }
         binding.dynamicDigito1.doOnTextChanged { text, _, _, _ -> saveString("dynamic_digito1", text.toString()) }
         binding.dynamicDigito2.doOnTextChanged { text, _, _, _ -> saveString("dynamic_digito2", text.toString()) }
+        binding.dynamicHora.doOnTextChanged { text, _, _, _ ->
+            saveString("dynamic_hora", text.toString())
+            validateTime()
+        }
+
+        binding.stampDayTextView.setOnClickListener { showDatePicker() }
 
         // Auto-save for CheckBox
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
@@ -133,7 +145,7 @@ class PdfSettingsFragment : Fragment() {
         binding.marginBottomEditText.setText(sharedPrefs.getString("margin_bottom", "50"))
         binding.marginLeftEditText.setText(sharedPrefs.getString("margin_left", "0"))
         binding.marginRightEditText.setText(sharedPrefs.getString("margin_right", "15"))
-        binding.stampDayEditText.setText(sharedPrefs.getString("stamp_day", "1"))
+        binding.stampDayTextView.text = sharedPrefs.getString("stamp_day", "1")
         binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
         binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
@@ -154,6 +166,68 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
         binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
+        binding.dynamicHora.setText(sharedPrefs.getString("dynamic_hora", "08:00:00"))
+    }
+
+    private fun showDatePicker() {
+        val dateSetListener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
+            selectedDate.set(Calendar.YEAR, year)
+            selectedDate.set(Calendar.MONTH, month)
+            selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+            binding.stampDayTextView.text = dayOfMonth.toString()
+            binding.stampMonthSpinner.setSelection(month)
+            binding.stampYearEditText.setText(year.toString())
+            validateTime() // Re-validate time when date changes
+        }
+
+        val datePickerDialog = DatePickerDialog(
+            requireContext(),
+            dateSetListener,
+            selectedDate.get(Calendar.YEAR),
+            selectedDate.get(Calendar.MONTH),
+            selectedDate.get(Calendar.DAY_OF_MONTH)
+        )
+
+        datePickerDialog.datePicker.minDate = System.currentTimeMillis() - 1000
+        datePickerDialog.datePicker.dayOfWeekNotHighlighted = Calendar.SUNDAY
+
+        datePickerDialog.show()
+    }
+
+    private fun validateTime() {
+        val timeString = binding.dynamicHora.text.toString()
+        val dayOfWeek = selectedDate.get(Calendar.DAY_OF_WEEK)
+
+        val (isValid, message) = when (dayOfWeek) {
+            Calendar.SATURDAY -> {
+                isTimeInValidRange(timeString, "09:00:00", "13:00:00") to "Hora fuera del rango de Sábado (09:00 - 13:00)"
+            }
+            Calendar.SUNDAY -> {
+                false to "No se permite seleccionar Domingo"
+            }
+            else -> { // Monday to Friday
+                isTimeInValidRange(timeString, "08:00:00", "17:00:00") to "Hora fuera del rango de Lunes a Viernes (08:00 - 17:00)"
+            }
+        }
+
+        if (!isValid) {
+            binding.dynamicHora.error = message
+        } else {
+            binding.dynamicHora.error = null
+        }
+    }
+
+    private fun isTimeInValidRange(time: String, minTime: String, maxTime: String): Boolean {
+        return try {
+            val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val timeDate = sdf.parse(time)
+            val minDate = sdf.parse(minTime)
+            val maxDate = sdf.parse(maxTime)
+            timeDate in minDate..maxDate
+        } catch (e: Exception) {
+            false
+        }
     }
 
     // SharedPreferences helpers
@@ -175,7 +249,7 @@ class PdfSettingsFragment : Fragment() {
 
 
     private fun validateAndProceed() {
-        if (binding.stampEnabledCheckbox.isChecked && binding.stampDayEditText.text.toString().isBlank()) {
+        if (binding.stampEnabledCheckbox.isChecked && binding.stampDayTextView.text.toString().isBlank()) {
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Campo Requerido")
                 .setMessage("Por favor, ingrese un día para el sello antes de continuar.")
@@ -226,7 +300,7 @@ class PdfSettingsFragment : Fragment() {
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
-                val dayInt = binding.stampDayEditText.text.toString().toIntOrNull()
+                val dayInt = binding.stampDayTextView.text.toString().toIntOrNull()
                 val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
                 val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
                 val stampYear = binding.stampYearEditText.text.toString()
@@ -311,6 +385,11 @@ class PdfSettingsFragment : Fragment() {
             putString("dynamic_digito2", binding.dynamicDigito2.text.toString())
             putString("dynamic_numero_partida", folder.partidaId)
             putString("dynamic_tipo_partida", binding.dynamicTipoPartidaSpinner.selectedItem.toString())
+
+            // Pass data for watermark 4
+            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            putString("dynamic_fecha", sdf.format(selectedDate.time))
+            putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
