@@ -61,6 +61,9 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
         binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
 
+        binding.dotCountSlider.value = sharedPrefs.getFloat("stamp2_dot_count", 3f)
+        binding.dotSizeSlider.value = sharedPrefs.getFloat("stamp2_dot_size", 13f)
+
         // Initialize first click tracker based on default values
         if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
         if (binding.stamp2PositionEditText.text.toString() == "CARGO") firstClickTracker.add(binding.stamp2PositionEditText.id)
@@ -88,6 +91,8 @@ class Stamp2SettingsFragment : Fragment() {
         // Auto-save for Sliders
         binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
         binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
+        binding.dotCountSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_dot_count", value) }
+        binding.dotSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_dot_size", value) }
     }
 
     private fun setupFirstClickListener(editText: TextInputEditText) {
