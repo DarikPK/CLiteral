@@ -57,8 +57,8 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
         binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
-        binding.stamp2DotCountEditText.setText(sharedPrefs.getString("stamp2_dot_count", "3"))
-        binding.stamp2DotSizeEditText.setText(sharedPrefs.getString("stamp2_dot_size", "13"))
+        binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2_dot_count", "3"))
+        binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2_dot_size", "13"))
 
         binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
         binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
@@ -115,6 +115,15 @@ class Stamp2SettingsFragment : Fragment() {
 
     private fun saveFloat(key: String, value: Float) {
         sharedPrefs.edit().putFloat(key, value).apply()
+    }
+
+    private fun getStringPreferenceSafely(key: String, defaultValue: String): String {
+        val value = sharedPrefs.all[key]
+        return when (value) {
+            is String -> value
+            is Float -> value.toInt().toString() // Convert old float to string
+            else -> defaultValue
+        }
     }
 
     override fun onDestroyView() {
