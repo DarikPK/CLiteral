@@ -204,7 +204,7 @@ class PdfPreviewFragment : Fragment() {
             }
         })
 
-        binding.stamp2_overlay_view.setOnStampUpdateListener { x, y, rotation ->
+        binding.stamp2OverlayView.setOnStampUpdateListener { x, y, rotation ->
             stamp2State?.let {
                 it.x = x
                 it.y = y
@@ -213,7 +213,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         binding.stampOverlayView.bringToFront()
-        binding.stamp2_overlay_view.bringToFront()
+        binding.stamp2OverlayView.bringToFront()
     }
 
     private fun setupToolbar() {
