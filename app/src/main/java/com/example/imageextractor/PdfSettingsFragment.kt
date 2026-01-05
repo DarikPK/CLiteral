@@ -348,8 +348,9 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
                 putFloat("stamp2DotCount", getFloatPreferenceSafely("stamp2DotCount", "stamp2_dot_count", 3f))
                 putFloat("stamp2DotSize", getFloatPreferenceSafely("stamp2DotSize", "stamp2_dot_size", 13f))
-                putFloat("stamp2Brightness", sharedPrefs.getFloat("stamp2_brightness", 50f))
-                putFloat("stamp2Contrast", sharedPrefs.getFloat("stamp2_contrast", 50f))
+                putFloat("stamp2PointTextSeparation", sharedPrefs.getString("stamp2_point_text_separation", "5")?.toFloatOrNull() ?: 5f)
+                putFloat("stamp2Brightness", getFloatPreferenceSafely("stamp2Brightness", "stamp2_brightness", 50f))
+                putFloat("stamp2Contrast", getFloatPreferenceSafely("stamp2Contrast", "stamp2_contrast", 50f))
             }
 
             // Watermark 1 data

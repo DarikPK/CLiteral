@@ -60,6 +60,7 @@ class PdfPreviewFragment : Fragment() {
     private var stamp2WearSize: Float = 50f
     private var stamp2DotCount: Int = 3
     private var stamp2DotSize: Float = 13f
+    private var stamp2PointTextSeparation: Float = 5f
     private var stamp2Brightness: Float = 50f
     private var stamp2Contrast: Float = 50f
 
@@ -149,6 +150,7 @@ class PdfPreviewFragment : Fragment() {
                 stamp2WearSize = it.getFloat("stamp2WearSize", 50f)
                 stamp2DotCount = it.getFloat("stamp2DotCount", 3f).toInt()
                 stamp2DotSize = it.getFloat("stamp2DotSize", 13f)
+                stamp2PointTextSeparation = it.getFloat("stamp2PointTextSeparation", 5f)
                 stamp2Brightness = it.getFloat("stamp2Brightness", 50f)
                 stamp2Contrast = it.getFloat("stamp2Contrast", 50f)
             }
@@ -637,7 +639,7 @@ class PdfPreviewFragment : Fragment() {
 
         // 5. Draw text lines
         yPos = if (stamp2DotCount > 0) {
-            dotsHeight + 5 + lineHeight - textBounds.bottom // Reduced gap
+            dotsHeight + stamp2PointTextSeparation + lineHeight - textBounds.bottom
         } else {
             10 + lineHeight - textBounds.bottom
         }

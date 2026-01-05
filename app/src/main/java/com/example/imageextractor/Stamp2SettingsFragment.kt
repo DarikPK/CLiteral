@@ -59,11 +59,13 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
         binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2DotCount", "stamp2_dot_count", "3"))
         binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2DotSize", "stamp2_dot_size", "13"))
+        binding.stamp2PointTextSeparationEditText.setText(sharedPrefs.getString("stamp2_point_text_separation", "5"))
+        binding.stamp2BrightnessEditText.setText(getStringPreferenceSafely("stamp2Brightness", "stamp2_brightness", "50"))
+        binding.stamp2ContrastEditText.setText(getStringPreferenceSafely("stamp2Contrast", "stamp2_contrast", "50"))
+
 
         binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
         binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
-        binding.stamp2BrightnessSlider.value = sharedPrefs.getFloat("stamp2_brightness", 50f)
-        binding.stamp2ContrastSlider.value = sharedPrefs.getFloat("stamp2_contrast", 50f)
 
         // Initialize first click tracker based on default values
         if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
@@ -92,11 +94,13 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotCount", text.toString()) }
         binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotSize", text.toString()) }
 
+        binding.stamp2PointTextSeparationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_point_text_separation", text.toString()) }
+        binding.stamp2BrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Brightness", text.toString()) }
+        binding.stamp2ContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Contrast", text.toString()) }
+
         // Auto-save for Sliders
         binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
         binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
-        binding.stamp2BrightnessSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_brightness", value) }
-        binding.stamp2ContrastSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_contrast", value) }
     }
 
     private fun setupFirstClickListener(editText: TextInputEditText) {
