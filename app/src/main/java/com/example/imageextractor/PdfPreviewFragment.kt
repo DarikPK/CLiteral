@@ -169,8 +169,6 @@ class PdfPreviewFragment : Fragment() {
             dynamicFecha = it.getString("dynamic_fecha")
             dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
         }
-
-        }
     }
 
     override fun onCreateView(
