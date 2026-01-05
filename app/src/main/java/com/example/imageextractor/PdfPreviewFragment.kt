@@ -351,11 +351,8 @@ class PdfPreviewFragment : Fragment() {
         val centerX = pageW / 2
         val centerY = pageH / 2
 
-        var x = centerX + dx - stampWidth / 2
-        var y = centerY + dy - stampHeight / 2
-
-        x = clamp(x, 0f, pageW - stampWidth)
-        y = clamp(y, 0f, pageH - stampHeight)
+        val x = centerX + dx - stampWidth / 2
+        val y = centerY + dy - stampHeight / 2
 
         stamp2State = StampState(x, y, scale, stamp2Rotation)
     }
