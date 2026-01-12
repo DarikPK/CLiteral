@@ -1,6 +1,5 @@
 package com.example.imageextractor
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
