@@ -217,15 +217,6 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
         binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
         binding.dynamicHora.setText(sharedPrefs.getString("dynamic_hora", "08:00:00"))
-
-        // Load signature settings (to pass them to preview)
-        val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
-        bundle.putBoolean("isSignatureEnabled", isSignatureEnabled)
-        if (isSignatureEnabled) {
-            bundle.putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
-            bundle.putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
-            bundle.putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
-        }
     }
 
     private fun showDatePicker() {

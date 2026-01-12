@@ -1,10 +1,10 @@
 package com.example.imageextractor
 
 import android.content.Context
-import android.content.Context
 import android.content.Intent
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.view.*
@@ -877,6 +877,21 @@ class PdfPreviewFragment : Fragment() {
         if (stamp2Brightness == 50f && stamp2Contrast == 50f) {
             return originalBitmap
         }
+        val brightnessValue = (stamp2Brightness - 50) * 5f
+        val contrastValue = stamp2Contrast / 50f
+        val colorMatrix = ColorMatrix(floatArrayOf(
+            contrastValue, 0f, 0f, 0f, brightnessValue,
+            0f, contrastValue, 0f, 0f, brightnessValue,
+            0f, 0f, contrastValue, 0f, brightnessValue,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        adjustedBitmap.density = originalBitmap.density
+        val canvas = Canvas(adjustedBitmap)
+        val paint = Paint()
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return adjustedBitmap
     }
 
     private suspend fun processSignatureBitmap(uri: Uri): Bitmap? {
@@ -920,21 +935,6 @@ class PdfPreviewFragment : Fragment() {
                 null
             }
         }
-        val brightnessValue = (stamp2Brightness - 50) * 5f
-        val contrastValue = stamp2Contrast / 50f
-        val colorMatrix = ColorMatrix(floatArrayOf(
-            contrastValue, 0f, 0f, 0f, brightnessValue,
-            0f, contrastValue, 0f, 0f, brightnessValue,
-            0f, 0f, contrastValue, 0f, brightnessValue,
-            0f, 0f, 0f, 1f, 0f
-        ))
-        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
-        adjustedBitmap.density = originalBitmap.density
-        val canvas = Canvas(adjustedBitmap)
-        val paint = Paint()
-        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
-        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
-        return adjustedBitmap
     }
 
     private fun sharePdf() {
