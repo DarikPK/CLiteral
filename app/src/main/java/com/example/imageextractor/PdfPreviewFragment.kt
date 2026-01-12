@@ -617,7 +617,7 @@ class PdfPreviewFragment : Fragment() {
                 }
 
                 // Draw the final composited bitmap onto the PDF page
-                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
                 previewPageBitmap.recycle()
                 pdfDocument.finishPage(page)
             }
@@ -1028,7 +1028,7 @@ class PdfPreviewFragment : Fragment() {
                 }
 
             // Draw the final composited bitmap onto the PDF page
-            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), null)
+            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
             previewPageBitmap.recycle()
             pdfDocument.finishPage(page)
         }
