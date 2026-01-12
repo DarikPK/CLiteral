@@ -22,6 +22,10 @@ import com.google.android.material.slider.Slider
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import android.Manifest
+import android.net.Uri
+import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.Glide
 
 class PdfSettingsFragment : Fragment() {
 
@@ -32,6 +36,27 @@ class PdfSettingsFragment : Fragment() {
 
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if (isGranted) {
+            pickImageLauncher.launch("image/*")
+        } else {
+            Toast.makeText(requireContext(), "Permiso necesario para seleccionar una imagen.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            // Persist the URI string
+            val imagePath = it.toString()
+            saveString("signature_image_uri", imagePath)
+            // Load image into preview
+            Glide.with(this)
+                .load(it)
+                .into(binding.signaturePreviewImageView)
+            binding.signaturePreviewImageView.visibility = View.VISIBLE
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,6 +165,14 @@ class PdfSettingsFragment : Fragment() {
         binding.stamp2SettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_stamp2SettingsFragment)
         }
+
+        // Signature listeners
+        binding.selectSignatureButton.setOnClickListener {
+            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
+        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
+        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
     }
 
     private fun loadSettings() {
@@ -167,10 +200,32 @@ class PdfSettingsFragment : Fragment() {
         // Load dynamic fields
         binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
         binding.dynamicAno.setText(sharedPrefs.getString("dynamic_ano", "2026"))
+
+        // Load signature settings
+        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
+        binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
+        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
+        val imageUriString = sharedPrefs.getString("signature_image_uri", null)
+        if (imageUriString != null) {
+            val imageUri = Uri.parse(imageUriString)
+            binding.signaturePreviewImageView.visibility = View.VISIBLE
+            Glide.with(this)
+                .load(imageUri)
+                .into(binding.signaturePreviewImageView)
+        }
         binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
         binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
         binding.dynamicHora.setText(sharedPrefs.getString("dynamic_hora", "08:00:00"))
+
+        // Load signature settings (to pass them to preview)
+        val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
+        bundle.putBoolean("isSignatureEnabled", isSignatureEnabled)
+        if (isSignatureEnabled) {
+            bundle.putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
+            bundle.putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
+            bundle.putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
+        }
     }
 
     private fun showDatePicker() {
