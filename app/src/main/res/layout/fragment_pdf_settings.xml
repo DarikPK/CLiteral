@@ -351,12 +351,28 @@
                 android:visibility="gone"
                 tools:src="@tools:sample/avatars" />
 
-            <Button
-                android:id="@+id/select_signature_button"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Seleccionar Imagen de Firma"
-                android:layout_marginTop="8dp"/>
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/selectSignatureButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Seleccionar Firma" />
+
+                <Button
+                    android:id="@+id/removeSignatureButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="Eliminar" />
+            </LinearLayout>
 
             <CheckBox
                 android:id="@+id/signature_enabled_checkbox"

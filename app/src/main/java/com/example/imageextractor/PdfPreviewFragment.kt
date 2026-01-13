@@ -901,12 +901,20 @@ class PdfPreviewFragment : Fragment() {
         return withContext(Dispatchers.IO) {
             try {
                 val sourceBitmap = BitmapFactory.decodeStream(requireContext().contentResolver.openInputStream(uri))
+
+                // If the source bitmap has an alpha channel (like our default PNG),
+                // assume it's already processed and use it directly.
+                if (sourceBitmap.hasAlpha()) {
+                    return@withContext sourceBitmap
+                }
+
+                // If it's an opaque image (like a JPG from the camera), process it
+                // to remove the white background.
                 val width = sourceBitmap.width
                 val height = sourceBitmap.height
                 val pixels = IntArray(width * height)
                 sourceBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
-                val blueRef = Color.BLUE
                 val whiteRef = Color.WHITE
                 val threshold = 180 // Tolerance for what is considered "white"
 
@@ -916,19 +924,14 @@ class PdfPreviewFragment : Fragment() {
                     val g = Color.green(pixel)
                     val b = Color.blue(pixel)
 
-                    // Calculate "distance" to white
                     val distWhite = Math.sqrt(
                         Math.pow((r - Color.red(whiteRef)).toDouble(), 2.0) +
                         Math.pow((g - Color.green(whiteRef)).toDouble(), 2.0) +
                         Math.pow((b - Color.blue(whiteRef)).toDouble(), 2.0)
                     )
 
-                    // If the pixel is close enough to white, make it transparent
                     if (distWhite < threshold) {
-                        pixels[i] = Color.TRANSPARENT
-                    } else {
-                        // Optional: Normalize the ink to a consistent blue
-                        pixels[i] = Color.rgb(0, 0, b)
+                        pixels[i] = Color.TRANSPARENT // Make near-white pixels transparent
                     }
                 }
 
