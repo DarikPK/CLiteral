@@ -205,8 +205,9 @@ class PdfSettingsFragment : Fragment() {
         if (imageUriString != null) {
             imageUri = Uri.parse(imageUriString)
         } else {
-            // If no user-selected signature, load the default one for preview
-            imageUri = Uri.parse("android.resource://" + requireContext().packageName + "/" + R.drawable.default_signature)
+            // If no user-selected signature, we will show nothing in the settings preview.
+            // The default digital signature will be generated in the PdfPreviewFragment.
+            imageUri = null
         }
 
         if (imageUri != null) {
@@ -523,11 +524,9 @@ class PdfSettingsFragment : Fragment() {
             // Signature Data
             putBoolean("isSignatureEnabled", binding.signatureEnabledCheckbox.isChecked)
             if (binding.signatureEnabledCheckbox.isChecked) {
-                var imageUriString = sharedPrefs.getString("signature_image_uri", null)
-                // If no user signature is saved, use the default one
-                if (imageUriString == null) {
-                    imageUriString = "android.resource://" + requireContext().packageName + "/" + R.drawable.default_signature
-                }
+                val imageUriString = sharedPrefs.getString("signature_image_uri", null)
+                // If a user has selected a signature, pass its URI. Otherwise, pass null
+                // so the preview fragment knows to generate the default digital signature.
                 putString("signatureImageUri", imageUriString)
                 putFloat("signatureOffsetX", binding.signatureOffsetXEditText.text.toString().toFloatOrNull() ?: 0f)
                 putFloat("signatureOffsetY", binding.signatureOffsetYEditText.text.toString().toFloatOrNull() ?: 0f)

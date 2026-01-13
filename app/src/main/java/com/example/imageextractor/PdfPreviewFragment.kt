@@ -295,8 +295,12 @@ class PdfPreviewFragment : Fragment() {
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
             }
-            if (isSignatureEnabled && signatureImageUri != null) {
-                signatureBitmap = processSignatureBitmap(Uri.parse(signatureImageUri!!))
+            if (isSignatureEnabled) {
+                signatureBitmap = if (signatureImageUri != null) {
+                    processSignatureBitmap(Uri.parse(signatureImageUri!!))
+                } else {
+                    generateDigitalSignatureBitmap()
+                }
             }
             initializeStamp2State()
             initializeStampStates()
@@ -733,6 +737,33 @@ class PdfPreviewFragment : Fragment() {
         }
 
         this.stamp2Bitmap = applyStamp2Adjustments(bitmap)
+    }
+
+    private fun generateDigitalSignatureBitmap(): Bitmap {
+        val width = 500
+        val height = 200
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val paint = Paint().apply {
+            color = Color.parseColor("#2557A8") // A nice blue
+            style = Paint.Style.STROKE
+            strokeWidth = 10f
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+
+        val path = Path()
+        // This path approximates the signature image provided
+        path.moveTo(60f, 130f)
+        path.cubicTo(10f, 0f, 220f, 50f, 180f, 120f)
+        path.cubicTo(160f, 150f, 280f, 50f, 300f, 120f)
+        path.cubicTo(300f, 120f, 350f, 50f, 380f, 120f)
+        path.cubicTo(380f, 120f, 430f, 50f, 460f, 120f)
+
+        canvas.drawPath(path, paint)
+        return bitmap
     }
 
     private fun applyWearEffect() {
