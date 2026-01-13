@@ -26,6 +26,8 @@ import java.io.FileOutputStream
 import java.util.Random
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class PdfPreviewFragment : Fragment() {
 
