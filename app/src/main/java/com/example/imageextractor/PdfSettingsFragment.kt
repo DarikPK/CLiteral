@@ -23,7 +23,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import com.bumptech.glide.Glide
 
@@ -42,7 +44,17 @@ class PdfSettingsFragment : Fragment() {
         if (isGranted) {
             pickImageLauncher.launch("image/*")
         } else {
-            Toast.makeText(requireContext(), "Permiso necesario para seleccionar una imagen.", Toast.LENGTH_SHORT).show()
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Permiso Requerido")
+                .setMessage("Para seleccionar una imagen de firma, necesitas conceder el permiso de acceso al almacenamiento. Por favor, actívalo en los ajustes de la aplicación.")
+                .setPositiveButton("Ir a Ajustes") { _, _ ->
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    val uri = Uri.fromParts("package", requireActivity().packageName, null)
+                    intent.data = uri
+                    startActivity(intent)
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
         }
     }
 
