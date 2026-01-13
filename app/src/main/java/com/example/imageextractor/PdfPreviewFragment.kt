@@ -904,6 +904,8 @@ class PdfPreviewFragment : Fragment() {
             try {
                 val sourceBitmap = BitmapFactory.decodeStream(requireContext().contentResolver.openInputStream(uri))
 
+                // The default signature is a clean PNG, so it should have an alpha channel.
+                // We trust it and don't process it further to avoid any degradation.
                 if (sourceBitmap.hasAlpha()) {
                     return@withContext sourceBitmap
                 }
@@ -913,43 +915,21 @@ class PdfPreviewFragment : Fragment() {
                 val pixels = IntArray(width * height)
                 sourceBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
-                // 1. Find the dominant non-white color (the ink)
-                val colorCounts = mutableMapOf<Int, Int>()
-                var maxCount = 0
-                var dominantColor = Color.BLACK // Default
-                for (pixel in pixels) {
-                    val r = Color.red(pixel)
-                    val g = Color.green(pixel)
-                    val b = Color.blue(pixel)
-                    if (r < 240 && g < 240 && b < 240) { // Simple "not white" check
-                        val count = (colorCounts[pixel] ?: 0) + 1
-                        colorCounts[pixel] = count
-                        if (count > maxCount) {
-                            maxCount = count
-                            dominantColor = pixel
-                        }
-                    }
-                }
-
-                // 2. Make pixels transparent if they are not similar to the dominant color
-                val domR = Color.red(dominantColor)
-                val domG = Color.green(dominantColor)
-                val domB = Color.blue(dominantColor)
-                val colorThreshold = 90 // How close a color must be to the ink color to be kept
+                val hsv = FloatArray(3)
+                // Saturation threshold: anything less saturated than this is background noise.
+                val saturationThreshold = 0.15f
+                // Value threshold: helps to eliminate very bright pixels (near-white).
+                val valueThreshold = 0.9f
 
                 for (i in pixels.indices) {
-                    val pixel = pixels[i]
-                    val r = Color.red(pixel)
-                    val g = Color.green(pixel)
-                    val b = Color.blue(pixel)
+                    Color.colorToHSV(pixels[i], hsv)
+                    val saturation = hsv[1]
+                    val value = hsv[2]
 
-                    val colorDistance = sqrt(
-                        (r - domR).toDouble().pow(2) +
-                        (g - domG).toDouble().pow(2) +
-                        (b - domB).toDouble().pow(2)
-                    )
-
-                    if (colorDistance > colorThreshold) {
+                    // If a pixel has very low saturation, it's a shade of grey (from white to black).
+                    // If it's very bright (almost white), we also remove it.
+                    // This combination effectively isolates the colored ink.
+                    if (saturation < saturationThreshold || value > valueThreshold) {
                         pixels[i] = Color.TRANSPARENT
                     }
                 }
