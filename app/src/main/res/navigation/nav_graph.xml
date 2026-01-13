@@ -38,7 +38,16 @@
         <action
             android:id="@+id/action_pdfSettingsFragment_to_stamp2SettingsFragment"
             app:destination="@id/stamp2SettingsFragment" />
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_signatureSettingsFragment"
+            app:destination="@id/signatureSettingsFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/signatureSettingsFragment"
+        android:name="com.example.imageextractor.SignatureSettingsFragment"
+        android:label="Ajustes de Firma"
+        tools:layout="@layout/fragment_signature_settings" />
 
     <fragment
         android:id="@+id/stamp2SettingsFragment"

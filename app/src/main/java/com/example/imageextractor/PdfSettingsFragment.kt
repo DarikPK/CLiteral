@@ -179,46 +179,8 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_stamp2SettingsFragment)
         }
 
-        // Signature listeners
-        binding.selectSignatureButton.setOnClickListener {
-            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-            requestPermissionLauncher.launch(permission)
-        }
-        binding.removeSignatureButton.setOnClickListener {
-            sharedPrefs.edit().remove("signature_image_uri").apply()
-            loadSignaturePreview()
-            Toast.makeText(requireContext(), "Firma personalizada eliminada", Toast.LENGTH_SHORT).show()
-        }
-        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
-        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
-        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
-        binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale", value) }
-        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation", value) }
-    }
-
-    private fun loadSignaturePreview() {
-        val imageUriString = sharedPrefs.getString("signature_image_uri", null)
-        val imageUri: Uri?
-
-        if (imageUriString != null) {
-            imageUri = Uri.parse(imageUriString)
-        } else {
-            // If no user-selected signature, we will show nothing in the settings preview.
-            // The default digital signature will be generated in the PdfPreviewFragment.
-            imageUri = null
-        }
-
-        if (imageUri != null) {
-            binding.signaturePreviewImageView.visibility = View.VISIBLE
-            Glide.with(this)
-                .load(imageUri)
-                .into(binding.signaturePreviewImageView)
-        } else {
-            binding.signaturePreviewImageView.visibility = View.GONE
+        binding.signatureSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
         }
     }
 
@@ -248,13 +210,6 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
         binding.dynamicAno.setText(sharedPrefs.getString("dynamic_ano", "2026"))
 
-        // Load signature settings
-        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
-        binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
-        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
-        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
-        binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
-        loadSignaturePreview()
         binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
         binding.dynamicTipoPartidaSpinner.setSelection(sharedPrefs.getInt("dynamic_tipo_partida_position", 0))
@@ -526,16 +481,14 @@ class PdfSettingsFragment : Fragment() {
             putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
 
             // Signature Data
-            putBoolean("isSignatureEnabled", binding.signatureEnabledCheckbox.isChecked)
-            if (binding.signatureEnabledCheckbox.isChecked) {
-                val imageUriString = sharedPrefs.getString("signature_image_uri", null)
-                // If a user has selected a signature, pass its URI. Otherwise, pass null
-                // so the preview fragment knows to generate the default digital signature.
-                putString("signatureImageUri", imageUriString)
-                putFloat("signatureOffsetX", binding.signatureOffsetXEditText.text.toString().toFloatOrNull() ?: 0f)
-                putFloat("signatureOffsetY", binding.signatureOffsetYEditText.text.toString().toFloatOrNull() ?: 0f)
-                putFloat("signatureScale", binding.signatureScaleSlider.value)
-                putFloat("signatureRotation", binding.signatureRotationSlider.value)
+            val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
+            putBoolean("isSignatureEnabled", isSignatureEnabled)
+            if (isSignatureEnabled) {
+                putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
+                putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("signatureScale", sharedPrefs.getFloat("signature_scale", 100f))
+                putFloat("signatureRotation", sharedPrefs.getFloat("signature_rotation", 0f))
             }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
