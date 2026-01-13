@@ -36,17 +36,15 @@
                 style="@style/TextAppearance.Material3.TitleMedium"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Previsualización"
+                android:text="Lienzo de Firma (toque para añadir marcadores)"
                 android:layout_marginBottom="8dp"/>
 
-            <ImageView
-                android:id="@+id/signature_preview_image_view"
+            <com.example.imageextractor.SignatureCanvasView
+                android:id="@+id/signature_canvas_view"
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:scaleType="fitCenter"
+                android:layout_height="200dp"
                 android:background="@drawable/dotted_border"
-                android:padding="8dp"
-                tools:src="@tools:sample/avatars" />
+                 />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -55,20 +53,20 @@
                 android:layout_marginTop="16dp">
 
                 <Button
-                    android:id="@+id/selectSignatureButton"
+                    android:id="@+id/clearMarkersButton"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="Seleccionar Firma" />
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:text="Limpiar Marcadores" />
 
                 <Button
-                    android:id="@+id/removeSignatureButton"
+                    android:id="@+id/refreshSignatureButton"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:text="Eliminar" />
+                    android:text="Refrescar Firma" />
             </LinearLayout>
 
             <CheckBox

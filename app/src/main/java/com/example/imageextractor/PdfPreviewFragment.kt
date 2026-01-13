@@ -20,6 +20,8 @@ import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentPdfPreviewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -67,7 +69,7 @@ class PdfPreviewFragment : Fragment() {
 
     // Signature
     private var isSignatureEnabled: Boolean = false
-    private var signatureBitmap: Bitmap? = null
+    private var signatureMarkers: List<PointF> = emptyList()
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -297,11 +299,13 @@ class PdfPreviewFragment : Fragment() {
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
             }
-            if (isSignatureEnabled) {
-                signatureBitmap = if (signatureImageUri != null) {
-                    processSignatureBitmap(Uri.parse(signatureImageUri!!))
-                } else {
-                    generateDigitalSignatureBitmap()
+            if (isSignatureEnabled && signatureImageUri == null) {
+                // Using procedural signature, load markers
+                val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+                val markersJson = sharedPrefs.getString("signature_markers", null)
+                if (markersJson != null) {
+                    val type = object : TypeToken<List<PointF>>() {}.type
+                    signatureMarkers = Gson().fromJson(markersJson, type)
                 }
             }
             initializeStamp2State()
@@ -375,22 +379,19 @@ class PdfPreviewFragment : Fragment() {
         if (!isStamp2Enabled || stamp2Bitmap == null || pageBitmaps.isEmpty()) return
 
         // Initialize signature state
-        if (isSignatureEnabled && signatureBitmap != null && pageBitmaps.isNotEmpty()) {
+        if (isSignatureEnabled && signatureMarkers.isNotEmpty()) {
             val pageW = 1000f
             val pageH = pageW / (595f / 842f)
             val mmToPx = 2.83f
             val dx = signatureOffsetX * mmToPx
             val dy = signatureOffsetY * mmToPx
+            val scale = signatureScale / 100f
 
-            val scale = signatureScale / 100f // Convert percentage to factor
-            val signatureWidth = signatureBitmap!!.width * scale
-            val signatureHeight = signatureBitmap!!.height * scale
-
+            // For procedural signature, position is relative to the canvas size, not bitmap size
             val centerX = pageW / 2
             val centerY = pageH / 2
-
-            val x = centerX + dx - signatureWidth / 2
-            val y = centerY + dy - signatureHeight / 2
+            val x = centerX + dx
+            val y = centerY + dy
 
             signatureState = StampState(x, y, scale, signatureRotation)
         }
@@ -463,14 +464,8 @@ class PdfPreviewFragment : Fragment() {
             binding.stamp2OverlayView.visibility = View.GONE
         }
 
-        // Update Signature Overlay
-        if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
-            binding.signatureOverlayView.visibility = View.VISIBLE
-            val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.signatureOverlayView.setStamp(signatureBitmap!!, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation, imageMatrix)
-        } else {
-            binding.signatureOverlayView.visibility = View.GONE
-        }
+        // Signature overlay is removed from this fragment
+        binding.signatureOverlayView.visibility = View.GONE
     }
 
     private fun generatePreviewPage(originalBitmap: Bitmap, pageIndex: Int): Bitmap {
@@ -605,25 +600,65 @@ class PdfPreviewFragment : Fragment() {
             canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
         }
 
-        // Draw Signature with variations
-        if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
-            val random = Random()
-            val matrix = Matrix()
-            val scaledScale = signatureState!!.scale * previewToPdfScale
-            val rotationVariation = (random.nextFloat() * 2f) - 1f
-            val xVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
-            val yVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
+        // Draw Procedural Signature
+        if (isSignatureEnabled && signatureState != null && signatureMarkers.isNotEmpty()) {
+            val signaturePath = generateProceduralSignaturePath()
+            val signaturePaint = Paint().apply {
+                color = Color.parseColor("#2557A8")
+                style = Paint.Style.STROKE
+                strokeWidth = 2f // Base stroke width for PDF
+                isAntiAlias = true
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
+            }
 
-            // Use the base rotation from the state, plus a small random variation for each page
-            val finalRotation = signatureState!!.rotation + rotationVariation
+            canvas.save()
+            // Move canvas to the designated signature center position
+            canvas.translate(signatureState!!.x * previewToPdfScale, signatureState!!.y * previewToPdfScale)
+            // Apply scaling and rotation
+            canvas.scale(signatureState!!.scale * previewToPdfScale, signatureState!!.scale * previewToPdfScale)
+            canvas.rotate(signatureState!!.rotation)
 
-            val finalX = (signatureState!!.x * previewToPdfScale) + xVariation
-            val finalY = (signatureState!!.y * previewToPdfScale) + yVariation
-            matrix.postScale(scaledScale, scaledScale)
-            matrix.postRotate(finalRotation, signatureBitmap!!.width * scaledScale / 2, signatureBitmap!!.height * scaledScale / 2)
-            matrix.postTranslate(finalX, finalY)
-            canvas.drawBitmap(signatureBitmap!!, matrix, highQualityPaint)
+            // The path was created in a 500x200 canvas, so we need to offset it
+            // to center it before drawing.
+            canvas.translate(-250f, -100f)
+
+            canvas.drawPath(signaturePath, signaturePaint)
+            canvas.restore()
         }
+    }
+
+    private fun generateProceduralSignaturePath(): Path {
+        val path = Path()
+        if (signatureMarkers.size < 2) {
+            return path
+        }
+
+        val randomizationRadius = 20f
+        val randomPoints = signatureMarkers.map { marker ->
+            val angle = Math.random() * 2 * Math.PI
+            val radius = Math.random() * randomizationRadius
+            val x = marker.x + (radius * Math.cos(angle)).toFloat()
+            val y = marker.y + (radius * Math.sin(angle)).toFloat()
+            PointF(x, y)
+        }
+
+        path.moveTo(randomPoints.first().x, randomPoints.first().y)
+
+        for (i in 0 until randomPoints.size - 1) {
+            val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
+            val p1 = randomPoints[i]
+            val p2 = randomPoints[i + 1]
+            val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
+
+            val cp1x = p1.x + (p2.x - p0.x) / 6
+            val cp1y = p1.y + (p2.y - p0.y) / 6
+            val cp2x = p2.x - (p3.x - p1.x) / 6
+            val cp2y = p2.y - (p3.y - p1.y) / 6
+
+            path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+        }
+        return path
     }
 
     private fun savePdfWithInteractiveStamp() {
@@ -743,37 +778,6 @@ class PdfPreviewFragment : Fragment() {
         }
 
         this.stamp2Bitmap = applyStamp2Adjustments(bitmap)
-    }
-
-    private fun generateDigitalSignatureBitmap(): Bitmap {
-        val width = 500
-        val height = 200
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-
-        val paint = Paint().apply {
-            color = Color.parseColor("#2557A8") // A nice blue
-            style = Paint.Style.STROKE
-            strokeWidth = 10f
-            isAntiAlias = true
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-
-        val path = Path()
-        // Path meticulously designed to replicate the user's provided signature image.
-        path.moveTo(30f, 115f)
-        // First major curve, forming the 'M' shape
-        path.cubicTo(50f, 20f, 170f, 30f, 180f, 100f)
-        // Second curve, forming the 'u' shape
-        path.cubicTo(190f, 160f, 280f, 40f, 300f, 100f)
-        // Third curve
-        path.cubicTo(320f, 140f, 380f, 60f, 400f, 100f)
-        // Final tail of the signature
-        path.quadTo(440f, 115f, 480f, 105f)
-
-        canvas.drawPath(path, paint)
-        return bitmap
     }
 
     private fun applyWearEffect() {
@@ -1041,11 +1045,9 @@ class PdfPreviewFragment : Fragment() {
             val centerY = pageH / 2
             val mmToPx = 2.83f
 
-            val signatureWidth = signatureBitmap!!.width * it.scale
-            val signatureHeight = signatureBitmap!!.height * it.scale
-
-            val finalSignatureCenterX = it.x + signatureWidth / 2
-            val finalSignatureCenterY = it.y + signatureHeight / 2
+            // Since there is no bitmap, we save the center of the procedural canvas
+            val finalSignatureCenterX = it.x
+            val finalSignatureCenterY = it.y
 
             val offsetXInPx = finalSignatureCenterX - centerX
             val offsetYInPx = finalSignatureCenterY - centerY
@@ -1093,7 +1095,6 @@ class PdfPreviewFragment : Fragment() {
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
         wornStamp2Bitmap?.recycle()
-        signatureBitmap?.recycle()
         _binding = null
     }
 
