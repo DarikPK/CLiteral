@@ -28,7 +28,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import com.bumptech.glide.Glide
 
 class PdfSettingsFragment : Fragment() {
 
@@ -43,7 +42,8 @@ class PdfSettingsFragment : Fragment() {
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
         if (isGranted) {
-            pickImageLauncher.launch("image/*")
+            // This launcher is now only used for permission requests in this fragment.
+            // The actual image picking is handled in SignatureSettingsFragment.
         } else {
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Permiso Requerido")
@@ -56,19 +56,6 @@ class PdfSettingsFragment : Fragment() {
                 }
                 .setNegativeButton("Cancelar", null)
                 .show()
-        }
-    }
-
-    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            // Persist the URI string
-            val imagePath = it.toString()
-            saveString("signature_image_uri", imagePath)
-            // Load image into preview
-            Glide.with(this)
-                .load(it)
-                .into(binding.signaturePreviewImageView)
-            binding.signaturePreviewImageView.visibility = View.VISIBLE
         }
     }
 
