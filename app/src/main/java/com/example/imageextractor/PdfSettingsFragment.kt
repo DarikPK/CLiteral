@@ -224,8 +224,16 @@ class PdfSettingsFragment : Fragment() {
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
         val imageUriString = sharedPrefs.getString("signature_image_uri", null)
+        val imageUri: Uri?
+
         if (imageUriString != null) {
-            val imageUri = Uri.parse(imageUriString)
+            imageUri = Uri.parse(imageUriString)
+        } else {
+            // If no user-selected signature, load the default one for preview
+            imageUri = Uri.parse("android.resource://" + requireContext().packageName + "/" + R.drawable.default_signature)
+        }
+
+        if (imageUri != null) {
             binding.signaturePreviewImageView.visibility = View.VISIBLE
             Glide.with(this)
                 .load(imageUri)
@@ -500,6 +508,19 @@ class PdfSettingsFragment : Fragment() {
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             putString("dynamic_fecha", sdf.format(selectedDate.time))
             putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
+
+            // Signature Data
+            putBoolean("isSignatureEnabled", binding.signatureEnabledCheckbox.isChecked)
+            if (binding.signatureEnabledCheckbox.isChecked) {
+                var imageUriString = sharedPrefs.getString("signature_image_uri", null)
+                // If no user signature is saved, use the default one
+                if (imageUriString == null) {
+                    imageUriString = "android.resource://" + requireContext().packageName + "/" + R.drawable.default_signature
+                }
+                putString("signatureImageUri", imageUriString)
+                putFloat("signatureOffsetX", binding.signatureOffsetXEditText.text.toString().toFloatOrNull() ?: 0f)
+                putFloat("signatureOffsetY", binding.signatureOffsetYEditText.text.toString().toFloatOrNull() ?: 0f)
+            }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
