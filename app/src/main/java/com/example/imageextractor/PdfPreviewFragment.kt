@@ -902,21 +902,38 @@ class PdfPreviewFragment : Fragment() {
             try {
                 val sourceBitmap = BitmapFactory.decodeStream(requireContext().contentResolver.openInputStream(uri))
 
-                // If the source bitmap has an alpha channel (like our default PNG),
-                // assume it's already processed and use it directly.
                 if (sourceBitmap.hasAlpha()) {
                     return@withContext sourceBitmap
                 }
 
-                // If it's an opaque image (like a JPG from the camera), process it
-                // to remove the white background.
                 val width = sourceBitmap.width
                 val height = sourceBitmap.height
                 val pixels = IntArray(width * height)
                 sourceBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
-                val whiteRef = Color.WHITE
-                val threshold = 180 // Tolerance for what is considered "white"
+                // 1. Find the dominant non-white color (the ink)
+                val colorCounts = mutableMapOf<Int, Int>()
+                var maxCount = 0
+                var dominantColor = Color.BLACK // Default
+                for (pixel in pixels) {
+                    val r = Color.red(pixel)
+                    val g = Color.green(pixel)
+                    val b = Color.blue(pixel)
+                    if (r < 240 && g < 240 && b < 240) { // Simple "not white" check
+                        val count = (colorCounts[pixel] ?: 0) + 1
+                        colorCounts[pixel] = count
+                        if (count > maxCount) {
+                            maxCount = count
+                            dominantColor = pixel
+                        }
+                    }
+                }
+
+                // 2. Make pixels transparent if they are not similar to the dominant color
+                val domR = Color.red(dominantColor)
+                val domG = Color.green(dominantColor)
+                val domB = Color.blue(dominantColor)
+                val colorThreshold = 90 // How close a color must be to the ink color to be kept
 
                 for (i in pixels.indices) {
                     val pixel = pixels[i]
@@ -924,14 +941,14 @@ class PdfPreviewFragment : Fragment() {
                     val g = Color.green(pixel)
                     val b = Color.blue(pixel)
 
-                    val distWhite = Math.sqrt(
-                        Math.pow((r - Color.red(whiteRef)).toDouble(), 2.0) +
-                        Math.pow((g - Color.green(whiteRef)).toDouble(), 2.0) +
-                        Math.pow((b - Color.blue(whiteRef)).toDouble(), 2.0)
+                    val colorDistance = sqrt(
+                        (r - domR).toDouble().pow(2) +
+                        (g - domG).toDouble().pow(2) +
+                        (b - domB).toDouble().pow(2)
                     )
 
-                    if (distWhite < threshold) {
-                        pixels[i] = Color.TRANSPARENT // Make near-white pixels transparent
+                    if (colorDistance > colorThreshold) {
+                        pixels[i] = Color.TRANSPARENT
                     }
                 }
 
