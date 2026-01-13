@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PathMeasure
 import android.graphics.PointF
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -19,6 +20,17 @@ class SignatureCanvasView @JvmOverloads constructor(
         style = Paint.Style.FILL
         isAntiAlias = true
     }
+    private val drawingPaint = Paint().apply {
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+        isAntiAlias = true
+        strokeJoin = Paint.Join.ROUND
+        strokeCap = Paint.Cap.ROUND
+    }
+    private var drawingPath = Path()
+    private var isDrawing = false
+
     private val signaturePaint = Paint().apply {
         color = Color.parseColor("#2557A8")
         style = Paint.Style.STROKE
@@ -33,6 +45,14 @@ class SignatureCanvasView @JvmOverloads constructor(
     private val markerRadius = 10f
     private var markerListener: (() -> Unit)? = null
 
+    fun setRandomizationRadius(radius: Float) {
+        this.randomizationRadius = radius
+        regenerateSignature()
+    }
+
+    private var draggedMarker: PointF? = null
+    private val touchThreshold = 30f // How close to a marker to start dragging
+
     fun setMarkerListener(listener: () -> Unit) {
         markerListener = listener
     }
@@ -42,24 +62,21 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja un fondo para que el área del lienzo sea visible
         canvas.drawColor(Color.LTGRAY)
 
-        // Dibuja la firma con grosor variable
+        // Dibuja el trazo del usuario
+        canvas.drawPath(drawingPath, drawingPaint)
+
+        // Dibuja la firma generada con grosor variable
         if (signaturePoints.size > 1) {
             for (i in 0 until signaturePoints.size - 1) {
                 val p1 = signaturePoints[i]
                 val p2 = signaturePoints[i + 1]
-
-                // Calcula el progreso a lo largo de la curva (0.0 a 1.0)
                 val progress = i.toFloat() / (signaturePoints.size - 2).toFloat()
-
-                // Crea un efecto de "tapering" (estrechamiento) en los extremos
                 val taper = Math.min(progress, 1 - progress) * 2
-                val strokeWidth = (2 + taper * 8).toFloat() // Varía de 2 a 10
+                val strokeWidth = (2 + taper * 8).toFloat()
                 signaturePaint.strokeWidth = strokeWidth
-
                 canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
             }
         }
-
 
         // Dibuja cada marcador
         markers.forEach { marker ->
@@ -68,15 +85,53 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
-            val x = event.x
-            val y = event.y
-            markers.add(PointF(x, y))
-            markerListener?.invoke()
-            regenerateSignature()
-            return true
+        val x = event.x
+        val y = event.y
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                // Check if we are dragging an existing marker
+                draggedMarker = markers.find {
+                    val dx = it.x - x
+                    val dy = it.y - y
+                    dx * dx + dy * dy < touchThreshold * touchThreshold
+                }
+
+                if (draggedMarker == null) {
+                    // Not dragging, so start a new drawing
+                    clearCanvas()
+                    isDrawing = true
+                    drawingPath.moveTo(x, y)
+                }
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (draggedMarker != null) {
+                    draggedMarker?.set(x, y)
+                    regenerateSignature()
+                } else if (isDrawing) {
+                    drawingPath.lineTo(x, y)
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (draggedMarker != null) {
+                    // Finished dragging
+                    draggedMarker = null
+                    markerListener?.invoke()
+                } else if (isDrawing) {
+                    // Finished drawing
+                    isDrawing = false
+                    autoPlaceMarkers()
+                    drawingPath.reset()
+                    markerListener?.invoke()
+                    regenerateSignature()
+                }
+            }
+            else -> return false
         }
-        return super.onTouchEvent(event)
+
+        invalidate()
+        return true
     }
 
     fun getMarkers(): List<PointF> {
@@ -89,8 +144,9 @@ class SignatureCanvasView @JvmOverloads constructor(
         regenerateSignature()
     }
 
-    fun clearMarkers() {
+    fun clearCanvas() {
         markers.clear()
+        drawingPath.reset()
         generateSignaturePath()
         invalidate()
     }
@@ -98,6 +154,23 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun regenerateSignature() {
         generateSignaturePath()
         invalidate()
+    }
+
+    private fun autoPlaceMarkers() {
+        markers.clear()
+        val pathMeasure = PathMeasure(drawingPath, false)
+        val pathLength = pathMeasure.length
+        if (pathLength == 0f) return
+
+        val numMarkers = 15 // Número de marcadores a colocar
+        val pos = FloatArray(2)
+        val tan = FloatArray(2)
+
+        for (i in 0 until numMarkers) {
+            val distance = (pathLength / (numMarkers - 1)) * i
+            pathMeasure.getPosTan(distance, pos, tan)
+            markers.add(PointF(pos[0], pos[1]))
+        }
     }
 
     private fun generateSignaturePath() {

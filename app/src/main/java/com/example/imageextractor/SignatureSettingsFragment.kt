@@ -46,6 +46,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
+        binding.signatureRandomRadiusSlider.value = sharedPrefs.getFloat("signature_random_radius", 20f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
 
@@ -62,11 +63,12 @@ class SignatureSettingsFragment : Fragment() {
             }
             binding.signatureCanvasView.setMarkers(markers)
         }
+        binding.signatureCanvasView.setRandomizationRadius(binding.signatureRandomRadiusSlider.value)
     }
 
     private fun setupListeners() {
-        binding.clearMarkersButton.setOnClickListener {
-            binding.signatureCanvasView.clearMarkers()
+        binding.clearCanvasButton.setOnClickListener {
+            binding.signatureCanvasView.clearCanvas()
             saveMarkers()
         }
 
@@ -81,6 +83,10 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
         binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale", value) }
         binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation", value) }
+        binding.signatureRandomRadiusSlider.addOnChangeListener { _, value, _ ->
+            saveFloat("signature_random_radius", value)
+            binding.signatureCanvasView.setRandomizationRadius(value)
+        }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
     }

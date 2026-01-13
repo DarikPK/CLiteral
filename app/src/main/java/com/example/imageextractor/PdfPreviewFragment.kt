@@ -74,6 +74,7 @@ class PdfPreviewFragment : Fragment() {
     private var signatureOffsetY: Float = 0f
     private var signatureScale: Float = 100f
     private var signatureRotation: Float = 0f
+    private var randomizationRadius: Float = 20f
 
 
     private var isStampEnabled: Boolean = false
@@ -202,6 +203,9 @@ class PdfPreviewFragment : Fragment() {
             signatureOffsetY = it.getFloat("signatureOffsetY", 0f)
             signatureScale = it.getFloat("signatureScale", 100f)
             signatureRotation = it.getFloat("signatureRotation", 0f)
+            // Also load the randomization radius from shared prefs
+            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            randomizationRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
         }
         }
     }
@@ -638,7 +642,6 @@ class PdfPreviewFragment : Fragment() {
             return path
         }
 
-        val randomizationRadius = 20f
         val randomPoints = signatureMarkers.map { marker ->
             val angle = Math.random() * 2 * Math.PI
             val radius = Math.random() * randomizationRadius
