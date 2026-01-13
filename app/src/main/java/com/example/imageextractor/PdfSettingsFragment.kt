@@ -196,6 +196,8 @@ class PdfSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
+        binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale", value) }
+        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation", value) }
     }
 
     private fun loadSignaturePreview() {
@@ -250,6 +252,8 @@ class PdfSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
+        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
+        binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
         loadSignaturePreview()
         binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
@@ -530,6 +534,8 @@ class PdfSettingsFragment : Fragment() {
                 putString("signatureImageUri", imageUriString)
                 putFloat("signatureOffsetX", binding.signatureOffsetXEditText.text.toString().toFloatOrNull() ?: 0f)
                 putFloat("signatureOffsetY", binding.signatureOffsetYEditText.text.toString().toFloatOrNull() ?: 0f)
+                putFloat("signatureScale", binding.signatureScaleSlider.value)
+                putFloat("signatureRotation", binding.signatureRotationSlider.value)
             }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
