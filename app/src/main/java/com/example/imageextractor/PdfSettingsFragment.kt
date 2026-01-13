@@ -1,6 +1,7 @@
 package com.example.imageextractor
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.view.*
 import android.widget.ArrayAdapter
@@ -180,7 +181,12 @@ class PdfSettingsFragment : Fragment() {
 
         // Signature listeners
         binding.selectSignatureButton.setOnClickListener {
-            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+            requestPermissionLauncher.launch(permission)
         }
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
@@ -188,7 +194,7 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
-        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "60"))
+        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "27"))
         binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
         binding.marginTopEditText.setText(sharedPrefs.getString("margin_top", "55"))
         binding.marginBottomEditText.setText(sharedPrefs.getString("margin_bottom", "50"))
