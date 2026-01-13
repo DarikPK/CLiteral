@@ -484,12 +484,13 @@ class PdfPreviewFragment : Fragment() {
 
     private fun drawBitmapWithMargins(canvas: Canvas, bitmap: Bitmap, pageW: Int, pageH: Int) {
         val matrix = Matrix()
+        val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         // Regla 1: Si todos los márgenes son 0, dibujar a página completa sin cambios.
         if (marginLeft == 0f && marginRight == 0f && marginTop == 0f && marginBottom == 0f) {
             val srcRect = Rect(0, 0, bitmap.width, bitmap.height)
             val dstRect = RectF(0f, 0f, pageW.toFloat(), pageH.toFloat())
             matrix.setRectToRect(RectF(srcRect), dstRect, Matrix.ScaleToFit.FILL)
-            canvas.drawBitmap(bitmap, matrix, null)
+            canvas.drawBitmap(bitmap, matrix, highQualityPaint)
             return
         }
 
@@ -542,7 +543,7 @@ class PdfPreviewFragment : Fragment() {
         val srcRect = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
         matrix.setRectToRect(srcRect, dstRect, Matrix.ScaleToFit.CENTER)
 
-        canvas.drawBitmap(bitmap, matrix, null)
+        canvas.drawBitmap(bitmap, matrix, highQualityPaint)
 
     }
 
@@ -550,16 +551,24 @@ class PdfPreviewFragment : Fragment() {
         Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             val pdfDocument = PdfDocument()
+            val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            val previewToPdfScale = 595f / 1000f
 
-            pageBitmaps.forEachIndexed { index, bitmap ->
+            pageBitmaps.forEachIndexed { index, originalBitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
+                val canvas = page.canvas
 
-                // Render the preview page to a bitmap first
-                val previewPageBitmap = generatePreviewPage(bitmap, index)
+                // 1. Draw background
+                canvas.drawColor(Color.WHITE)
 
-                // Draw the stamp onto the preview bitmap before saving to PDF
-                val canvas = Canvas(previewPageBitmap)
+                // 2. Draw original image directly onto PDF canvas with margins
+                drawBitmapWithMargins(canvas, originalBitmap, pageInfo.pageWidth, pageInfo.pageHeight)
+
+                // 3. Draw watermarks directly onto PDF canvas
+                drawWatermarks(canvas, pageInfo.pageWidth, pageInfo.pageHeight, index + 1, pageBitmaps.size)
+
+                // 4. Draw stamps, scaling coordinates from preview (1000px) to PDF (595px)
                 val currentState = when(index) {
                     0 -> firstPageStampState
                     pageBitmaps.size - 1 -> lastPageStampState
@@ -573,52 +582,46 @@ class PdfPreviewFragment : Fragment() {
                 val finalStampBitmap = wornBitmap ?: cleanStampBitmap
                 if (currentState != null && finalStampBitmap != null) {
                     val matrix = Matrix()
-                    matrix.postScale(currentState.scale, currentState.scale)
-                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
-                    matrix.postTranslate(currentState.x, currentState.y)
-                    canvas.drawBitmap(finalStampBitmap, matrix, null)
+                    val scaledScale = currentState.scale * previewToPdfScale
+                    matrix.postScale(scaledScale, scaledScale)
+                    matrix.postRotate(currentState.rotation, finalStampBitmap.width * scaledScale / 2, finalStampBitmap.height * scaledScale / 2)
+                    matrix.postTranslate(currentState.x * previewToPdfScale, currentState.y * previewToPdfScale)
+                    canvas.drawBitmap(finalStampBitmap, matrix, highQualityPaint)
                 }
 
                 // Draw Stamp 2
                 val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
                 if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
                     val matrix = Matrix()
-                    matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
-
+                    val scaledScale = stamp2State!!.scale * previewToPdfScale
                     var finalRotation = stamp2State!!.rotation
-                    if (stamp2VariableRotation && wornStamp2Bitmap != null) { // Apply variable rotation only if wear is applied
+                    if (stamp2VariableRotation && wornStamp2Bitmap != null) {
                         val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
                         finalRotation += randomRotation
                     }
-
-                    matrix.postRotate(finalRotation, finalStamp2Bitmap.width * stamp2State!!.scale / 2, finalStamp2Bitmap.height * stamp2State!!.scale / 2)
-                    matrix.postTranslate(stamp2State!!.x, stamp2State!!.y)
-                    canvas.drawBitmap(finalStamp2Bitmap, matrix, null)
+                    matrix.postScale(scaledScale, scaledScale)
+                    matrix.postRotate(finalRotation, finalStamp2Bitmap.width * scaledScale / 2, finalStamp2Bitmap.height * scaledScale / 2)
+                    matrix.postTranslate(stamp2State!!.x * previewToPdfScale, stamp2State!!.y * previewToPdfScale)
+                    canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
                 }
 
                 // Draw Signature with variations
                 if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
                     val random = Random()
                     val matrix = Matrix()
-                    matrix.postScale(signatureState!!.scale, signatureState!!.scale)
-
-                    // Apply micro-variations
-                    val rotationVariation = (random.nextFloat() * 2f) - 1f // -1 to +1 degrees
-                    val xVariation = (random.nextFloat() * 4f) - 2f       // -2 to +2 pixels
-                    val yVariation = (random.nextFloat() * 4f) - 2f       // -2 to +2 pixels
-
+                    val scaledScale = signatureState!!.scale * previewToPdfScale
+                    val rotationVariation = (random.nextFloat() * 2f) - 1f
+                    val xVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
+                    val yVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
                     val finalRotation = signatureState!!.rotation + rotationVariation
-                    val finalX = signatureState!!.x + xVariation
-                    val finalY = signatureState!!.y + yVariation
-
-                    matrix.postRotate(finalRotation, signatureBitmap!!.width * signatureState!!.scale / 2, signatureBitmap!!.height * signatureState!!.scale / 2)
+                    val finalX = (signatureState!!.x * previewToPdfScale) + xVariation
+                    val finalY = (signatureState!!.y * previewToPdfScale) + yVariation
+                    matrix.postScale(scaledScale, scaledScale)
+                    matrix.postRotate(finalRotation, signatureBitmap!!.width * scaledScale / 2, signatureBitmap!!.height * scaledScale / 2)
                     matrix.postTranslate(finalX, finalY)
-                    canvas.drawBitmap(signatureBitmap!!, matrix, null)
+                    canvas.drawBitmap(signatureBitmap!!, matrix, highQualityPaint)
                 }
 
-                // Draw the final composited bitmap onto the PDF page
-                page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-                previewPageBitmap.recycle()
                 pdfDocument.finishPage(page)
             }
 
@@ -961,16 +964,24 @@ class PdfPreviewFragment : Fragment() {
 
     private fun savePdfToDownloads(): File? {
         val pdfDocument = PdfDocument()
+        val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val previewToPdfScale = 595f / 1000f
 
-        pageBitmaps.forEachIndexed { index, bitmap ->
+        pageBitmaps.forEachIndexed { index, originalBitmap ->
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
+            val canvas = page.canvas
 
-            // Render the preview page to a bitmap first
-            val previewPageBitmap = generatePreviewPage(bitmap, index)
+            // 1. Draw background
+            canvas.drawColor(Color.WHITE)
 
-            // Draw the stamp onto the preview bitmap before saving to PDF
-            val canvas = Canvas(previewPageBitmap)
+            // 2. Draw original image directly onto PDF canvas with margins
+            drawBitmapWithMargins(canvas, originalBitmap, pageInfo.pageWidth, pageInfo.pageHeight)
+
+            // 3. Draw watermarks directly onto PDF canvas
+            drawWatermarks(canvas, pageInfo.pageWidth, pageInfo.pageHeight, index + 1, pageBitmaps.size)
+
+            // 4. Draw stamps, scaling coordinates from preview (1000px) to PDF (595px)
             val currentState = when(index) {
                 0 -> firstPageStampState
                 pageBitmaps.size - 1 -> lastPageStampState
@@ -984,52 +995,45 @@ class PdfPreviewFragment : Fragment() {
             val finalStampBitmap = wornBitmap ?: cleanStampBitmap
             if (currentState != null && finalStampBitmap != null) {
                 val matrix = Matrix()
-                matrix.postScale(currentState.scale, currentState.scale)
-                matrix.postRotate(currentState.rotation, finalStampBitmap.width * currentState.scale / 2, finalStampBitmap.height * currentState.scale / 2)
-                matrix.postTranslate(currentState.x, currentState.y)
-                canvas.drawBitmap(finalStampBitmap, matrix, null)
+                val scaledScale = currentState.scale * previewToPdfScale
+                matrix.postScale(scaledScale, scaledScale)
+                matrix.postRotate(currentState.rotation, finalStampBitmap.width * scaledScale / 2, finalStampBitmap.height * scaledScale / 2)
+                matrix.postTranslate(currentState.x * previewToPdfScale, currentState.y * previewToPdfScale)
+                canvas.drawBitmap(finalStampBitmap, matrix, highQualityPaint)
             }
 
-                // Draw Stamp 2
-                val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
-                if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
-                    val matrix = Matrix()
-                    matrix.postScale(stamp2State!!.scale, stamp2State!!.scale)
-
-                    var finalRotation = stamp2State!!.rotation
-                    if (stamp2VariableRotation && wornStamp2Bitmap != null) { // Apply variable rotation only if wear is applied
-                        val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
-                        finalRotation += randomRotation
-                    }
-
-                    matrix.postRotate(finalRotation, finalStamp2Bitmap.width * stamp2State!!.scale / 2, finalStamp2Bitmap.height * stamp2State!!.scale / 2)
-                    matrix.postTranslate(stamp2State!!.x, stamp2State!!.y)
-                    canvas.drawBitmap(finalStamp2Bitmap, matrix, null)
+            // Draw Stamp 2
+            val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
+            if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
+                val matrix = Matrix()
+                val scaledScale = stamp2State!!.scale * previewToPdfScale
+                var finalRotation = stamp2State!!.rotation
+                if (stamp2VariableRotation && wornStamp2Bitmap != null) {
+                    val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
+                    finalRotation += randomRotation
                 }
+                matrix.postScale(scaledScale, scaledScale)
+                matrix.postRotate(finalRotation, finalStamp2Bitmap.width * scaledScale / 2, finalStamp2Bitmap.height * scaledScale / 2)
+                matrix.postTranslate(stamp2State!!.x * previewToPdfScale, stamp2State!!.y * previewToPdfScale)
+                canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
+            }
 
-                // Draw Signature with variations
-                if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
-                    val random = Random()
-                    val matrix = Matrix()
-                    matrix.postScale(signatureState!!.scale, signatureState!!.scale)
-
-                    // Apply micro-variations
-                    val rotationVariation = (random.nextFloat() * 2f) - 1f // -1 to +1 degrees
-                    val xVariation = (random.nextFloat() * 4f) - 2f       // -2 to +2 pixels
-                    val yVariation = (random.nextFloat() * 4f) - 2f       // -2 to +2 pixels
-
-                    val finalRotation = signatureState!!.rotation + rotationVariation
-                    val finalX = signatureState!!.x + xVariation
-                    val finalY = signatureState!!.y + yVariation
-
-                    matrix.postRotate(finalRotation, signatureBitmap!!.width * signatureState!!.scale / 2, signatureBitmap!!.height * signatureState!!.scale / 2)
-                    matrix.postTranslate(finalX, finalY)
-                    canvas.drawBitmap(signatureBitmap!!, matrix, null)
-                }
-
-            // Draw the final composited bitmap onto the PDF page
-            page.canvas.drawBitmap(previewPageBitmap, null, Rect(0, 0, 595, 842), Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
-            previewPageBitmap.recycle()
+            // Draw Signature with variations
+            if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
+                val random = Random()
+                val matrix = Matrix()
+                val scaledScale = signatureState!!.scale * previewToPdfScale
+                val rotationVariation = (random.nextFloat() * 2f) - 1f
+                val xVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
+                val yVariation = ((random.nextFloat() * 4f) - 2f) * previewToPdfScale
+                val finalRotation = signatureState!!.rotation + rotationVariation
+                val finalX = (signatureState!!.x * previewToPdfScale) + xVariation
+                val finalY = (signatureState!!.y * previewToPdfScale) + yVariation
+                matrix.postScale(scaledScale, scaledScale)
+                matrix.postRotate(finalRotation, signatureBitmap!!.width * scaledScale / 2, signatureBitmap!!.height * scaledScale / 2)
+                matrix.postTranslate(finalX, finalY)
+                canvas.drawBitmap(signatureBitmap!!, matrix, highQualityPaint)
+            }
             pdfDocument.finishPage(page)
         }
 
