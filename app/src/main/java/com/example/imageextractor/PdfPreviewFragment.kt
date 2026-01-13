@@ -20,8 +20,6 @@ import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentPdfPreviewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -302,10 +300,16 @@ class PdfPreviewFragment : Fragment() {
             if (isSignatureEnabled && signatureImageUri == null) {
                 // Using procedural signature, load markers
                 val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-                val markersJson = sharedPrefs.getString("signature_markers", null)
-                if (markersJson != null) {
-                    val type = object : TypeToken<List<PointF>>() {}.type
-                    signatureMarkers = Gson().fromJson(markersJson, type)
+                val markersString = sharedPrefs.getString("signature_markers", null)
+                if (!markersString.isNullOrEmpty()) {
+                    signatureMarkers = markersString.split(";").mapNotNull {
+                        val parts = it.split(",")
+                        if (parts.size == 2) {
+                            PointF(parts[0].toFloat(), parts[1].toFloat())
+                        } else {
+                            null
+                        }
+                    }
                 }
             }
             initializeStamp2State()

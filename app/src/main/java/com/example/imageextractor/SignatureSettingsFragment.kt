@@ -11,8 +11,6 @@ import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentSignatureSettingsBinding
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 
 class SignatureSettingsFragment : Fragment() {
 
@@ -52,10 +50,16 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
 
         // Load markers
-        val markersJson = sharedPrefs.getString("signature_markers", null)
-        if (markersJson != null) {
-            val type = object : TypeToken<List<PointF>>() {}.type
-            val markers: List<PointF> = Gson().fromJson(markersJson, type)
+        val markersString = sharedPrefs.getString("signature_markers", null)
+        if (!markersString.isNullOrEmpty()) {
+            val markers = markersString.split(";").mapNotNull {
+                val parts = it.split(",")
+                if (parts.size == 2) {
+                    PointF(parts[0].toFloat(), parts[1].toFloat())
+                } else {
+                    null
+                }
+            }
             binding.signatureCanvasView.setMarkers(markers)
         }
     }
@@ -83,8 +87,8 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun saveMarkers() {
         val markers = binding.signatureCanvasView.getMarkers()
-        val json = Gson().toJson(markers)
-        saveString("signature_markers", json)
+        val markersString = markers.joinToString(";") { "${it.x},${it.y}" }
+        saveString("signature_markers", markersString)
     }
 
     // SharedPreferences helpers
