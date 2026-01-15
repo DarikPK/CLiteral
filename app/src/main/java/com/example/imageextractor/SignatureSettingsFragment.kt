@@ -69,15 +69,17 @@ class SignatureSettingsFragment : Fragment() {
         // Load markers
         val markersString = sharedPrefs.getString("signature_markers", null)
         if (!markersString.isNullOrEmpty()) {
-            val markers = markersString.split(";").mapNotNull {
-                val parts = it.split(",")
-                if (parts.size == 2) {
-                    PointF(parts[0].toFloat(), parts[1].toFloat())
-                } else {
-                    null
+            val contours = markersString.split("|").map { contourString ->
+                contourString.split(";").mapNotNull {
+                    val parts = it.split(",")
+                    if (parts.size == 2) {
+                        PointF(parts[0].toFloat(), parts[1].toFloat())
+                    } else {
+                        null
+                    }
                 }
             }
-            binding.signatureCanvasView.setMarkers(markers)
+            binding.signatureCanvasView.setMarkerContours(contours)
         }
         updateButtonLabels()
     }
@@ -139,8 +141,10 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveMarkers() {
-        val markers = binding.signatureCanvasView.getMarkers()
-        val markersString = markers.joinToString(";") { "${it.x},${it.y}" }
+        val contours = binding.signatureCanvasView.getMarkerContours()
+        val markersString = contours.joinToString("|") { contour ->
+            contour.joinToString(";") { "${it.x},${it.y}" }
+        }
         saveString("signature_markers", markersString)
     }
 

@@ -18,7 +18,8 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     private val random = Random()
 
-    private val markers = mutableListOf<PointF>()
+    // Cada lista interna representa un trazo continuo.
+    private val markers = mutableListOf<MutableList<PointF>>()
     private val markerPaint = Paint().apply {
         color = Color.BLUE
         style = Paint.Style.FILL
@@ -49,7 +50,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    private var signaturePoints = listOf<PointF>()
+    private var signaturePoints = listOf<List<PointF>>()
     private var markerRadius = 10f
     private var numMarkers = 15
 
@@ -90,21 +91,25 @@ class SignatureCanvasView @JvmOverloads constructor(
         canvas.drawPath(drawingPath, drawingPaint)
 
         // Dibuja la firma generada con grosor variable
-        if (signaturePoints.size > 1) {
-            for (i in 0 until signaturePoints.size - 1) {
-                val p1 = signaturePoints[i]
-                val p2 = signaturePoints[i + 1]
-                val progress = i.toFloat() / (signaturePoints.size - 2).toFloat()
-                val taper = Math.min(progress, 1 - progress) * 2
-                val strokeWidth = (2 + taper * 8).toFloat()
-                signaturePaint.strokeWidth = strokeWidth
-                canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+        signaturePoints.forEach { contour ->
+            if (contour.size > 1) {
+                for (i in 0 until contour.size - 1) {
+                    val p1 = contour[i]
+                    val p2 = contour[i + 1]
+                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
+                    val taper = Math.min(progress, 1 - progress) * 2
+                    val strokeWidth = (2 + taper * 8).toFloat()
+                    signaturePaint.strokeWidth = strokeWidth
+                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                }
             }
         }
 
         // Dibuja cada marcador
-        markers.forEach { marker ->
-            canvas.drawCircle(marker.x, marker.y, markerRadius, markerPaint)
+        markers.forEach { contour ->
+            contour.forEach { marker ->
+                canvas.drawCircle(marker.x, marker.y, markerRadius, markerPaint)
+            }
         }
     }
 
@@ -147,7 +152,8 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                draggedMarker = markers.find {
+                // Flatten the list of lists to find the closest marker across all contours
+                draggedMarker = markers.flatten().find {
                     val dx = it.x - x
                     val dy = it.y - y
                     dx * dx + dy * dy < touchThreshold * touchThreshold
@@ -192,14 +198,16 @@ class SignatureCanvasView @JvmOverloads constructor(
         return drawingPath
     }
 
-    fun getMarkers(): List<PointF> {
+    fun getMarkerContours(): List<List<PointF>> {
         return markers.toList()
     }
 
-    fun setMarkers(newMarkers: List<PointF>) {
+    fun setMarkerContours(newMarkers: List<List<PointF>>) {
         markers.clear()
-        markers.addAll(newMarkers)
-        mode = if (newMarkers.isEmpty()) Mode.DRAW else Mode.EDIT
+        newMarkers.forEach { contour ->
+            markers.add(contour.toMutableList())
+        }
+        mode = if (markers.isEmpty()) Mode.DRAW else Mode.EDIT
         regenerateSignature()
     }
 
@@ -220,81 +228,112 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     private fun autoPlaceMarkers() {
         markers.clear()
-        if (drawingPath.isEmpty || numMarkers < 2) return
+        if (drawingPath.isEmpty) return
 
         val pathMeasure = PathMeasure(drawingPath, false)
-        val totalLength = pathMeasure.length
+        val contourLengths = mutableListOf<Float>()
+        var totalLength = 0f
 
-        // PathMeasure solo maneja un contorno a la vez. Para manejar múltiples trazos
-        // (cuando el usuario levanta el dedo), debemos muestrear todo el Path.
-        val sampledPoints = mutableListOf<PointF>()
-        val pos = FloatArray(2)
-        val tan = FloatArray(2)
-        val steps = (totalLength * 2).toInt() // Muestrear con alta densidad
-
-        // Si hay varios contornos, nextContour() avanzará. Si no, devolverá false.
+        // Primero, medimos la longitud de cada trazo (contorno)
         do {
-            val contourLength = pathMeasure.length
-            if (contourLength > 0) {
-                for (i in 0..steps) {
-                    val distance = contourLength * i / steps
-                    pathMeasure.getPosTan(distance, pos, tan)
-                    sampledPoints.add(PointF(pos[0], pos[1]))
-                }
-            }
+            val length = pathMeasure.length
+            contourLengths.add(length)
+            totalLength += length
         } while (pathMeasure.nextContour())
 
+        if (totalLength == 0f || numMarkers < 2) return
 
-        if (sampledPoints.size < 2) return
+        // Reiniciamos el pathMeasure para empezar desde el primer contorno de nuevo
+        pathMeasure.setPath(drawingPath, false)
 
-        // Ahora, selecciona un número uniforme de puntos de la lista muestreada
-        val step = (sampledPoints.size - 1).toFloat() / (numMarkers - 1)
-        for (i in 0 until numMarkers) {
-            val index = (i * step).toInt()
-            markers.add(sampledPoints[index])
+        // Distribuimos los marcadores proporcionalmente a la longitud de cada trazo
+        var markersPlaced = 0
+        for (contourLength in contourLengths) {
+            val contourMarkers = if (totalLength > 0) {
+                // Asigna al menos 2 marcadores a trazos muy pequeños para que sean visibles
+                Math.max(2, (contourLength / totalLength * numMarkers).toInt())
+            } else {
+                0
+            }
+
+            if (contourMarkers > 1) {
+                val newContour = mutableListOf<PointF>()
+                val pos = FloatArray(2)
+                val tan = FloatArray(2)
+                for (i in 0 until contourMarkers) {
+                    val distance = (contourLength / (contourMarkers - 1)) * i
+                    pathMeasure.getPosTan(distance, pos, tan)
+                    newContour.add(PointF(pos[0], pos[1]))
+                }
+                markers.add(newContour)
+                markersPlaced += contourMarkers
+            }
+            pathMeasure.nextContour()
+        }
+
+        // Asegurarse de que al menos el número mínimo de marcadores se coloquen si algo falla
+        if (markers.isEmpty() && totalLength > 0 && numMarkers > 1) {
+            pathMeasure.setPath(drawingPath, false)
+            val fallbackContour = mutableListOf<PointF>()
+            val pos = FloatArray(2)
+            val tan = FloatArray(2)
+            for (i in 0 until numMarkers) {
+                val distance = (totalLength / (numMarkers - 1)) * i
+                pathMeasure.getPosTan(distance, pos, tan)
+                fallbackContour.add(PointF(pos[0], pos[1]))
+            }
+            if (fallbackContour.isNotEmpty()) {
+                markers.add(fallbackContour)
+            }
         }
     }
 
     private fun generateSignaturePath() {
-        if (markers.size < 2) {
+        if (markers.isEmpty()) {
             signaturePoints = emptyList()
             return
         }
 
-        val randomPoints = markers.map { marker ->
-            val angle = random.nextDouble() * 2 * Math.PI
-            // El radio de aleatoriedad ahora está directamente controlado por el tamaño del marcador
-            val radius = random.nextDouble() * markerRadius
-            val x = marker.x + (radius * Math.cos(angle)).toFloat()
-            val y = marker.y + (radius * Math.sin(angle)).toFloat()
-            PointF(x, y)
-        }
+        val newSignaturePoints = mutableListOf<List<PointF>>()
 
-        val interpolatedPoints = mutableListOf<PointF>()
-        val segments = randomPoints.size - 1
-        val pointsPerSegment = 20
+        markers.forEach { contour ->
+            if (contour.size >= 2) {
+                val randomPoints = contour.map { marker ->
+                    val angle = random.nextDouble() * 2 * Math.PI
+                    val radius = random.nextDouble() * markerRadius
+                    val x = marker.x + (radius * Math.cos(angle)).toFloat()
+                    val y = marker.y + (radius * Math.sin(angle)).toFloat()
+                    PointF(x, y)
+                }
 
-        for (i in 0 until segments) {
-            val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
-            val p1 = randomPoints[i]
-            val p2 = randomPoints[i + 1]
-            val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
+                val interpolatedPoints = mutableListOf<PointF>()
+                val segments = randomPoints.size - 1
+                val pointsPerSegment = 20
 
-            for (j in 0..pointsPerSegment) {
-                val t = j.toFloat() / pointsPerSegment
-                val tt = t * t
-                val ttt = tt * t
+                for (i in 0 until segments) {
+                    val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
+                    val p1 = randomPoints[i]
+                    val p2 = randomPoints[i + 1]
+                    val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
 
-                val q1 = -ttt + 2 * tt - t
-                val q2 = 3 * ttt - 5 * tt + 2
-                val q3 = -3 * ttt + 4 * tt + t
-                val q4 = ttt - tt
+                    for (j in 0..pointsPerSegment) {
+                        val t = j.toFloat() / pointsPerSegment
+                        val tt = t * t
+                        val ttt = tt * t
 
-                val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
-                val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
-                interpolatedPoints.add(PointF(tx, ty))
+                        val q1 = -ttt + 2 * tt - t
+                        val q2 = 3 * ttt - 5 * tt + 2
+                        val q3 = -3 * ttt + 4 * tt + t
+                        val q4 = ttt - tt
+
+                        val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
+                        val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
+                        interpolatedPoints.add(PointF(tx, ty))
+                    }
+                }
+                newSignaturePoints.add(interpolatedPoints)
             }
         }
-        signaturePoints = interpolatedPoints
+        signaturePoints = newSignaturePoints
     }
 }
