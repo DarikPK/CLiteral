@@ -106,21 +106,6 @@
                 android:stepSize="1.0"
                 android:value="0.0" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Radio de Aleatoriedad (px)"
-                style="@style/TextAppearance.Material3.LabelMedium"
-                android:layout_marginTop="16dp"/>
-            <com.google.android.material.slider.Slider
-                android:id="@+id/signature_random_radius_slider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0.0"
-                android:valueTo="100.0"
-                android:stepSize="1.0"
-                android:value="20.0" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

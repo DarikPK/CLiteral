@@ -50,27 +50,27 @@ class SignatureCanvasView @JvmOverloads constructor(
         strokeJoin = Paint.Join.ROUND
     }
     private var signaturePoints = listOf<PointF>()
-    private var randomizationRadius = 20f
     private var markerRadius = 10f
     private var numMarkers = 15
 
     private var markerListener: (() -> Unit)? = null
 
-    fun setRandomizationRadius(radius: Float) {
-        this.randomizationRadius = radius
-        regenerateSignature()
-    }
-
     fun setNumMarkers(count: Int) {
         if (count > 1) { // Need at least 2 markers for a line
             this.numMarkers = count
+            // Regenerate signature if we are in edit mode to reflect changes
+            if (mode == Mode.EDIT) {
+                regenerateSignature()
+            }
         }
     }
 
     fun setMarkerRadius(radius: Float) {
         if (radius > 0) {
             this.markerRadius = radius
-            invalidate() // Redraw to show new marker size
+            // Since marker size now controls randomness, we need to regenerate the signature
+            // y redraw everything.
+            regenerateSignature()
         }
     }
 
@@ -220,20 +220,38 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     private fun autoPlaceMarkers() {
         markers.clear()
-        val pathMeasure = PathMeasure(drawingPath, false)
-        val pathLength = pathMeasure.length
-        if (pathLength == 0f) return
+        if (drawingPath.isEmpty || numMarkers < 2) return
 
-        // Usa el número de marcadores configurable en lugar de un valor fijo
-        if (numMarkers < 2) return // No se puede generar una línea con menos de 2 puntos
+        val pathMeasure = PathMeasure(drawingPath, false)
+        val totalLength = pathMeasure.length
+
+        // PathMeasure solo maneja un contorno a la vez. Para manejar múltiples trazos
+        // (cuando el usuario levanta el dedo), debemos muestrear todo el Path.
+        val sampledPoints = mutableListOf<PointF>()
         val pos = FloatArray(2)
         val tan = FloatArray(2)
+        val steps = (totalLength * 2).toInt() // Muestrear con alta densidad
 
-        for (i in 0 until this.numMarkers) {
-            val step = if (this.numMarkers > 1) pathLength / (this.numMarkers - 1) else 0f
-            val distance = step * i
-            pathMeasure.getPosTan(distance, pos, tan)
-            markers.add(PointF(pos[0], pos[1]))
+        // Si hay varios contornos, nextContour() avanzará. Si no, devolverá false.
+        do {
+            val contourLength = pathMeasure.length
+            if (contourLength > 0) {
+                for (i in 0..steps) {
+                    val distance = contourLength * i / steps
+                    pathMeasure.getPosTan(distance, pos, tan)
+                    sampledPoints.add(PointF(pos[0], pos[1]))
+                }
+            }
+        } while (pathMeasure.nextContour())
+
+
+        if (sampledPoints.size < 2) return
+
+        // Ahora, selecciona un número uniforme de puntos de la lista muestreada
+        val step = (sampledPoints.size - 1).toFloat() / (numMarkers - 1)
+        for (i in 0 until numMarkers) {
+            val index = (i * step).toInt()
+            markers.add(sampledPoints[index])
         }
     }
 
@@ -245,7 +263,8 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         val randomPoints = markers.map { marker ->
             val angle = random.nextDouble() * 2 * Math.PI
-            val radius = random.nextDouble() * randomizationRadius
+            // El radio de aleatoriedad ahora está directamente controlado por el tamaño del marcador
+            val radius = random.nextDouble() * markerRadius
             val x = marker.x + (radius * Math.cos(angle)).toFloat()
             val y = marker.y + (radius * Math.sin(angle)).toFloat()
             PointF(x, y)
