@@ -64,17 +64,41 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.setMarkers(markers)
         }
         binding.signatureCanvasView.setRandomizationRadius(binding.signatureRandomRadiusSlider.value)
+        updateButtonLabels()
+    }
+
+    private fun updateButtonLabels() {
+        if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
+            binding.primaryActionButton.text = "Generar Marcadores"
+        } else {
+            binding.primaryActionButton.text = "Refrescar Firma"
+        }
     }
 
     private fun setupListeners() {
-        binding.clearCanvasButton.setOnClickListener {
-            binding.signatureCanvasView.clearCanvas()
+        binding.primaryActionButton.setOnClickListener {
+            if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
+                // We are in DRAW mode, so the button is "Generate Markers"
+                if (binding.signatureCanvasView.getDrawingPath().isEmpty) {
+                    Toast.makeText(requireContext(), "Por favor, dibuje una firma primero", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                binding.signatureCanvasView.switchToEditMode()
+                updateButtonLabels()
+                saveMarkers()
+            } else {
+                // We are in EDIT mode, so the button is "Refresh Signature"
+                binding.signatureCanvasView.regenerateSignature()
+            }
+        }
+
+        binding.secondaryActionButton.setOnClickListener {
+            // This button is always "Clear Canvas"
+            binding.signatureCanvasView.clearCanvas(switchMode = true)
+            updateButtonLabels()
             saveMarkers()
         }
 
-        binding.refreshSignatureButton.setOnClickListener {
-            binding.signatureCanvasView.regenerateSignature()
-        }
 
         binding.signatureCanvasView.setMarkerListener {
             saveMarkers()

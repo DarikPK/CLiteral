@@ -53,7 +53,7 @@
                 android:layout_marginTop="16dp">
 
                 <Button
-                    android:id="@+id/clearCanvasButton"
+                    android:id="@+id/secondaryActionButton"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
@@ -61,12 +61,12 @@
                     android:text="Limpiar Lienzo" />
 
                 <Button
-                    android:id="@+id/refreshSignatureButton"
+                    android:id="@+id/primaryActionButton"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
-                    android:text="Refrescar Firma" />
+                    android:text="Generar Marcadores" />
             </LinearLayout>
 
             <CheckBox

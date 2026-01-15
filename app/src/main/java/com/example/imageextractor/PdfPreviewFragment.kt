@@ -29,6 +29,12 @@ import kotlin.math.min
 
 class PdfPreviewFragment : Fragment() {
 
+    companion object {
+        private const val SIGNATURE_CANVAS_WIDTH = 500f
+        private const val SIGNATURE_CANVAS_HEIGHT = 200f
+    }
+
+    private val random = Random()
     private var _binding: FragmentPdfPreviewBinding? = null
     private val binding get() = _binding!!
 
@@ -610,62 +616,75 @@ class PdfPreviewFragment : Fragment() {
 
         // Draw Procedural Signature
         if (isSignatureEnabled && signatureState != null && signatureMarkers.isNotEmpty()) {
-            val signaturePath = generateProceduralSignaturePath()
+            val signaturePoints = generateProceduralSignaturePoints()
             val signaturePaint = Paint().apply {
                 color = Color.parseColor("#2557A8")
                 style = Paint.Style.STROKE
-                strokeWidth = 2f // Base stroke width for PDF
                 isAntiAlias = true
                 strokeCap = Paint.Cap.ROUND
                 strokeJoin = Paint.Join.ROUND
             }
 
             canvas.save()
-            // Move canvas to the designated signature center position
             canvas.translate(signatureState!!.x * previewToPdfScale, signatureState!!.y * previewToPdfScale)
-            // Apply scaling and rotation
             canvas.scale(signatureState!!.scale * previewToPdfScale, signatureState!!.scale * previewToPdfScale)
             canvas.rotate(signatureState!!.rotation)
+            canvas.translate(-SIGNATURE_CANVAS_WIDTH / 2, -SIGNATURE_CANVAS_HEIGHT / 2)
 
-            // The path was created in a 500x200 canvas, so we need to offset it
-            // to center it before drawing.
-            canvas.translate(-250f, -100f)
-
-            canvas.drawPath(signaturePath, signaturePaint)
+            if (signaturePoints.size > 1) {
+                for (i in 0 until signaturePoints.size - 1) {
+                    val p1 = signaturePoints[i]
+                    val p2 = signaturePoints[i + 1]
+                    val progress = i.toFloat() / (signaturePoints.size - 2).toFloat()
+                    val taper = Math.min(progress, 1 - progress) * 2
+                    val strokeWidth = (2 + taper * 8).toFloat()
+                    signaturePaint.strokeWidth = strokeWidth
+                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                }
+            }
             canvas.restore()
         }
     }
 
-    private fun generateProceduralSignaturePath(): Path {
-        val path = Path()
+    private fun generateProceduralSignaturePoints(): List<PointF> {
         if (signatureMarkers.size < 2) {
-            return path
+            return emptyList()
         }
 
         val randomPoints = signatureMarkers.map { marker ->
-            val angle = Math.random() * 2 * Math.PI
-            val radius = Math.random() * randomizationRadius
+            val angle = random.nextDouble() * 2 * Math.PI
+            val radius = random.nextDouble() * randomizationRadius
             val x = marker.x + (radius * Math.cos(angle)).toFloat()
             val y = marker.y + (radius * Math.sin(angle)).toFloat()
             PointF(x, y)
         }
 
-        path.moveTo(randomPoints.first().x, randomPoints.first().y)
+        val interpolatedPoints = mutableListOf<PointF>()
+        val segments = randomPoints.size - 1
+        val pointsPerSegment = 20
 
-        for (i in 0 until randomPoints.size - 1) {
+        for (i in 0 until segments) {
             val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
             val p1 = randomPoints[i]
             val p2 = randomPoints[i + 1]
             val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
 
-            val cp1x = p1.x + (p2.x - p0.x) / 6
-            val cp1y = p1.y + (p2.y - p0.y) / 6
-            val cp2x = p2.x - (p3.x - p1.x) / 6
-            val cp2y = p2.y - (p3.y - p1.y) / 6
+            for (j in 0..pointsPerSegment) {
+                val t = j.toFloat() / pointsPerSegment
+                val tt = t * t
+                val ttt = tt * t
 
-            path.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+                val q1 = -ttt + 2 * tt - t
+                val q2 = 3 * ttt - 5 * tt + 2
+                val q3 = -3 * ttt + 4 * tt + t
+                val q4 = ttt - tt
+
+                val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
+                val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
+                interpolatedPoints.add(PointF(tx, ty))
+            }
         }
-        return path
+        return interpolatedPoints
     }
 
     private fun savePdfWithInteractiveStamp() {

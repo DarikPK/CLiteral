@@ -10,10 +10,13 @@ import android.graphics.PointF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import java.util.Random
 
 class SignatureCanvasView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    private val random = Random()
 
     private val markers = mutableListOf<PointF>()
     private val markerPaint = Paint().apply {
@@ -31,6 +34,12 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
     private var drawingPath = Path()
     private var isDrawing = false
+
+    enum class Mode {
+        DRAW, EDIT
+    }
+    var mode = Mode.DRAW
+        private set
 
     private val signaturePaint = Paint().apply {
         color = Color.parseColor("#2557A8")
@@ -89,20 +98,42 @@ class SignatureCanvasView @JvmOverloads constructor(
         val x = event.x
         val y = event.y
 
+        return when (mode) {
+            Mode.DRAW -> handleDrawTouchEvent(event, x, y)
+            Mode.EDIT -> handleEditTouchEvent(event, x, y)
+        }
+    }
+
+    private fun handleDrawTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // Check if we are dragging an existing marker
+                isDrawing = true
+                drawingPath.moveTo(x, y)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (isDrawing) drawingPath.lineTo(x, y)
+            }
+            MotionEvent.ACTION_UP -> {
+                if (isDrawing) isDrawing = false
+            }
+            else -> return false
+        }
+        invalidate()
+        return true
+    }
+
+    private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
                 draggedMarker = markers.find {
                     val dx = it.x - x
                     val dy = it.y - y
                     dx * dx + dy * dy < touchThreshold * touchThreshold
                 }
-
                 if (draggedMarker == null) {
-                    // Not dragging, so start a new drawing
-                    clearCanvas()
-                    isDrawing = true
-                    drawingPath.moveTo(x, y)
+                    // Tapped on empty space in edit mode, clear everything and go back to draw mode
+                    switchToDrawMode()
                 }
                 return true
             }
@@ -110,29 +141,34 @@ class SignatureCanvasView @JvmOverloads constructor(
                 if (draggedMarker != null) {
                     draggedMarker?.set(x, y)
                     regenerateSignature()
-                } else if (isDrawing) {
-                    drawingPath.lineTo(x, y)
                 }
             }
             MotionEvent.ACTION_UP -> {
                 if (draggedMarker != null) {
-                    // Finished dragging
                     draggedMarker = null
                     markerListener?.invoke()
-                } else if (isDrawing) {
-                    // Finished drawing
-                    isDrawing = false
-                    autoPlaceMarkers()
-                    drawingPath.reset()
-                    markerListener?.invoke()
-                    regenerateSignature()
                 }
             }
             else -> return false
         }
-
         invalidate()
         return true
+    }
+
+    fun switchToEditMode() {
+        autoPlaceMarkers()
+        drawingPath.reset()
+        regenerateSignature()
+        mode = Mode.EDIT
+        invalidate()
+    }
+
+    private fun switchToDrawMode() {
+        clearCanvas(switchMode = true)
+    }
+
+    fun getDrawingPath(): Path {
+        return drawingPath
     }
 
     fun getMarkers(): List<PointF> {
@@ -142,13 +178,17 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun setMarkers(newMarkers: List<PointF>) {
         markers.clear()
         markers.addAll(newMarkers)
+        mode = if (newMarkers.isEmpty()) Mode.DRAW else Mode.EDIT
         regenerateSignature()
     }
 
-    fun clearCanvas() {
+    fun clearCanvas(switchMode: Boolean = false) {
         markers.clear()
         drawingPath.reset()
         generateSignaturePath()
+        if (switchMode) {
+            mode = Mode.DRAW
+        }
         invalidate()
     }
 
@@ -181,8 +221,8 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
 
         val randomPoints = markers.map { marker ->
-            val angle = Math.random() * 2 * Math.PI
-            val radius = Math.random() * randomizationRadius
+            val angle = random.nextDouble() * 2 * Math.PI
+            val radius = random.nextDouble() * randomizationRadius
             val x = marker.x + (radius * Math.cos(angle)).toFloat()
             val y = marker.y + (radius * Math.sin(angle)).toFloat()
             PointF(x, y)
