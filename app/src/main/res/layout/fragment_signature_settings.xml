@@ -121,6 +121,40 @@
                 android:stepSize="1.0"
                 android:value="20.0" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:hint="Número de Marcadores">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/signature_num_markers_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="Tamaño de Marcadores (px)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/signature_marker_size_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
             <TextView
                 style="@style/TextAppearance.Material3.TitleMedium"
                 android:layout_width="wrap_content"

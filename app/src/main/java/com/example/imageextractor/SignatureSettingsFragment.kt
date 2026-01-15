@@ -18,6 +18,9 @@ class SignatureSettingsFragment : Fragment() {
     private var _binding: FragmentSignatureSettingsBinding? = null
     private val binding get() = _binding!!
 
+    private lateinit var numMarkersEditText: com.google.android.material.textfield.TextInputEditText
+    private lateinit var markerSizeEditText: com.google.android.material.textfield.TextInputEditText
+
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
@@ -32,6 +35,10 @@ class SignatureSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        numMarkersEditText = view.findViewById(R.id.signature_num_markers_edit_text)
+        markerSizeEditText = view.findViewById(R.id.signature_marker_size_edit_text)
+
         setupToolbar()
         loadSettings()
         setupListeners()
@@ -50,6 +57,15 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureRandomRadiusSlider.value = sharedPrefs.getFloat("signature_random_radius", 20f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
+
+        val numMarkers = sharedPrefs.getInt("signature_num_markers", 15)
+        val markerSize = sharedPrefs.getFloat("signature_marker_size", 10f)
+
+        numMarkersEditText.setText(numMarkers.toString())
+        markerSizeEditText.setText(markerSize.toString())
+
+        binding.signatureCanvasView.setNumMarkers(numMarkers)
+        binding.signatureCanvasView.setMarkerRadius(markerSize)
 
         // Load markers
         val markersString = sharedPrefs.getString("signature_markers", null)
@@ -114,6 +130,18 @@ class SignatureSettingsFragment : Fragment() {
         }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
+
+        numMarkersEditText.doOnTextChanged { text, _, _, _ ->
+            val numMarkers = text.toString().toIntOrNull() ?: 15
+            saveInt("signature_num_markers", numMarkers)
+            binding.signatureCanvasView.setNumMarkers(numMarkers)
+        }
+
+        markerSizeEditText.doOnTextChanged { text, _, _, _ ->
+            val markerSize = text.toString().toFloatOrNull() ?: 10f
+            saveFloat("signature_marker_size", markerSize)
+            binding.signatureCanvasView.setMarkerRadius(markerSize)
+        }
     }
 
     private fun saveMarkers() {
@@ -133,6 +161,10 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun saveFloat(key: String, value: Float) {
         sharedPrefs.edit().putFloat(key, value).apply()
+    }
+
+    private fun saveInt(key: String, value: Int) {
+        sharedPrefs.edit().putInt(key, value).apply()
     }
 
     override fun onDestroyView() {

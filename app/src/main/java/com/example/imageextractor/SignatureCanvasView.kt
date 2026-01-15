@@ -51,13 +51,27 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
     private var signaturePoints = listOf<PointF>()
     private var randomizationRadius = 20f
+    private var markerRadius = 10f
+    private var numMarkers = 15
 
-    private val markerRadius = 10f
     private var markerListener: (() -> Unit)? = null
 
     fun setRandomizationRadius(radius: Float) {
         this.randomizationRadius = radius
         regenerateSignature()
+    }
+
+    fun setNumMarkers(count: Int) {
+        if (count > 1) { // Need at least 2 markers for a line
+            this.numMarkers = count
+        }
+    }
+
+    fun setMarkerRadius(radius: Float) {
+        if (radius > 0) {
+            this.markerRadius = radius
+            invalidate() // Redraw to show new marker size
+        }
     }
 
     private var draggedMarker: PointF? = null
@@ -109,7 +123,7 @@ class SignatureCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 parent.requestDisallowInterceptTouchEvent(true)
                 isDrawing = true
-                drawingPath.reset()
+                // El path ya no se resetea aquí para permitir el dibujo aditivo.
                 drawingPath.moveTo(x, y)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -210,12 +224,14 @@ class SignatureCanvasView @JvmOverloads constructor(
         val pathLength = pathMeasure.length
         if (pathLength == 0f) return
 
-        val numMarkers = 15 // Número de marcadores a colocar
+        // Usa el número de marcadores configurable en lugar de un valor fijo
+        if (numMarkers < 2) return // No se puede generar una línea con menos de 2 puntos
         val pos = FloatArray(2)
         val tan = FloatArray(2)
 
-        for (i in 0 until numMarkers) {
-            val distance = (pathLength / (numMarkers - 1)) * i
+        for (i in 0 until this.numMarkers) {
+            val step = if (this.numMarkers > 1) pathLength / (this.numMarkers - 1) else 0f
+            val distance = step * i
             pathMeasure.getPosTan(distance, pos, tan)
             markers.add(PointF(pos[0], pos[1]))
         }
