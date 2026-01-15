@@ -107,18 +107,25 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleDrawTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                parent.requestDisallowInterceptTouchEvent(true)
                 isDrawing = true
+                drawingPath.reset()
                 drawingPath.moveTo(x, y)
-                return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isDrawing) drawingPath.lineTo(x, y)
+                if (isDrawing) {
+                    drawingPath.lineTo(x, y)
+                }
             }
-            MotionEvent.ACTION_UP -> {
-                if (isDrawing) isDrawing = false
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isDrawing = false
+                parent.requestDisallowInterceptTouchEvent(false)
             }
+            // For any other action, we do not handle it and do not redraw.
             else -> return false
         }
+
+        // For DOWN, MOVE, and UP/CANCEL, we redraw the view and consume the event.
         invalidate()
         return true
     }
