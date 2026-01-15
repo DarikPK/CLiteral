@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PathMeasure
 import android.graphics.PointF
 import android.util.AttributeSet
@@ -40,7 +41,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         strokeJoin = Paint.Join.ROUND
     }
     private var signaturePoints = listOf<PointF>()
-    private val randomizationRadius = 20f
+    private var randomizationRadius = 20f
 
     private val markerRadius = 10f
     private var markerListener: (() -> Unit)? = null
