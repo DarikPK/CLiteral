@@ -613,10 +613,8 @@ class PdfPreviewFragment : Fragment() {
         // Draw Stamp 2
         if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
             // Generate unique wear for each page directly here
-            val adjustedIntensity = stamp2WearIntensity / 9.0f
-            val adjustedSize = stamp2WearSize / 9.0f
-            val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
-            val normalizedSize = (adjustedSize / 2.0f) / 100.0f
+            val normalizedIntensity = stamp2WearIntensity / 100.0f
+            val normalizedSize = stamp2WearSize / 100.0f
             // Use page index to guarantee a unique seed per page
             val wornBitmapForPage = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, System.currentTimeMillis() + index)
 
