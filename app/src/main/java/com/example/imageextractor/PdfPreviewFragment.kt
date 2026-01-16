@@ -52,7 +52,7 @@ class PdfPreviewFragment : Fragment() {
 
     // Sello 2
     private var stamp2Bitmap: Bitmap? = null
-    private var stamp2WornPreviewBitmap: Bitmap? = null
+    private var currentStamp2WornPreviewBitmap: Bitmap? = null
     private var stamp2State: StampState? = null
     private var isStamp2Enabled: Boolean = false
     private lateinit var stamp2Name: String
@@ -307,11 +307,6 @@ class PdfPreviewFragment : Fragment() {
             }
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
-                stamp2Bitmap?.let {
-                    val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
-                    val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
-                    stamp2WornPreviewBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() - 1000) // Use a fixed seed for preview
-                }
             }
             if (isSignatureEnabled) {
                 if (signatureImageUri != null) {
@@ -480,11 +475,26 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Update Stamp 2 Overlay
-        val bitmapToShow2 = stamp2WornPreviewBitmap ?: stamp2Bitmap
-        if (isStamp2Enabled && stamp2State != null && bitmapToShow2 != null) {
+        // Recycle the old bitmap before creating a new one
+        currentStamp2WornPreviewBitmap?.recycle()
+        currentStamp2WornPreviewBitmap = null
+
+        if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
+            // Generate a unique worn bitmap for the current preview page
+            val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
+            val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
+            val seed = System.currentTimeMillis() + currentPageIndex
+            currentStamp2WornPreviewBitmap = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, seed)
+
+            var previewRotation = stamp2State!!.rotation
+            if (stamp2VariableRotation) {
+                val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
+                previewRotation += randomRotation
+            }
+
             binding.stamp2OverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.stamp2OverlayView.setStamp(bitmapToShow2, stamp2State!!.x, stamp2State!!.y, stamp2State!!.scale, stamp2State!!.rotation, imageMatrix)
+            binding.stamp2OverlayView.setStamp(currentStamp2WornPreviewBitmap!!, stamp2State!!.x, stamp2State!!.y, stamp2State!!.scale, previewRotation, imageMatrix)
         } else {
             binding.stamp2OverlayView.visibility = View.GONE
         }
@@ -1145,7 +1155,7 @@ class PdfPreviewFragment : Fragment() {
         firstPageWornStampBitmap?.recycle()
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
-        stamp2WornPreviewBitmap?.recycle()
+        currentStamp2WornPreviewBitmap?.recycle()
         signatureBitmap?.recycle()
         _binding = null
     }
