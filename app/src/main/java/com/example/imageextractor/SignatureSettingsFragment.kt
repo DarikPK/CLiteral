@@ -97,6 +97,14 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureCanvasView.setNumMarkers(numMarkers)
         binding.signatureCanvasView.setMarkerRadius(markerSize)
 
+        // Load wear settings
+        val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
+        val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
+        binding.signatureWearIntensitySlider.value = wearIntensity
+        binding.signatureWearSizeSlider.value = wearSize
+        binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${wearIntensity.toInt()})"
+        binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${wearSize.toInt()})"
+
         // Load markers
         val markersString = sharedPrefs.getString("signature_markers", null)
         if (!markersString.isNullOrEmpty()) {
@@ -113,6 +121,7 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.setMarkerContours(contours)
         }
         updateButtonLabels()
+        generateAndShowSignature()
     }
 
     private fun updateButtonLabels() {
@@ -122,6 +131,29 @@ class SignatureSettingsFragment : Fragment() {
             binding.primaryActionButton.text = "Refrescar Firma"
         }
     }
+
+    private fun generateAndShowSignature() {
+        // Generate the base procedural signature
+        var signatureBitmap = binding.signatureCanvasView.generateProceduralSignatureBitmap()
+
+        // Apply wear and tear if the bitmap is not null
+        signatureBitmap?.let {
+            val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
+            val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
+
+            if (wearIntensity > 0 && wearSize > 0) {
+                val normalizedIntensity = wearIntensity / 100.0f
+                val normalizedSize = wearSize / 100.0f
+                val seed = System.currentTimeMillis()
+                val wornBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, seed)
+                // The original bitmap is replaced by the worn one
+                signatureBitmap = wornBitmap
+            }
+        }
+        // Update the canvas view with the (potentially worn) signature
+        binding.signatureCanvasView.setPreviewBitmap(signatureBitmap)
+    }
+
 
     private fun setupListeners() {
         binding.primaryActionButton.setOnClickListener {
@@ -134,9 +166,10 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureCanvasView.switchToEditMode()
                 updateButtonLabels()
                 saveMarkers()
+                generateAndShowSignature() // Generate preview after creating markers
             } else {
                 // We are in EDIT mode, so the button is "Refresh Signature"
-                binding.signatureCanvasView.regenerateSignature()
+                generateAndShowSignature()
             }
         }
 
@@ -145,6 +178,7 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.clearCanvas(switchMode = true)
             updateButtonLabels()
             saveMarkers()
+            generateAndShowSignature()
         }
 
         binding.selectImageButton.setOnClickListener {
@@ -193,6 +227,18 @@ class SignatureSettingsFragment : Fragment() {
             val markerSize = text.toString().toFloatOrNull() ?: 10f
             saveFloat("signature_marker_size", markerSize)
             binding.signatureCanvasView.setMarkerRadius(markerSize)
+        }
+
+        binding.signatureWearIntensitySlider.addOnChangeListener { _, value, _ ->
+            binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${value.toInt()})"
+            saveFloat("signature_wear_intensity", value)
+            generateAndShowSignature()
+        }
+
+        binding.signatureWearSizeSlider.addOnChangeListener { _, value, _ ->
+            binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${value.toInt()})"
+            saveFloat("signature_wear_size", value)
+            generateAndShowSignature()
         }
     }
 
