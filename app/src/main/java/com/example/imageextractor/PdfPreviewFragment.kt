@@ -74,6 +74,7 @@ class PdfPreviewFragment : Fragment() {
     // Signature
     private var isSignatureEnabled: Boolean = false
     private var signatureMarkerContours: List<List<PointF>> = emptyList()
+    private var signatureBitmap: Bitmap? = null
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -322,9 +323,10 @@ class PdfPreviewFragment : Fragment() {
                             }
                         }
                     }
+                    signatureBitmap = generateProceduralSignatureBitmap()
                 }
             }
-            initializeStamp2State()
+
             initializeStampStates()
 
 
@@ -337,16 +339,16 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun initializeStampStates() {
-        cleanStampBitmap?.let { stamp ->
-            if (pageBitmaps.isEmpty()) return
+        if (pageBitmaps.isEmpty()) return
+        val pageW = 1000f
+        val pageH = pageW / (595f / 842f)
+        val mmToPx = 2.83f
 
+        // Sello 1
+        cleanStampBitmap?.let { stamp ->
             var scale = stampSizePercent / 100f
             var stampWidth = stamp.width * scale
             var stampHeight = stamp.height * scale
-
-            val a4Ratio = 595f / 842f
-            val pageW = 1000f
-            val pageH = pageW / a4Ratio
             var wasAdjusted = false
 
             if (stampWidth > pageW || stampHeight > pageH) {
@@ -360,9 +362,8 @@ class PdfPreviewFragment : Fragment() {
             stampHeight = stamp.height * scale
 
             val random = Random()
-
-            var xPos = pageW - stampWidth - 25
-            var yPos = pageH - stampHeight - 25
+            val xPos = pageW - stampWidth - 25
+            val yPos = pageH - stampHeight - 25
 
             firstPageStampState = StampState(
                 x = maxOf(0f, xPos),
@@ -372,9 +373,6 @@ class PdfPreviewFragment : Fragment() {
             )
 
             if (pageBitmaps.size > 1) {
-                xPos = pageW - stampWidth - 25
-                yPos = pageH - stampHeight - 25
-
                 lastPageStampState = StampState(
                     x = maxOf(0f, xPos),
                     y = maxOf(0f, yPos),
@@ -389,47 +387,32 @@ class PdfPreviewFragment : Fragment() {
                 }
             }
         }
-    }
 
-    private fun initializeStamp2State() {
-        if (!isStamp2Enabled || stamp2Bitmap == null || pageBitmaps.isEmpty()) return
+        // Sello 2
+        if (isStamp2Enabled && stamp2Bitmap != null) {
+            val dx = stamp2OffsetX * mmToPx
+            val dy = stamp2OffsetY * mmToPx
+            val scale = 1f
+            val stampWidth = stamp2Bitmap!!.width * scale
+            val stampHeight = stamp2Bitmap!!.height * scale
+            val centerX = pageW / 2
+            val centerY = pageH / 2
+            val x = centerX + dx - stampWidth / 2
+            val y = centerY + dy - stampHeight / 2
+            stamp2State = StampState(x, y, scale, stamp2Rotation)
+        }
 
-        // Initialize signature state
-        if (isSignatureEnabled && signatureMarkerContours.isNotEmpty()) {
-            val pageW = 1000f
-            val pageH = pageW / (595f / 842f)
-            val mmToPx = 2.83f
+        // Firma
+        if (isSignatureEnabled && signatureBitmap != null) {
             val dx = signatureOffsetX * mmToPx
             val dy = signatureOffsetY * mmToPx
             val scale = signatureScale / 100f
-
-            // For procedural signature, position is relative to the canvas size, not bitmap size
             val centerX = pageW / 2
             val centerY = pageH / 2
-            val x = centerX + dx
-            val y = centerY + dy
-
+            val x = centerX + dx - (signatureBitmap!!.width * scale) / 2
+            val y = centerY + dy - (signatureBitmap!!.height * scale) / 2
             signatureState = StampState(x, y, scale, signatureRotation)
         }
-
-        val pageW = 1000f
-        val pageH = pageW / (595f / 842f)
-
-        val mmToPx = 2.83f
-        val dx = stamp2OffsetX * mmToPx
-        val dy = stamp2OffsetY * mmToPx
-
-        val scale = 1f
-        val stampWidth = stamp2Bitmap!!.width * scale
-        val stampHeight = stamp2Bitmap!!.height * scale
-
-        val centerX = pageW / 2
-        val centerY = pageH / 2
-
-        val x = centerX + dx - stampWidth / 2
-        val y = centerY + dy - stampHeight / 2
-
-        stamp2State = StampState(x, y, scale, stamp2Rotation)
     }
 
     private fun displayPage(index: Int) {
@@ -481,7 +464,14 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Signature overlay is removed from this fragment
-        binding.signatureOverlayView.visibility = View.GONE
+        val bitmapToShowSignature = signatureBitmap
+        if (isSignatureEnabled && signatureState != null && bitmapToShowSignature != null) {
+            binding.signatureOverlayView.visibility = View.VISIBLE
+            val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
+            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation, imageMatrix)
+        } else {
+            binding.signatureOverlayView.visibility = View.GONE
+        }
     }
 
     private fun generatePreviewPage(originalBitmap: Bitmap, pageIndex: Int): Bitmap {
@@ -648,6 +638,37 @@ class PdfPreviewFragment : Fragment() {
             }
             canvas.restore()
         }
+    }
+
+    private fun generateProceduralSignatureBitmap(): Bitmap? {
+        if (signatureMarkerContours.isEmpty()) return null
+
+        val bitmap = Bitmap.createBitmap(SIGNATURE_CANVAS_WIDTH.toInt(), SIGNATURE_CANVAS_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        val signaturePaint = Paint().apply {
+            color = Color.parseColor("#2557A8")
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+
+        val signatureContours = generateProceduralSignaturePoints()
+        signatureContours.forEach { contour ->
+            if (contour.size > 1) {
+                for (i in 0 until contour.size - 1) {
+                    val p1 = contour[i]
+                    val p2 = contour[i + 1]
+                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
+                    val taper = Math.min(progress, 1 - progress) * 2
+                    val strokeWidth = (2 + taper * 8).toFloat()
+                    signaturePaint.strokeWidth = strokeWidth
+                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                }
+            }
+        }
+        return bitmap
     }
 
     private fun generateProceduralSignaturePoints(): List<List<PointF>> {
@@ -837,9 +858,9 @@ class PdfPreviewFragment : Fragment() {
 
             // Apply wear to Stamp 2
             stamp2Bitmap?.let {
-                // Reducir el impacto a un tercio
-                val adjustedIntensity = stamp2WearIntensity / 3.0f
-                val adjustedSize = stamp2WearSize / 3.0f
+                // Reducir el impacto a un tercio del tercio (1/9)
+                val adjustedIntensity = stamp2WearIntensity / 9.0f
+                val adjustedSize = stamp2WearSize / 9.0f
                 val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
                 val normalizedSize = (adjustedSize / 2.0f) / 100.0f
                 wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
@@ -1135,6 +1156,7 @@ class PdfPreviewFragment : Fragment() {
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
         wornStamp2Bitmap?.recycle()
+        signatureBitmap?.recycle()
         _binding = null
     }
 
