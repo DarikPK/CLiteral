@@ -53,19 +53,28 @@
                 android:layout_marginTop="16dp">
 
                 <Button
-                    android:id="@+id/secondaryActionButton"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
+                    android:id="@+id/selectImageButton"
                     style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Seleccionar Imagen" />
+
+                <Button
+                    android:id="@+id/secondaryActionButton"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
                     android:text="Limpiar Lienzo" />
 
                 <Button
                     android:id="@+id/primaryActionButton"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
+                    android:layout_weight="1"
                     android:text="Generar Marcadores" />
             </LinearLayout>
 

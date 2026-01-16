@@ -26,6 +26,8 @@ import java.io.FileOutputStream
 import java.util.Random
 import kotlin.math.max
 import kotlin.math.min
+import android.provider.MediaStore
+import android.net.Uri
 
 class PdfPreviewFragment : Fragment() {
 
@@ -308,22 +310,34 @@ class PdfPreviewFragment : Fragment() {
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
             }
-            if (isSignatureEnabled && signatureImageUri == null) {
-                // Using procedural signature, load markers
-                val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-                val markersString = sharedPrefs.getString("signature_markers", null)
-                if (!markersString.isNullOrEmpty()) {
-                    signatureMarkerContours = markersString.split("|").map { contourString ->
-                        contourString.split(";").mapNotNull {
-                            val parts = it.split(",")
-                            if (parts.size == 2) {
-                                PointF(parts[0].toFloat(), parts[1].toFloat())
-                            } else {
-                                null
-                            }
+            if (isSignatureEnabled) {
+                if (signatureImageUri != null) {
+                    // Load signature from image URI
+                    try {
+                        val uri = Uri.parse(signatureImageUri)
+                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    signatureBitmap = generateProceduralSignatureBitmap()
+                } else {
+                    // Using procedural signature, load markers
+                    val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+                    val markersString = sharedPrefs.getString("signature_markers", null)
+                    if (!markersString.isNullOrEmpty()) {
+                        signatureMarkerContours = markersString.split("|").map { contourString ->
+                            contourString.split(";").mapNotNull {
+                                val parts = it.split(",")
+                                if (parts.size == 2) {
+                                    PointF(parts[0].toFloat(), parts[1].toFloat())
+                                } else {
+                                    null
+                                }
+                            }
+                        }
+                        signatureBitmap = generateProceduralSignatureBitmap()
+                    }
                 }
             }
 
@@ -606,37 +620,14 @@ class PdfPreviewFragment : Fragment() {
             canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
         }
 
-        // Draw Procedural Signature
-        if (isSignatureEnabled && signatureState != null && signatureMarkerContours.isNotEmpty()) {
-            val signatureContours = generateProceduralSignaturePoints()
-            val signaturePaint = Paint().apply {
-                color = Color.parseColor("#2557A8")
-                style = Paint.Style.STROKE
-                isAntiAlias = true
-                strokeCap = Paint.Cap.ROUND
-                strokeJoin = Paint.Join.ROUND
-            }
-
-            canvas.save()
-            canvas.translate(signatureState!!.x * previewToPdfScale, signatureState!!.y * previewToPdfScale)
-            canvas.scale(signatureState!!.scale * previewToPdfScale, signatureState!!.scale * previewToPdfScale)
-            canvas.rotate(signatureState!!.rotation)
-            canvas.translate(-SIGNATURE_CANVAS_WIDTH / 2, -SIGNATURE_CANVAS_HEIGHT / 2)
-
-            signatureContours.forEach { contour ->
-                if (contour.size > 1) {
-                    for (i in 0 until contour.size - 1) {
-                        val p1 = contour[i]
-                        val p2 = contour[i + 1]
-                        val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                        val taper = Math.min(progress, 1 - progress) * 2
-                        val strokeWidth = (2 + taper * 8).toFloat()
-                        signaturePaint.strokeWidth = strokeWidth
-                        canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
-                    }
-                }
-            }
-            canvas.restore()
+        // Draw Signature (from bitmap, either procedural or image-based)
+        if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
+            val matrix = Matrix()
+            val scaledScale = signatureState!!.scale * previewToPdfScale
+            matrix.postScale(scaledScale, scaledScale)
+            matrix.postRotate(signatureState!!.rotation, signatureBitmap!!.width * scaledScale / 2, signatureBitmap!!.height * scaledScale / 2)
+            matrix.postTranslate(signatureState!!.x * previewToPdfScale, signatureState!!.y * previewToPdfScale)
+            canvas.drawBitmap(signatureBitmap!!, matrix, highQualityPaint)
         }
     }
 

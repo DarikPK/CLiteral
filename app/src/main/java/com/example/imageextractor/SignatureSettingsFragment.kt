@@ -1,13 +1,19 @@
 package com.example.imageextractor
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.PointF
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -23,6 +29,31 @@ class SignatureSettingsFragment : Fragment() {
 
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            pickImageLauncher.launch("image/*")
+        } else {
+            Toast.makeText(requireContext(), "Permiso denegado. No se puede seleccionar imagen.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Persist the URI string
+            saveString("signature_image_uri", it.toString())
+
+            // Clear the procedural signature
+            binding.signatureCanvasView.clearCanvas(switchMode = true)
+            saveMarkers()
+
+            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCreateView(
@@ -114,6 +145,31 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.clearCanvas(switchMode = true)
             updateButtonLabels()
             saveMarkers()
+        }
+
+        binding.selectImageButton.setOnClickListener {
+            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+
+            when {
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    permission
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    pickImageLauncher.launch("image/*")
+                }
+                shouldShowRequestPermissionRationale(permission) -> {
+                    // Explain to the user why we need the permission
+                    Toast.makeText(requireContext(), "Se necesita permiso para acceder a las imágenes.", Toast.LENGTH_LONG).show()
+                    requestPermissionLauncher.launch(permission)
+                }
+                else -> {
+                    requestPermissionLauncher.launch(permission)
+                }
+            }
         }
 
 
