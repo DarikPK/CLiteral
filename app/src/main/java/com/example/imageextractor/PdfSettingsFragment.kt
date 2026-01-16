@@ -110,12 +110,6 @@ class PdfSettingsFragment : Fragment() {
 
     private fun setupListeners() {
         // Auto-save for all EditTexts
-        binding.brightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("brightness", text.toString()) }
-        binding.contrastEditText.doOnTextChanged { text, _, _, _ -> saveString("contrast", text.toString()) }
-        binding.marginTopEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_top", text.toString()) }
-        binding.marginBottomEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_bottom", text.toString()) }
-        binding.marginLeftEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_left", text.toString()) }
-        binding.marginRightEditText.doOnTextChanged { text, _, _, _ -> saveString("margin_right", text.toString()) }
         // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
@@ -138,6 +132,13 @@ class PdfSettingsFragment : Fragment() {
 
         // Auto-save for CheckBox
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
+        binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
+
+
+        binding.advancedStampSettingsButton.setOnClickListener {
+            val layout = binding.advancedStampSettingsLayout
+            layout.visibility = if (layout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
 
         // Auto-save for Sliders
         binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_intensity", value) })
@@ -169,16 +170,15 @@ class PdfSettingsFragment : Fragment() {
         binding.signatureSettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
         }
+
+        binding.pageImageSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
+        }
     }
 
     private fun loadSettings() {
-        binding.brightnessEditText.setText(sharedPrefs.getString("brightness", "27"))
-        binding.contrastEditText.setText(sharedPrefs.getString("contrast", "100"))
-        binding.marginTopEditText.setText(sharedPrefs.getString("margin_top", "55"))
-        binding.marginBottomEditText.setText(sharedPrefs.getString("margin_bottom", "50"))
-        binding.marginLeftEditText.setText(sharedPrefs.getString("margin_left", "0"))
-        binding.marginRightEditText.setText(sharedPrefs.getString("margin_right", "15"))
-        binding.stampDayTextView.text = sharedPrefs.getString("stamp_day", "1")
+        // Los ajustes de imagen y márgenes ahora se cargan en PageImageSettingsFragment
+        // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
         binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
@@ -187,6 +187,8 @@ class PdfSettingsFragment : Fragment() {
         binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
 
         binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", true)
+        binding.stampOnFirstLastPageCheckbox.isChecked = sharedPrefs.getBoolean("stamp_on_first_last", true)
+
 
         binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
         binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
@@ -343,10 +345,11 @@ class PdfSettingsFragment : Fragment() {
             putFloat("marginTop", binding.marginTopEditText.text.toString().toFloatOrNull() ?: 10f)
             putFloat("marginBottom", binding.marginBottomEditText.text.toString().toFloatOrNull() ?: 10f)
             putFloat("marginLeft", binding.marginLeftEditText.text.toString().toFloatOrNull() ?: 10f)
-            putFloat("marginRight", binding.marginRightEditText.text.toString().toFloatOrNull() ?: 10f)
+            putFloat("marginRight", sharedPrefs.getString("margin_right", "15")?.toFloatOrNull() ?: 10f)
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
+                putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
                 val dayInt = binding.stampDayTextView.text.toString().toIntOrNull()
                 val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
                 val stampMonth = binding.stampMonthSpinner.selectedItem.toString()

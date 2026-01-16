@@ -32,118 +32,19 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
-                style="@style/TextAppearance.Material3.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="1. Ajustes de Imagen"
-                android:layout_marginBottom="8dp"/>
-
-            <com.google.android.material.textfield.TextInputLayout
+            <Button
+                android:id="@+id/page_image_settings_button"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Brillo (0-100)">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/brightness_edit_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:maxLength="3"
-                    android:text="30" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Contraste (0-100)">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/contrast_edit_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:maxLength="3"
-                    android:text="100" />
-            </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginBottom="8dp"
+                android:text="Ajustes de página e imagen" />
 
             <TextView
                 style="@style/TextAppearance.Material3.TitleLarge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="2. Márgenes de Página (en puntos)"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
-                    android:hint="Superior">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/margin_top_edit_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="4dp"
-                    android:hint="Inferior">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/margin_bottom_edit_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="4dp"
-                    android:hint="Izquierdo">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/margin_left_edit_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="4dp"
-                    android:hint="Derecho">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/margin_right_edit_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
-
-            <TextView
-                style="@style/TextAppearance.Material3.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3. Sello de Fecha"
+                android:text="Fecha"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="8dp"/>
 
@@ -151,11 +52,33 @@
                 android:id="@+id/stamp_enabled_checkbox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Añadir sello de fecha en la primera y última página"
+                android:text="Colocar fecha"
                 android:checked="true"/>
 
-            <LinearLayout
+            <Button
+                android:id="@+id/advanced_stamp_settings_button"
+                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Opciones Avanzadas" />
+
+            <LinearLayout
+                android:id="@+id/advanced_stamp_settings_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <CheckBox
+                    android:id="@+id/stamp_on_first_last_page_checkbox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Añadir solo en la primera y última página"
+                    android:checked="true"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="8dp"
@@ -323,6 +246,8 @@
                         android:text="50"/>
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
+
+            </LinearLayout> <!-- Cierre de advanced_stamp_settings_layout -->
 
             <Button
                 android:id="@+id/stamp2_settings_button"
