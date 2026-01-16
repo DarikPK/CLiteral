@@ -132,13 +132,10 @@ class PdfSettingsFragment : Fragment() {
 
         // Auto-save for CheckBox
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
-        binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
+        // binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
 
-
-        binding.advancedStampSettingsButton.setOnClickListener {
-            val layout = binding.advancedStampSettingsLayout
-            layout.visibility = if (layout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-        }
+        // El listener para el botón de opciones avanzadas y el de la página de ajustes de imagen
+        // se han eliminado porque los botones ya no existen en este fragmento.
 
         // Auto-save for Sliders
         binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_intensity", value) })
@@ -166,14 +163,6 @@ class PdfSettingsFragment : Fragment() {
         binding.stamp2SettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_stamp2SettingsFragment)
         }
-
-        binding.signatureSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
-        }
-
-        binding.pageImageSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
-        }
     }
 
     private fun loadSettings() {
@@ -187,8 +176,6 @@ class PdfSettingsFragment : Fragment() {
         binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
 
         binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", true)
-        binding.stampOnFirstLastPageCheckbox.isChecked = sharedPrefs.getBoolean("stamp_on_first_last", true)
-
 
         binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
         binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
@@ -349,7 +336,8 @@ class PdfSettingsFragment : Fragment() {
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
-                putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
+                // La opción de primera/última página se ha eliminado temporalmente, así que pasamos 'false'
+                putBoolean("stampOnFirstLast", false)
                 val dayInt = binding.stampDayTextView.text.toString().toIntOrNull()
                 val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
                 val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
