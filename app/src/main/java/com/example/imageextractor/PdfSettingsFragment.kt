@@ -338,14 +338,14 @@ class PdfSettingsFragment : Fragment() {
             putString("partidaId", folder.partidaId)
             putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-            putFloat("brightness", binding.brightnessEditText.text.toString().toFloatOrNull() ?: 60f)
-            putFloat("contrast", binding.contrastEditText.text.toString().toFloatOrNull() ?: 100f)
+            putFloat("brightness", sharedPrefs.getString("brightness", "27")?.toFloatOrNull() ?: 27f)
+            putFloat("contrast", sharedPrefs.getString("contrast", "100")?.toFloatOrNull() ?: 100f)
 
             // Pasar los valores de los márgenes
-            putFloat("marginTop", binding.marginTopEditText.text.toString().toFloatOrNull() ?: 10f)
-            putFloat("marginBottom", binding.marginBottomEditText.text.toString().toFloatOrNull() ?: 10f)
-            putFloat("marginLeft", binding.marginLeftEditText.text.toString().toFloatOrNull() ?: 10f)
-            putFloat("marginRight", sharedPrefs.getString("margin_right", "15")?.toFloatOrNull() ?: 10f)
+            putFloat("marginTop", sharedPrefs.getString("margin_top", "55")?.toFloatOrNull() ?: 55f)
+            putFloat("marginBottom", sharedPrefs.getString("margin_bottom", "50")?.toFloatOrNull() ?: 50f)
+            putFloat("marginLeft", sharedPrefs.getString("margin_left", "0")?.toFloatOrNull() ?: 0f)
+            putFloat("marginRight", sharedPrefs.getString("margin_right", "15")?.toFloatOrNull() ?: 15f)
 
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
