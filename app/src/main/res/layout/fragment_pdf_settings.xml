@@ -60,7 +60,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="?android:attr/expandActivityOverflowButtonDrawable"
+                    android:src="@drawable/ic_arrow_down"
                     android:contentDescription="Opciones Avanzadas de Fecha" />
 
             </LinearLayout>
