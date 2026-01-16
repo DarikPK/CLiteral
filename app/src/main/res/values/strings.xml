@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Image Extractor</string>
+    <string name="app_name">CL Extractor</string>
     <string-array name="tipo_partida_array">
         <item>PREDIOS</item>
         <item>PJ</item>
