@@ -310,7 +310,8 @@ class PdfPreviewFragment : Fragment() {
                 stamp2Bitmap?.let {
                     val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
                     val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
-                    stamp2WornPreviewBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() - 1000) // Use a fixed seed for preview
+                    val random = Random(System.currentTimeMillis() - 1000) // Use a fixed seed for preview
+                    stamp2WornPreviewBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, random)
                 }
             }
             if (isSignatureEnabled) {
@@ -350,9 +351,9 @@ class PdfPreviewFragment : Fragment() {
             cleanStampBitmap?.let {
                 val normalizedIntensity = stampWearIntensity / 100.0f
                 val normalizedSize = stampWearSize / 100.0f
-                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, Random(System.currentTimeMillis()))
                 if (pageBitmaps.size > 1) {
-                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
+                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, Random(System.currentTimeMillis() + 1))
                 } else {
                     lastPageWornStampBitmap = null
                 }
@@ -582,7 +583,7 @@ class PdfPreviewFragment : Fragment() {
 
     }
 
-    private fun drawPdfPage(canvas: Canvas, pageInfo: PdfDocument.PageInfo, originalBitmap: Bitmap, index: Int) {
+    private fun drawPdfPage(canvas: Canvas, pageInfo: PdfDocument.PageInfo, originalBitmap: Bitmap, index: Int, random: Random) {
         val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val previewToPdfScale = 595f / 1000f
 
@@ -622,7 +623,7 @@ class PdfPreviewFragment : Fragment() {
             val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
             val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
             // Use page index to guarantee a unique seed per page
-            val wornBitmapForPage = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, System.currentTimeMillis() + index)
+            val wornBitmapForPage = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, random)
 
             val matrix = Matrix()
             val scaledScale = stamp2State!!.scale * previewToPdfScale
@@ -783,10 +784,11 @@ class PdfPreviewFragment : Fragment() {
         Toast.makeText(context, "Guardando PDF final...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             val pdfDocument = PdfDocument()
+            val random = Random()
             pageBitmaps.forEachIndexed { index, originalBitmap ->
                 val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
                 val page = pdfDocument.startPage(pageInfo)
-                drawPdfPage(page.canvas, pageInfo, originalBitmap, index)
+                drawPdfPage(page.canvas, pageInfo, originalBitmap, index, random)
                 pdfDocument.finishPage(page)
             }
 
@@ -898,7 +900,7 @@ class PdfPreviewFragment : Fragment() {
         this.stamp2Bitmap = applyStamp2Adjustments(bitmap)
     }
 
-    fun applyInkWear(source: Bitmap, intensity: Float, size: Float, seed: Long): Bitmap {
+    fun applyInkWear(source: Bitmap, intensity: Float, size: Float, random: Random): Bitmap {
         if (intensity <= 0.0f) return source
 
         val maskBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
@@ -911,8 +913,6 @@ class PdfPreviewFragment : Fragment() {
             isAntiAlias = true
             style = Paint.Style.FILL
         }
-
-        val random = Random(seed)
 
         // Re-calibrated formula for a more pronounced 'middle ground' effect
         val baseSize = 2.0f + size * 25f
@@ -1053,10 +1053,11 @@ class PdfPreviewFragment : Fragment() {
 
     private fun savePdfToDownloads(): File? {
         val pdfDocument = PdfDocument()
+        val random = Random()
         pageBitmaps.forEachIndexed { index, originalBitmap ->
             val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index + 1).create()
             val page = pdfDocument.startPage(pageInfo)
-            drawPdfPage(page.canvas, pageInfo, originalBitmap, index)
+            drawPdfPage(page.canvas, pageInfo, originalBitmap, index, random)
             pdfDocument.finishPage(page)
         }
 
