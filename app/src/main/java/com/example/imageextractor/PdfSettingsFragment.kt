@@ -75,7 +75,6 @@ class PdfSettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        setupMonthSpinner()
         setupDynamicFields()
         loadSettings()
         setupListeners()
@@ -84,17 +83,6 @@ class PdfSettingsFragment : Fragment() {
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.title = "Generar PDF"
-    }
-
-    private fun setupMonthSpinner() {
-        ArrayAdapter.createFromResource(
-            requireContext(),
-            R.array.months_array,
-            android.R.layout.simple_spinner_item
-        ).also { adapter ->
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            binding.stampMonthSpinner.adapter = adapter
-        }
     }
 
     private fun setupDynamicFields() {
@@ -109,9 +97,9 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        binding.datePickerButton.setOnClickListener { showDatePicker() }
+
         // Auto-save for all EditTexts
-        // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
-        binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
         binding.stampSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_size", text.toString()) }
         binding.stampRotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_rotation", text.toString()) }
@@ -128,8 +116,6 @@ class PdfSettingsFragment : Fragment() {
             validateTime()
         }
 
-        binding.stampDayTextView.setOnClickListener { showDatePicker() }
-
         // Auto-save for CheckBox
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
         binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
@@ -145,13 +131,6 @@ class PdfSettingsFragment : Fragment() {
         binding.stampWearSizeSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_size", value) })
 
         // Auto-save for Spinner
-        binding.stampMonthSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                saveInt("stamp_month_position", position)
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        }
-
         binding.dynamicTipoPartidaSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 saveInt("dynamic_tipo_partida_position", position)
@@ -185,9 +164,12 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
+        // Load date
+        val savedDateMillis = sharedPrefs.getLong("selected_date", System.currentTimeMillis())
+        selectedDate.timeInMillis = savedDateMillis
+        updateDateButtonText()
+
         // Los ajustes de imagen y márgenes ahora se cargan en PageImageSettingsFragment
-        // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
-        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
         binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
@@ -199,8 +181,6 @@ class PdfSettingsFragment : Fragment() {
 
         binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
         binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
-
-        binding.stampMonthSpinner.setSelection(sharedPrefs.getInt("stamp_month_position", 0))
 
         // Load dynamic fields
         binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
@@ -224,9 +204,9 @@ class PdfSettingsFragment : Fragment() {
                 selectedDate.set(Calendar.MONTH, month)
                 selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth)
 
-                binding.stampDayTextView.text = dayOfMonth.toString()
-                binding.stampMonthSpinner.setSelection(month)
-                binding.stampYearEditText.setText(year.toString())
+                // Save the selected date
+                saveLong("selected_date", selectedDate.timeInMillis)
+                updateDateButtonText()
                 validateTime() // Re-validate time when date changes
             }
         }
@@ -240,6 +220,11 @@ class PdfSettingsFragment : Fragment() {
         )
 
         datePickerDialog.show()
+    }
+
+    private fun updateDateButtonText() {
+        val sdf = SimpleDateFormat("dd MMMM yyyy", Locale("es", "ES"))
+        binding.datePickerButton.text = sdf.format(selectedDate.time)
     }
 
     private fun validateTime() {
@@ -294,6 +279,10 @@ class PdfSettingsFragment : Fragment() {
         sharedPrefs.edit().putInt(key, value).apply()
     }
 
+    private fun saveLong(key: String, value: Long) {
+        sharedPrefs.edit().putLong(key, value).apply()
+    }
+
     private fun getFloatPreferenceSafely(newKey: String, oldKey: String, defaultValue: Float): Float {
         val value = sharedPrefs.all[newKey] ?: sharedPrefs.all[oldKey]
         return when (value) {
@@ -305,14 +294,8 @@ class PdfSettingsFragment : Fragment() {
 
 
     private fun validateAndProceed() {
-        if (binding.stampEnabledCheckbox.isChecked && binding.stampDayTextView.text.toString().isBlank()) {
-            android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Campo Requerido")
-                .setMessage("Por favor, ingrese un día para el sello antes de continuar.")
-                .setPositiveButton("Aceptar", null)
-                .show()
-            return
-        }
+        // La validación del día ya no es necesaria,
+        // porque siempre habrá una fecha seleccionada.
         showPartidaSelectionDialog()
     }
 
@@ -357,10 +340,12 @@ class PdfSettingsFragment : Fragment() {
             putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
             if (binding.stampEnabledCheckbox.isChecked) {
                 putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
-                val dayInt = binding.stampDayTextView.text.toString().toIntOrNull()
-                val stampDay = dayInt?.let { String.format("%02d", it) } ?: ""
-                val stampMonth = binding.stampMonthSpinner.selectedItem.toString()
-                val stampYear = binding.stampYearEditText.text.toString()
+                val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
+                // Capitaliza la primera letra del mes
+                val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES"))
+                    .format(selectedDate.time)
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("es", "ES")) else it.toString() }
+                val stampYear = selectedDate.get(Calendar.YEAR).toString()
                 putString("stampDateText", "$stampDay $stampMonth. $stampYear")
                 putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
