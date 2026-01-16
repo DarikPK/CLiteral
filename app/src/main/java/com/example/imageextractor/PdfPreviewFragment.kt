@@ -621,12 +621,29 @@ class PdfPreviewFragment : Fragment() {
 
         // Draw Signature (from bitmap, either procedural or image-based)
         if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
-            val matrix = Matrix()
+            canvas.save()
+
+            // Calculate final dimensions and position in PDF coordinates
             val scaledScale = signatureState!!.scale * previewToPdfScale
-            matrix.postScale(scaledScale, scaledScale)
-            matrix.postRotate(signatureState!!.rotation, signatureBitmap!!.width * scaledScale / 2, signatureBitmap!!.height * scaledScale / 2)
-            matrix.postTranslate(signatureState!!.x * previewToPdfScale, signatureState!!.y * previewToPdfScale)
-            canvas.drawBitmap(signatureBitmap!!, matrix, highQualityPaint)
+            val finalWidth = signatureBitmap!!.width * scaledScale
+            val finalHeight = signatureBitmap!!.height * scaledScale
+            val finalX = signatureState!!.x * previewToPdfScale
+            val finalY = signatureState!!.y * previewToPdfScale
+
+            // Define the destination rectangle on the PDF canvas
+            val dstRect = RectF(finalX, finalY, finalX + finalWidth, finalY + finalHeight)
+
+            // Rotate the canvas around the center of the destination rectangle
+            canvas.rotate(signatureState!!.rotation, dstRect.centerX(), dstRect.centerY())
+
+            // Define the source rectangle (the entire bitmap)
+            val srcRect = Rect(0, 0, signatureBitmap!!.width, signatureBitmap!!.height)
+
+            // Draw the bitmap into the destination rectangle, this prevents clipping issues
+            canvas.drawBitmap(signatureBitmap!!, srcRect, dstRect, highQualityPaint)
+
+            // Restore canvas to its original state
+            canvas.restore()
         }
     }
 
