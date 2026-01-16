@@ -134,8 +134,10 @@ class PdfSettingsFragment : Fragment() {
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
         // binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
 
-        // El listener para el botón de opciones avanzadas y el de la página de ajustes de imagen
-        // se han eliminado porque los botones ya no existen en este fragmento.
+        binding.advancedStampSettingsButton.setOnClickListener {
+            val layout = binding.advancedStampSettingsLayout
+            layout.visibility = if (layout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
 
         // Auto-save for Sliders
         binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_intensity", value) })
