@@ -27,7 +27,6 @@ import java.util.Random
 import kotlin.math.max
 import kotlin.math.min
 import android.provider.MediaStore
-import android.net.Uri
 
 class PdfPreviewFragment : Fragment() {
 
