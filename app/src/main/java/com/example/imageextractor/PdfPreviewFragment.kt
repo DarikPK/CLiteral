@@ -230,7 +230,6 @@ class PdfPreviewFragment : Fragment() {
         setupToolbar()
         loadPages()
         setupNavigationButtons()
-        binding.applyWearButton.setOnClickListener { applyWearEffect() }
         binding.stampOverlayView.setOnStampUpdateListener { x, y, rotation ->
             val currentState = when (currentPageIndex) {
                 0 -> firstPageStampState
@@ -341,6 +340,18 @@ class PdfPreviewFragment : Fragment() {
 
             initializeStampStates()
 
+            // Apply wear automatically for Stamp 1
+            cleanStampBitmap?.let {
+                val normalizedIntensity = stampWearIntensity / 100.0f
+                val normalizedSize = stampWearSize / 100.0f
+                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+                if (pageBitmaps.size > 1) {
+                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
+                } else {
+                    lastPageWornStampBitmap = null
+                }
+            }
+
 
             withContext(Dispatchers.Main) {
                 if (pageBitmaps.isNotEmpty()) {
@@ -436,7 +447,6 @@ class PdfPreviewFragment : Fragment() {
         binding.pdfPageZoomableImageView.setImageBitmap(previewPageBitmap)
 
         binding.pageNumberTextView.text = "Página ${index + 1} / ${pageBitmaps.size}"
-        binding.applyWearButton.isActivated = firstPageWornStampBitmap != null
 
         updateStampOverlay()
     }
@@ -459,10 +469,8 @@ class PdfPreviewFragment : Fragment() {
             binding.stampOverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
             binding.stampOverlayView.setStamp(bitmapToShow, currentState.x, currentState.y, currentState.scale, currentState.rotation, imageMatrix)
-            binding.applyWearButton.visibility = View.VISIBLE
         } else {
             binding.stampOverlayView.visibility = View.GONE
-            binding.applyWearButton.visibility = View.GONE
         }
 
         // Update Stamp 2 Overlay
@@ -884,34 +892,6 @@ class PdfPreviewFragment : Fragment() {
         }
 
         this.stamp2Bitmap = applyStamp2Adjustments(bitmap)
-    }
-
-    private fun applyWearEffect() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
-            }
-
-            // Apply wear to Stamp 1
-            cleanStampBitmap?.let {
-                val normalizedIntensity = stampWearIntensity / 100.0f
-                val normalizedSize = stampWearSize / 100.0f
-                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
-                if (pageBitmaps.size > 1) {
-                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
-                } else {
-                    lastPageWornStampBitmap = null
-                }
-            }
-
-            // Wear for Stamp 2 is now applied per-page in drawPdfPage, so it's removed from here.
-
-            withContext(Dispatchers.Main) {
-                binding.applyWearButton.isActivated = true
-                Toast.makeText(context, "Efecto de desgaste aplicado.", Toast.LENGTH_SHORT).show()
-                displayPage(currentPageIndex)
-            }
-        }
     }
 
     fun applyInkWear(source: Bitmap, intensity: Float, size: Float, seed: Long): Bitmap {
