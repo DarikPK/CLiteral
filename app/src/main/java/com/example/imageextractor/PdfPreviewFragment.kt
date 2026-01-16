@@ -45,8 +45,7 @@ class PdfPreviewFragment : Fragment() {
     private var currentPageIndex = 0
 
     private var cleanStampBitmap: Bitmap? = null
-    private var firstPageWornStampBitmap: Bitmap? = null
-    private var lastPageWornStampBitmap: Bitmap? = null
+    private var stamp1WornPreviewBitmap: Bitmap? = null
     private var firstPageStampState: StampState? = null
     private var lastPageStampState: StampState? = null
 
@@ -308,8 +307,8 @@ class PdfPreviewFragment : Fragment() {
             if (isStamp2Enabled) {
                 generateStamp2Bitmap()
                 stamp2Bitmap?.let {
-                    val normalizedIntensity = stamp2WearIntensity / 100.0f
-                    val normalizedSize = stamp2WearSize / 100.0f
+                    val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
+                    val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
                     stamp2WornPreviewBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() - 1000) // Use a fixed seed for preview
                 }
             }
@@ -346,16 +345,11 @@ class PdfPreviewFragment : Fragment() {
 
             initializeStampStates()
 
-            // Apply wear automatically for Stamp 1
+            // Apply wear automatically for Stamp 1 for the preview
             cleanStampBitmap?.let {
-                val normalizedIntensity = stampWearIntensity / 100.0f
-                val normalizedSize = stampWearSize / 100.0f
-                firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
-                if (pageBitmaps.size > 1) {
-                    lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
-                } else {
-                    lastPageWornStampBitmap = null
-                }
+                val normalizedIntensity = (stampWearIntensity / 100.0f) / 5.0f
+                val normalizedSize = (stampWearSize / 100.0f) / 5.0f
+                stamp1WornPreviewBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() - 2000) // Fixed seed for preview
             }
 
 
@@ -464,12 +458,7 @@ class PdfPreviewFragment : Fragment() {
             else -> null
         }
 
-        val wornBitmap = when (currentPageIndex) {
-            0 -> firstPageWornStampBitmap
-            pageBitmaps.size - 1 -> lastPageWornStampBitmap
-            else -> null
-        }
-        val bitmapToShow = wornBitmap ?: cleanStampBitmap
+        val bitmapToShow = stamp1WornPreviewBitmap ?: cleanStampBitmap
 
         if (currentState != null && bitmapToShow != null) {
             binding.stampOverlayView.visibility = View.VISIBLE
@@ -601,26 +590,30 @@ class PdfPreviewFragment : Fragment() {
             pageBitmaps.size - 1 -> lastPageStampState
             else -> null
         }
-        val wornBitmap = when (index) {
-            0 -> firstPageWornStampBitmap
-            pageBitmaps.size - 1 -> lastPageWornStampBitmap
-            else -> null
-        }
-        val finalStampBitmap = wornBitmap ?: cleanStampBitmap
-        if (currentState != null && finalStampBitmap != null) {
+
+        if (currentState != null && cleanStampBitmap != null) {
+            // Generate unique wear for each page where the stamp appears
+            val normalizedIntensity = (stampWearIntensity / 100.0f) / 5.0f
+            val normalizedSize = (stampWearSize / 100.0f) / 5.0f
+            // Use page index to guarantee a unique seed per page
+            val wornStampForPage = applyInkWear(cleanStampBitmap!!, normalizedIntensity, normalizedSize, System.currentTimeMillis() + index)
+
             val matrix = Matrix()
             val scaledScale = currentState.scale * previewToPdfScale
             matrix.postScale(scaledScale, scaledScale)
-            matrix.postRotate(currentState.rotation, finalStampBitmap.width * scaledScale / 2, finalStampBitmap.height * scaledScale / 2)
+            matrix.postRotate(currentState.rotation, wornStampForPage.width * scaledScale / 2, wornStampForPage.height * scaledScale / 2)
             matrix.postTranslate(currentState.x * previewToPdfScale, currentState.y * previewToPdfScale)
-            canvas.drawBitmap(finalStampBitmap, matrix, highQualityPaint)
+            canvas.drawBitmap(wornStampForPage, matrix, highQualityPaint)
+
+            // Recycle the dynamically created bitmap to save memory
+            wornStampForPage.recycle()
         }
 
         // Draw Stamp 2
         if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
             // Generate unique wear for each page directly here
-            val normalizedIntensity = stamp2WearIntensity / 100.0f
-            val normalizedSize = stamp2WearSize / 100.0f
+            val normalizedIntensity = (stamp2WearIntensity / 100.0f) / 5.0f
+            val normalizedSize = (stamp2WearSize / 100.0f) / 5.0f
             // Use page index to guarantee a unique seed per page
             val wornBitmapForPage = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, System.currentTimeMillis() + index)
 
@@ -1138,8 +1131,7 @@ class PdfPreviewFragment : Fragment() {
         pageBitmaps.forEach { it.recycle() }
         pageBitmaps.clear()
         cleanStampBitmap?.recycle()
-        firstPageWornStampBitmap?.recycle()
-        lastPageWornStampBitmap?.recycle()
+        stamp1WornPreviewBitmap?.recycle()
         stamp2Bitmap?.recycle()
         stamp2WornPreviewBitmap?.recycle()
         signatureBitmap?.recycle()
