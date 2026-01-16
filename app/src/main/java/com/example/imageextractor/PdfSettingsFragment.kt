@@ -174,6 +174,14 @@ class PdfSettingsFragment : Fragment() {
         binding.pageImageSettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
         }
+
+        binding.signatureSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
+        }
+
+        binding.pageImageSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
+        }
     }
 
     private fun loadSettings() {
