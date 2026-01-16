@@ -395,7 +395,7 @@ class PdfPreviewFragment : Fragment() {
         if (!isStamp2Enabled || stamp2Bitmap == null || pageBitmaps.isEmpty()) return
 
         // Initialize signature state
-        if (isSignatureEnabled && signatureMarkers.isNotEmpty()) {
+        if (isSignatureEnabled && signatureMarkerContours.isNotEmpty()) {
             val pageW = 1000f
             val pageH = pageW / (595f / 842f)
             val mmToPx = 2.83f
