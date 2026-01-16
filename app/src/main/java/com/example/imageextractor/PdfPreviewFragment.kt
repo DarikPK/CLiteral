@@ -314,8 +314,7 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        val originalBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                        signatureBitmap = processSignatureBitmap(originalBitmap)
+                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
@@ -994,37 +993,6 @@ class PdfPreviewFragment : Fragment() {
         paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
         canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
         return adjustedBitmap
-    }
-
-    private suspend fun processSignatureBitmap(sourceBitmap: Bitmap): Bitmap {
-        return withContext(Dispatchers.IO) {
-            // If the source already has transparency, trust it and do nothing.
-            if (sourceBitmap.hasAlpha()) {
-                return@withContext sourceBitmap
-            }
-
-            val width = sourceBitmap.width
-            val height = sourceBitmap.height
-            val pixels = IntArray(width * height)
-            sourceBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-            val hsv = FloatArray(3)
-            // Value threshold: anything brighter than this is considered background.
-            // A high threshold like 0.95 means we only remove pixels that are very close to white.
-            val valueThreshold = 0.95f
-
-            for (i in pixels.indices) {
-                Color.colorToHSV(pixels[i], hsv)
-                val value = hsv[2]
-
-                // If a pixel is very bright (almost white), make it transparent.
-                if (value > valueThreshold) {
-                    pixels[i] = Color.TRANSPARENT
-                }
-            }
-
-            Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
-        }
     }
 
     private fun sharePdf() {
