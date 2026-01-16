@@ -338,6 +338,8 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
+            </LinearLayout>
+
             <Button
                 android:id="@+id/stamp2_settings_button"
                 style="?attr/materialButtonOutlinedStyle"
