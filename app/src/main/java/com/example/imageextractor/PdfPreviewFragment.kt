@@ -648,10 +648,41 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun generateProceduralSignatureBitmap(): Bitmap? {
-        if (signatureMarkerContours.isEmpty()) return null
+        val allPoints = signatureMarkerContours.flatten()
+        if (allPoints.isEmpty()) return null
 
-        val bitmap = Bitmap.createBitmap(SIGNATURE_CANVAS_WIDTH.toInt(), SIGNATURE_CANVAS_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
+        // 1. Calculate bounding box of all markers
+        var minX = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = Float.MIN_VALUE
+
+        allPoints.forEach { point ->
+            minX = min(minX, point.x)
+            maxX = max(maxX, point.x)
+            minY = min(minY, point.y)
+            maxY = max(maxY, point.y)
+        }
+
+        // 2. Add padding to avoid clipping the generated curve
+        val maxStrokeWidth = 10f // Based on (2 + 1 * 8)
+        val padding = randomizationRadius + maxStrokeWidth
+        minX -= padding
+        minY -= padding
+        maxX += padding
+        maxY += padding
+
+        val width = (maxX - minX).toInt()
+        val height = (maxY - minY).toInt()
+
+        if (width <= 0 || height <= 0) return null // Avoid creating an invalid bitmap
+
+        // 3. Create a bitmap with the exact size
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+
+        // 4. Translate the canvas so drawing starts at (0,0) relative to the signature bounds
+        canvas.translate(-minX, -minY)
 
         val signaturePaint = Paint().apply {
             color = Color.parseColor("#2557A8")
