@@ -52,7 +52,6 @@ class PdfPreviewFragment : Fragment() {
 
     // Sello 2
     private var stamp2Bitmap: Bitmap? = null
-    private var wornStamp2Bitmap: Bitmap? = null
     private var stamp2State: StampState? = null
     private var isStamp2Enabled: Boolean = false
     private lateinit var stamp2Name: String
@@ -467,7 +466,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Update Stamp 2 Overlay
-        val bitmapToShow2 = wornStamp2Bitmap ?: stamp2Bitmap
+        val bitmapToShow2 = stamp2Bitmap // Use the clean bitmap for preview
         if (isStamp2Enabled && stamp2State != null && bitmapToShow2 != null) {
             binding.stamp2OverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
@@ -604,19 +603,30 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Draw Stamp 2
-        val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
-        if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
+        if (isStamp2Enabled && stamp2State != null && stamp2Bitmap != null) {
+            // Generate unique wear for each page directly here
+            val adjustedIntensity = stamp2WearIntensity / 9.0f
+            val adjustedSize = stamp2WearSize / 9.0f
+            val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
+            val normalizedSize = (adjustedSize / 2.0f) / 100.0f
+            // Use page index to guarantee a unique seed per page
+            val wornBitmapForPage = applyInkWear(stamp2Bitmap!!, normalizedIntensity, normalizedSize, System.currentTimeMillis() + index)
+
             val matrix = Matrix()
             val scaledScale = stamp2State!!.scale * previewToPdfScale
             var finalRotation = stamp2State!!.rotation
-            if (stamp2VariableRotation && wornStamp2Bitmap != null) {
+            // Apply variable rotation if enabled
+            if (stamp2VariableRotation) {
                 val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
                 finalRotation += randomRotation
             }
             matrix.postScale(scaledScale, scaledScale)
-            matrix.postRotate(finalRotation, finalStamp2Bitmap.width * scaledScale / 2, finalStamp2Bitmap.height * scaledScale / 2)
+            matrix.postRotate(finalRotation, wornBitmapForPage.width * scaledScale / 2, wornBitmapForPage.height * scaledScale / 2)
             matrix.postTranslate(stamp2State!!.x * previewToPdfScale, stamp2State!!.y * previewToPdfScale)
-            canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
+            canvas.drawBitmap(wornBitmapForPage, matrix, highQualityPaint)
+
+            // Recycle the dynamically created bitmap to save memory
+            wornBitmapForPage.recycle()
         }
 
         // Draw Signature (from bitmap, either procedural or image-based)
@@ -806,7 +816,7 @@ class PdfPreviewFragment : Fragment() {
     private fun generateStamp2Bitmap() {
         // 1. Setup paints
         val textPaint = Paint().apply {
-            color = Color.parseColor("#0047AB")
+            color = Color.parseColor("#00008B") // Darker blue
             textSize = stamp2FontSize
             typeface = Typeface.create("Arial", Typeface.BOLD)
             textAlign = Paint.Align.CENTER
@@ -814,7 +824,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         val dotPaint = Paint().apply {
-            color = Color.parseColor("#0047AB")
+            color = Color.parseColor("#00008B") // Darker blue
             style = Paint.Style.FILL
             isAntiAlias = true
         }
@@ -894,15 +904,7 @@ class PdfPreviewFragment : Fragment() {
                 }
             }
 
-            // Apply wear to Stamp 2
-            stamp2Bitmap?.let {
-                // Reducir el impacto a un tercio del tercio (1/9)
-                val adjustedIntensity = stamp2WearIntensity / 9.0f
-                val adjustedSize = stamp2WearSize / 9.0f
-                val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
-                val normalizedSize = (adjustedSize / 2.0f) / 100.0f
-                wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
-            }
+            // Wear for Stamp 2 is now applied per-page in drawPdfPage, so it's removed from here.
 
             withContext(Dispatchers.Main) {
                 binding.applyWearButton.isActivated = true
@@ -1155,7 +1157,6 @@ class PdfPreviewFragment : Fragment() {
         firstPageWornStampBitmap?.recycle()
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
-        wornStamp2Bitmap?.recycle()
         signatureBitmap?.recycle()
         _binding = null
     }
