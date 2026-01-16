@@ -1061,28 +1061,33 @@ class PdfPreviewFragment : Fragment() {
 
         // Save Signature position
         signatureState?.let {
-            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            val editor = sharedPrefs.edit()
+            if (signatureBitmap != null) { // Only save if there is a bitmap to reference
+                val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+                val editor = sharedPrefs.edit()
 
-            val pageW = 1000f
-            val pageH = pageW / (595f / 842f)
-            val centerX = pageW / 2
-            val centerY = pageH / 2
-            val mmToPx = 2.83f
+                val pageW = 1000f
+                val pageH = pageW / (595f / 842f)
+                val pageCenterX = pageW / 2
+                val pageCenterY = pageH / 2
+                val mmToPx = 2.83f
 
-            // Since there is no bitmap, we save the center of the procedural canvas
-            val finalSignatureCenterX = it.x
-            val finalSignatureCenterY = it.y
+                // Calculate the center of the signature bitmap on the canvas
+                val signatureWidth = signatureBitmap!!.width * it.scale
+                val signatureHeight = signatureBitmap!!.height * it.scale
+                val finalSignatureCenterX = it.x + signatureWidth / 2
+                val finalSignatureCenterY = it.y + signatureHeight / 2
 
-            val offsetXInPx = finalSignatureCenterX - centerX
-            val offsetYInPx = finalSignatureCenterY - centerY
+                // Calculate the offset from the page center
+                val offsetXInPx = finalSignatureCenterX - pageCenterX
+                val offsetYInPx = finalSignatureCenterY - pageCenterY
 
-            val offsetXInMm = offsetXInPx / mmToPx
-            val offsetYInMm = offsetYInPx / mmToPx
+                val offsetXInMm = offsetXInPx / mmToPx
+                val offsetYInMm = offsetYInPx / mmToPx
 
-            editor.putString("signature_offset_x", offsetXInMm.toInt().toString())
-            editor.putString("signature_offset_y", offsetYInMm.toInt().toString())
-            editor.apply()
+                editor.putString("signature_offset_x", offsetXInMm.toInt().toString())
+                editor.putString("signature_offset_y", offsetYInMm.toInt().toString())
+                editor.apply()
+            }
         }
 
         // Save Stamp 2 position
