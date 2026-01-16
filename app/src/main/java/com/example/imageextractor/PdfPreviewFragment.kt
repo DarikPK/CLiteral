@@ -73,7 +73,7 @@ class PdfPreviewFragment : Fragment() {
 
     // Signature
     private var isSignatureEnabled: Boolean = false
-    private var signatureMarkers: List<PointF> = emptyList()
+    private var signatureMarkerContours: List<List<PointF>> = emptyList()
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -312,12 +312,14 @@ class PdfPreviewFragment : Fragment() {
                 val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
                 val markersString = sharedPrefs.getString("signature_markers", null)
                 if (!markersString.isNullOrEmpty()) {
-                    signatureMarkers = markersString.split(";").mapNotNull {
-                        val parts = it.split(",")
-                        if (parts.size == 2) {
-                            PointF(parts[0].toFloat(), parts[1].toFloat())
-                        } else {
-                            null
+                    signatureMarkerContours = markersString.split("|").map { contourString ->
+                        contourString.split(";").mapNotNull {
+                            val parts = it.split(",")
+                            if (parts.size == 2) {
+                                PointF(parts[0].toFloat(), parts[1].toFloat())
+                            } else {
+                                null
+                            }
                         }
                     }
                 }
@@ -615,8 +617,8 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Draw Procedural Signature
-        if (isSignatureEnabled && signatureState != null && signatureMarkers.isNotEmpty()) {
-            val signaturePoints = generateProceduralSignaturePoints()
+        if (isSignatureEnabled && signatureState != null && signatureMarkerContours.isNotEmpty()) {
+            val signatureContours = generateProceduralSignaturePoints()
             val signaturePaint = Paint().apply {
                 color = Color.parseColor("#2557A8")
                 style = Paint.Style.STROKE
@@ -631,60 +633,69 @@ class PdfPreviewFragment : Fragment() {
             canvas.rotate(signatureState!!.rotation)
             canvas.translate(-SIGNATURE_CANVAS_WIDTH / 2, -SIGNATURE_CANVAS_HEIGHT / 2)
 
-            if (signaturePoints.size > 1) {
-                for (i in 0 until signaturePoints.size - 1) {
-                    val p1 = signaturePoints[i]
-                    val p2 = signaturePoints[i + 1]
-                    val progress = i.toFloat() / (signaturePoints.size - 2).toFloat()
-                    val taper = Math.min(progress, 1 - progress) * 2
-                    val strokeWidth = (2 + taper * 8).toFloat()
-                    signaturePaint.strokeWidth = strokeWidth
-                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+            signatureContours.forEach { contour ->
+                if (contour.size > 1) {
+                    for (i in 0 until contour.size - 1) {
+                        val p1 = contour[i]
+                        val p2 = contour[i + 1]
+                        val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
+                        val taper = Math.min(progress, 1 - progress) * 2
+                        val strokeWidth = (2 + taper * 8).toFloat()
+                        signaturePaint.strokeWidth = strokeWidth
+                        canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                    }
                 }
             }
             canvas.restore()
         }
     }
 
-    private fun generateProceduralSignaturePoints(): List<PointF> {
-        if (signatureMarkers.size < 2) {
+    private fun generateProceduralSignaturePoints(): List<List<PointF>> {
+        if (signatureMarkerContours.isEmpty()) {
             return emptyList()
         }
 
-        val randomPoints = signatureMarkers.map { marker ->
-            val angle = random.nextDouble() * 2 * Math.PI
-            val radius = random.nextDouble() * randomizationRadius
-            val x = marker.x + (radius * Math.cos(angle)).toFloat()
-            val y = marker.y + (radius * Math.sin(angle)).toFloat()
-            PointF(x, y)
-        }
+        val signatureContours = mutableListOf<List<PointF>>()
 
-        val interpolatedPoints = mutableListOf<PointF>()
-        val segments = randomPoints.size - 1
-        val pointsPerSegment = 20
+        signatureMarkerContours.forEach { contour ->
+            if (contour.size >= 2) {
+                val randomPoints = contour.map { marker ->
+                    val angle = random.nextDouble() * 2 * Math.PI
+                    val radius = random.nextDouble() * randomizationRadius
+                    val x = marker.x + (radius * Math.cos(angle)).toFloat()
+                    val y = marker.y + (radius * Math.sin(angle)).toFloat()
+                    PointF(x, y)
+                }
 
-        for (i in 0 until segments) {
-            val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
-            val p1 = randomPoints[i]
-            val p2 = randomPoints[i + 1]
-            val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
+                val interpolatedPoints = mutableListOf<PointF>()
+                val segments = randomPoints.size - 1
+                val pointsPerSegment = 20
 
-            for (j in 0..pointsPerSegment) {
-                val t = j.toFloat() / pointsPerSegment
-                val tt = t * t
-                val ttt = tt * t
+                for (i in 0 until segments) {
+                    val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
+                    val p1 = randomPoints[i]
+                    val p2 = randomPoints[i + 1]
+                    val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
 
-                val q1 = -ttt + 2 * tt - t
-                val q2 = 3 * ttt - 5 * tt + 2
-                val q3 = -3 * ttt + 4 * tt + t
-                val q4 = ttt - tt
+                    for (j in 0..pointsPerSegment) {
+                        val t = j.toFloat() / pointsPerSegment
+                        val tt = t * t
+                        val ttt = tt * t
 
-                val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
-                val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
-                interpolatedPoints.add(PointF(tx, ty))
+                        val q1 = -ttt + 2 * tt - t
+                        val q2 = 3 * ttt - 5 * tt + 2
+                        val q3 = -3 * ttt + 4 * tt + t
+                        val q4 = ttt - tt
+
+                        val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
+                        val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
+                        interpolatedPoints.add(PointF(tx, ty))
+                    }
+                }
+                signatureContours.add(interpolatedPoints)
             }
         }
-        return interpolatedPoints
+        return signatureContours
     }
 
     private fun savePdfWithInteractiveStamp() {
@@ -826,8 +837,11 @@ class PdfPreviewFragment : Fragment() {
 
             // Apply wear to Stamp 2
             stamp2Bitmap?.let {
-                val normalizedIntensity = (stamp2WearIntensity / 2.0f) / 100.0f
-                val normalizedSize = (stamp2WearSize / 2.0f) / 100.0f
+                // Reducir el impacto a un tercio
+                val adjustedIntensity = stamp2WearIntensity / 3.0f
+                val adjustedSize = stamp2WearSize / 3.0f
+                val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
+                val normalizedSize = (adjustedSize / 2.0f) / 100.0f
                 wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
             }
 
