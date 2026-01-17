@@ -10,6 +10,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -99,6 +101,11 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureCanvasView.setNumMarkers(numMarkers)
         binding.signatureCanvasView.setMarkerRadius(markerSize)
 
+        val randomRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
+        binding.signatureRandomRadiusSlider.value = randomRadius
+        binding.signatureRandomRadiusLabel.text = "Radio de Aleatoriedad (${randomRadius.toInt()})"
+        binding.signatureCanvasView.setRandomizationRadius(randomRadius)
+
         // Load wear settings
         val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
         val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
@@ -186,12 +193,23 @@ class SignatureSettingsFragment : Fragment() {
             generateAndShowSignature()
         }
 
-        binding.signatureSelectionGroup.setOnCheckedChangeListener { _, checkedId ->
-            saveMarkers() // Save current canvas before switching
-            isPrimarySignatureSelected = checkedId == R.id.radio_button_primary
-            loadMarkersForCurrentSelection()
-        }
+        // Setup Spinner
+        val signatureTypes = listOf("Firma Principal", "Firma Secundaria")
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, signatureTypes)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.signatureSelectionSpinner.adapter = adapter
 
+        binding.signatureSelectionSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val isPrimary = position == 0
+                if (isPrimary != isPrimarySignatureSelected) {
+                    saveMarkers() // Save current canvas before switching
+                    isPrimarySignatureSelected = isPrimary
+                    loadMarkersForCurrentSelection()
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
         binding.signatureCanvasView.setMarkerListener {
             saveMarkers()
@@ -213,6 +231,12 @@ class SignatureSettingsFragment : Fragment() {
             val markerSize = text.toString().toFloatOrNull() ?: 10f
             saveFloat("signature_marker_size", markerSize)
             binding.signatureCanvasView.setMarkerRadius(markerSize)
+        }
+
+        binding.signatureRandomRadiusSlider.addOnChangeListener { _, value, _ ->
+            binding.signatureRandomRadiusLabel.text = "Radio de Aleatoriedad (${value.toInt()})"
+            saveFloat("signature_random_radius", value)
+            binding.signatureCanvasView.setRandomizationRadius(value)
         }
 
         binding.signatureWearIntensitySlider.addOnChangeListener { _, value, _ ->

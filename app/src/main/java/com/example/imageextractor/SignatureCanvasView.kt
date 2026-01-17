@@ -52,6 +52,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
     private var signaturePoints = listOf<List<PointF>>()
     private var markerRadius = 10f
+    private var randomizationRadius = 20f // Re-add randomization radius
     private var numMarkers = 15
 
     // Nuevo: para mostrar la firma con desgaste
@@ -73,8 +74,13 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun setMarkerRadius(radius: Float) {
         if (radius > 0) {
             this.markerRadius = radius
-            // Since marker size now controls randomness, we need to regenerate the signature
-            // y redraw everything.
+            invalidate() // Just redraw markers, no need to regenerate signature
+        }
+    }
+
+    fun setRandomizationRadius(radius: Float) {
+        if (radius >= 0) {
+            this.randomizationRadius = radius
             regenerateSignature()
         }
     }
@@ -367,7 +373,6 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
 
         val newSignaturePoints = mutableListOf<List<PointF>>()
-        val randomizationRadius = 20f // Hardcoded for now, can be made configurable
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
