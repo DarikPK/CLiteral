@@ -404,7 +404,7 @@ class SignatureCanvasView @JvmOverloads constructor(
                 }
 
                 val interpolatedPoints = mutableListOf<PointF>()
-                if (randomPoints.size < 2) continue
+                if (randomPoints.size < 2) return@forEach
 
                 // Add the first point
                 interpolatedPoints.add(randomPoints[0])
