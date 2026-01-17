@@ -52,13 +52,27 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="16dp">
 
-                <Button
-                    android:id="@+id/selectImageButton"
-                    style="?attr/materialButtonOutlinedStyle"
+                <RadioGroup
+                    android:id="@+id/signature_selection_group"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Seleccionar Imagen" />
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/radio_button_primary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Principal"
+                        android:checked="true"/>
+
+                    <RadioButton
+                        android:id="@+id/radio_button_secondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:text="Secundaria"/>
+                </RadioGroup>
 
                 <Button
                     android:id="@+id/secondaryActionButton"

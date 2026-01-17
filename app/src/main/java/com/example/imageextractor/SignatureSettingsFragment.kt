@@ -27,6 +27,8 @@ class SignatureSettingsFragment : Fragment() {
     private lateinit var numMarkersEditText: com.google.android.material.textfield.TextInputEditText
     private lateinit var markerSizeEditText: com.google.android.material.textfield.TextInputEditText
 
+    private var isPrimarySignatureSelected = true
+
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
@@ -105,21 +107,24 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${wearIntensity.toInt()})"
         binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${wearSize.toInt()})"
 
-        // Load markers
-        val markersString = sharedPrefs.getString("signature_markers", null)
-        if (!markersString.isNullOrEmpty()) {
-            val contours = markersString.split("|").map { contourString ->
+        // Load markers for the initial selection (Primary)
+        loadMarkersForCurrentSelection()
+    }
+
+    private fun loadMarkersForCurrentSelection() {
+        val key = if (isPrimarySignatureSelected) "signature_markers_primary" else "signature_markers_secondary"
+        val markersString = sharedPrefs.getString(key, null)
+        val contours = if (!markersString.isNullOrEmpty()) {
+            markersString.split("|").map { contourString ->
                 contourString.split(";").mapNotNull {
                     val parts = it.split(",")
-                    if (parts.size == 2) {
-                        PointF(parts[0].toFloat(), parts[1].toFloat())
-                    } else {
-                        null
-                    }
+                    if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
                 }
             }
-            binding.signatureCanvasView.setMarkerContours(contours)
+        } else {
+            emptyList()
         }
+        binding.signatureCanvasView.setMarkerContours(contours)
         updateButtonLabels()
         generateAndShowSignature()
     }
@@ -181,29 +186,10 @@ class SignatureSettingsFragment : Fragment() {
             generateAndShowSignature()
         }
 
-        binding.selectImageButton.setOnClickListener {
-            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-
-            when {
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    permission
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    pickImageLauncher.launch("image/*")
-                }
-                shouldShowRequestPermissionRationale(permission) -> {
-                    // Explain to the user why we need the permission
-                    Toast.makeText(requireContext(), "Se necesita permiso para acceder a las imágenes.", Toast.LENGTH_LONG).show()
-                    requestPermissionLauncher.launch(permission)
-                }
-                else -> {
-                    requestPermissionLauncher.launch(permission)
-                }
-            }
+        binding.signatureSelectionGroup.setOnCheckedChangeListener { _, checkedId ->
+            saveMarkers() // Save current canvas before switching
+            isPrimarySignatureSelected = checkedId == R.id.radio_button_primary
+            loadMarkersForCurrentSelection()
         }
 
 
@@ -243,11 +229,12 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveMarkers() {
+        val key = if (isPrimarySignatureSelected) "signature_markers_primary" else "signature_markers_secondary"
         val contours = binding.signatureCanvasView.getMarkerContours()
         val markersString = contours.joinToString("|") { contour ->
             contour.joinToString(";") { "${it.x},${it.y}" }
         }
-        saveString("signature_markers", markersString)
+        saveString(key, markersString)
     }
 
     // SharedPreferences helpers

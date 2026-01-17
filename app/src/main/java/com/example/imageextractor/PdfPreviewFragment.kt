@@ -74,7 +74,8 @@ class PdfPreviewFragment : Fragment() {
 
     // Signature
     private var isSignatureEnabled: Boolean = false
-    private var signatureMarkerContours: List<List<PointF>> = emptyList()
+    private var primarySignatureMarkerContours: List<List<PointF>> = emptyList()
+    private var secondarySignatureMarkerContours: List<List<PointF>> = emptyList()
     private var currentSignaturePreviewBitmap: Bitmap? = null
     private var signatureBitmap: Bitmap? = null
     private var signatureState: StampState? = null
@@ -207,7 +208,6 @@ class PdfPreviewFragment : Fragment() {
         // Read signature data
         isSignatureEnabled = it.getBoolean("isSignatureEnabled", false)
         if (isSignatureEnabled) {
-            signatureImageUri = it.getString("signatureImageUri")
             signatureOffsetX = it.getFloat("signatureOffsetX", 0f)
             signatureOffsetY = it.getFloat("signatureOffsetY", 0f)
             signatureScale = it.getFloat("signatureScale", 100f)
@@ -310,26 +310,26 @@ class PdfPreviewFragment : Fragment() {
                 generateStamp2Bitmap()
             }
             if (isSignatureEnabled) {
-                if (signatureImageUri != null) {
-                    // Load signature from image URI
-                    try {
-                        val uri = Uri.parse(signatureImageUri)
-                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
+                val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+
+                // Load primary markers
+                val primaryMarkersString = sharedPrefs.getString("signature_markers_primary", null)
+                if (!primaryMarkersString.isNullOrEmpty()) {
+                    primarySignatureMarkerContours = primaryMarkersString.split("|").map { contourString ->
+                        contourString.split(";").mapNotNull {
+                            val parts = it.split(",")
+                            if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
                         }
                     }
-                } else {
-                    // Using procedural signature, just load the markers
-                    val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-                    val markersString = sharedPrefs.getString("signature_markers", null)
-                    if (!markersString.isNullOrEmpty()) {
-                        signatureMarkerContours = markersString.split("|").map { contourString ->
-                            contourString.split(";").mapNotNull {
-                                val parts = it.split(",")
-                                if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
-                            }
+                }
+
+                // Load secondary markers
+                val secondaryMarkersString = sharedPrefs.getString("signature_markers_secondary", null)
+                if (!secondaryMarkersString.isNullOrEmpty()) {
+                    secondarySignatureMarkerContours = secondaryMarkersString.split("|").map { contourString ->
+                        contourString.split(";").mapNotNull {
+                            val parts = it.split(",")
+                            if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
                         }
                     }
                 }
@@ -433,13 +433,9 @@ class PdfPreviewFragment : Fragment() {
             var signatureWidth = 0f
             var signatureHeight = 0f
 
-            if (signatureBitmap != null) {
-                // Case 1: Image-based signature
-                signatureWidth = signatureBitmap!!.width * scale
-                signatureHeight = signatureBitmap!!.height * scale
-            } else if (signatureMarkerContours.isNotEmpty()) {
-                // Case 2: Procedural signature - estimate size from markers
-                val allPoints = signatureMarkerContours.flatten()
+            if (primarySignatureMarkerContours.isNotEmpty()) {
+                // Estimate size from primary signature markers for initial placement
+                val allPoints = primarySignatureMarkerContours.flatten()
                 val minX = allPoints.minOf { it.x }
                 val maxX = allPoints.maxOf { it.x }
                 val minY = allPoints.minOf { it.y }
@@ -521,16 +517,13 @@ class PdfPreviewFragment : Fragment() {
         currentSignaturePreviewBitmap = null
 
         if (isSignatureEnabled && signatureState != null) {
-            val bitmapToShow: Bitmap?
-            if (signatureBitmap != null) {
-                // Image-based signature
-                bitmapToShow = signatureBitmap
-            } else {
-                // Procedural signature - generate dynamically
-                val seed = System.currentTimeMillis() + currentPageIndex
-                bitmapToShow = generateDynamicSignature(seed)
-                currentSignaturePreviewBitmap = bitmapToShow // Keep a reference to recycle it later
-            }
+            val totalPages = pageBitmaps.size
+            val usePrimarySignature = totalPages <= 2 || currentPageIndex == 0 || currentPageIndex == totalPages - 1
+            val markersToUse = if (usePrimarySignature) primarySignatureMarkerContours else secondarySignatureMarkerContours
+
+            val seed = System.currentTimeMillis() + currentPageIndex
+            val bitmapToShow = generateDynamicSignature(markersToUse, seed)
+            currentSignaturePreviewBitmap = bitmapToShow // Keep reference to recycle
 
             if (bitmapToShow != null) {
                 binding.signatureOverlayView.visibility = View.VISIBLE
@@ -687,18 +680,11 @@ class PdfPreviewFragment : Fragment() {
 
         // Draw Signature
         if (isSignatureEnabled && signatureState != null) {
-            val signatureToDraw: Bitmap?
-            val shouldRecycle: Boolean
+            val totalPages = pageBitmaps.size
+            val usePrimarySignature = totalPages <= 2 || index == 0 || index == totalPages - 1
+            val markersToUse = if (usePrimarySignature) primarySignatureMarkerContours else secondarySignatureMarkerContours
 
-            if (signatureBitmap != null) {
-                // Case 1: Use the pre-loaded image-based signature
-                signatureToDraw = signatureBitmap
-                shouldRecycle = false
-            } else {
-                // Case 2: Generate procedural signature dynamically for this page
-                signatureToDraw = generateDynamicSignature(stamp2Seed)
-                shouldRecycle = true
-            }
+            val signatureToDraw = generateDynamicSignature(markersToUse, stamp2Seed)
 
             signatureToDraw?.let { signature ->
                 canvas.save()
@@ -715,18 +701,17 @@ class PdfPreviewFragment : Fragment() {
                 canvas.drawBitmap(signature, srcRect, dstRect, highQualityPaint)
 
                 canvas.restore()
-                if (shouldRecycle) {
-                    signature.recycle()
-                }
+                // Always recycle since we generate it dynamically every time
+                signature.recycle()
             }
         }
     }
 
-    private fun generateDynamicSignature(seed: Long): Bitmap? {
-        if (signatureMarkerContours.isEmpty()) return null
+    private fun generateDynamicSignature(markerContours: List<List<PointF>>, seed: Long): Bitmap? {
+        if (markerContours.isEmpty()) return null
 
         // 1. Generate procedural signature points with a unique seed
-        val proceduralPoints = generateProceduralSignaturePoints(Random(seed))
+        val proceduralPoints = generateProceduralSignaturePoints(markerContours, Random(seed))
         if (proceduralPoints.isEmpty()) return null
 
         // 2. Create the base bitmap for the signature
@@ -803,14 +788,14 @@ class PdfPreviewFragment : Fragment() {
         return bitmap
     }
 
-    private fun generateProceduralSignaturePoints(random: Random): List<List<PointF>> {
-        if (signatureMarkerContours.isEmpty()) {
+    private fun generateProceduralSignaturePoints(markerContours: List<List<PointF>>, random: Random): List<List<PointF>> {
+        if (markerContours.isEmpty()) {
             return emptyList()
         }
 
         val signatureContours = mutableListOf<List<PointF>>()
 
-        signatureMarkerContours.forEach { contour ->
+        markerContours.forEach { contour ->
             if (contour.size >= 2) {
                 val randomPoints = contour.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
