@@ -57,6 +57,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     // Nuevo: para mostrar la firma con desgaste
     private var previewBitmap: android.graphics.Bitmap? = null
+    private var previewBitmapBounds: android.graphics.RectF? = null
     private val previewPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
     private var markerListener: (() -> Unit)? = null
@@ -103,8 +104,10 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
 
         // Dibuja la firma generada
-        previewBitmap?.let {
-            canvas.drawBitmap(it, 0f, 0f, previewPaint)
+        previewBitmap?.let { bmp ->
+            previewBitmapBounds?.let { bounds ->
+                canvas.drawBitmap(bmp, null, bounds, previewPaint)
+            }
         } ?: run {
             // Dibuja la firma generada con grosor variable
             signaturePoints.forEach { contour ->
@@ -233,6 +236,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         drawingPath.reset()
         previewBitmap?.recycle()
         previewBitmap = null
+        previewBitmapBounds = null // Reset the bounds as well
         generateSignaturePath()
         if (switchMode) {
             mode = Mode.DRAW
@@ -321,34 +325,20 @@ class SignatureCanvasView @JvmOverloads constructor(
         regenerateSignature() // Ensure the points are fresh
 
         // 1. Calculate bounding box of all generated signature points (not markers)
-        var minX = Float.MAX_VALUE
-        var maxX = Float.MIN_VALUE
-        var minY = Float.MAX_VALUE
-        var maxY = Float.MIN_VALUE
+        val bounds = getSignatureBounds() ?: return null
 
-        signaturePoints.flatten().forEach { point ->
-            minX = kotlin.math.min(minX, point.x)
-            maxX = kotlin.math.max(maxX, point.x)
-            minY = kotlin.math.min(minY, point.y)
-            maxY = kotlin.math.max(maxY, point.y)
-        }
+        // Store the bounds for onDraw to use
+        previewBitmapBounds = bounds
 
-        // 2. Add padding to avoid clipping the stroke
-        val maxStrokeWidth = 10f
-        val padding = maxStrokeWidth
-        minX -= padding
-        minY -= padding
-        maxX += padding
-        maxY += padding
-
-        val width = (maxX - minX).toInt()
-        val height = (maxY - minY).toInt()
+        val width = bounds.width().toInt()
+        val height = bounds.height().toInt()
 
         if (width <= 0 || height <= 0) return null
 
         val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.translate(-minX, -minY)
+        // Translate the canvas so the signature is drawn relative to its top-left corner
+        canvas.translate(-bounds.left, -bounds.top)
 
         // Draw the signature onto the new bitmap
         signaturePoints.forEach { contour ->
@@ -365,6 +355,33 @@ class SignatureCanvasView @JvmOverloads constructor(
             }
         }
         return bitmap
+    }
+
+    private fun getSignatureBounds(): android.graphics.RectF? {
+        val allPoints = signaturePoints.flatten()
+        if (allPoints.isEmpty()) return null
+
+        var minX = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = Float.MIN_VALUE
+
+        allPoints.forEach { point ->
+            minX = kotlin.math.min(minX, point.x)
+            maxX = kotlin.math.max(maxX, point.x)
+            minY = kotlin.math.min(minY, point.y)
+            maxY = kotlin.math.max(maxY, point.y)
+        }
+
+        // Add padding to avoid clipping the stroke
+        val maxStrokeWidth = 10f // Corresponds to the max stroke width used in drawing
+        val padding = maxStrokeWidth / 2
+        minX -= padding
+        minY -= padding
+        maxX += padding
+        maxY += padding
+
+        return android.graphics.RectF(minX, minY, maxX, maxY)
     }
 
 

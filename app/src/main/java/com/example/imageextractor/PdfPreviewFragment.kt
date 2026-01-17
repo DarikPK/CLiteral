@@ -879,7 +879,9 @@ class PdfPreviewFragment : Fragment() {
         val canvas = Canvas(bitmap)
         val x = canvas.width / 2f
         val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
-        canvas.drawText(stampDateText, x, y, textPaint)
+        // Format the date text before drawing
+        val formattedDate = formatDateToAbbreviatedMonth(stampDateText)
+        canvas.drawText(formattedDate, x, y, textPaint)
 
         this.cleanStampBitmap = applyStampAdjustments(bitmap)
     }
@@ -1264,4 +1266,31 @@ class PdfPreviewFragment : Fragment() {
     }
 
     private fun clamp(v: Float, min: Float, max: Float) = max(min, min(v, max))
+
+    private fun formatDateToAbbreviatedMonth(dateText: String): String {
+        val parts = dateText.split(" ")
+        if (parts.size != 3) return dateText // Return original if format is unexpected
+
+        val day = parts[0]
+        val monthName = parts[1].replace(".", "")
+        val year = parts[2]
+
+        val monthAbbreviation = when (monthName.lowercase()) {
+            "enero" -> "ENE"
+            "febrero" -> "FEB"
+            "marzo" -> "MAR"
+            "abril" -> "ABR"
+            "mayo" -> "MAY"
+            "junio" -> "JUN"
+            "julio" -> "JUL"
+            "agosto" -> "AGO"
+            "septiembre" -> "SEP"
+            "octubre" -> "OCT"
+            "noviembre" -> "NOV"
+            "diciembre" -> "DIC"
+            else -> monthName.uppercase() // Fallback
+        }
+
+        return "$day $monthAbbreviation. $year"
+    }
 }
