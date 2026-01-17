@@ -404,28 +404,27 @@ class SignatureCanvasView @JvmOverloads constructor(
                 }
 
                 val interpolatedPoints = mutableListOf<PointF>()
-                val segments = randomPoints.size - 1
-                val pointsPerSegment = 20
+                if (randomPoints.size < 2) continue
 
-                for (i in 0 until segments) {
-                    val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
+                // Add the first point
+                interpolatedPoints.add(randomPoints[0])
+
+                val pointsPerSegment = 20 // Density of the curve
+
+                for (i in 0 until randomPoints.size - 1) {
+                    val p0 = if (i == 0) randomPoints[i] else randomPoints[i - 1]
                     val p1 = randomPoints[i]
                     val p2 = randomPoints[i + 1]
-                    val p3 = if (i < randomPoints.size - 2) randomPoints[i + 2] else p2
+                    val p3 = if (i + 2 < randomPoints.size) randomPoints[i + 2] else p2
 
-                    for (j in 0..pointsPerSegment) {
+                    for (j in 1..pointsPerSegment) {
                         val t = j.toFloat() / pointsPerSegment
                         val tt = t * t
                         val ttt = tt * t
 
-                        val q1 = -ttt + 2 * tt - t
-                        val q2 = 3 * ttt - 5 * tt + 2
-                        val q3 = -3 * ttt + 4 * tt + t
-                        val q4 = ttt - tt
-
-                        val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
-                        val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
-                        interpolatedPoints.add(PointF(tx, ty))
+                        val x = 0.5f * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * tt + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * ttt)
+                        val y = 0.5f * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * tt + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * ttt)
+                        interpolatedPoints.add(PointF(x, y))
                     }
                 }
                 newSignaturePoints.add(interpolatedPoints)

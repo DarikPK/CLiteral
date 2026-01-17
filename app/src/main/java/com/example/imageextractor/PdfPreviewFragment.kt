@@ -1291,6 +1291,6 @@ class PdfPreviewFragment : Fragment() {
             else -> monthName.uppercase() // Fallback
         }
 
-        return "$day $monthAbbreviation. $year"
+        return "$day $monthAbbreviation $year"
     }
 }
