@@ -395,9 +395,12 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
+                // Scale randomization by marker size. Assume 10f is a "normal" marker size.
+                val effectiveRandomization = randomizationRadius * (markerRadius / 10.0f)
+
                 val randomPoints = contour.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * randomizationRadius
+                    val radius = random.nextDouble() * effectiveRandomization
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
                     val y = marker.y + (radius * Math.sin(angle)).toFloat()
                     PointF(x, y)
