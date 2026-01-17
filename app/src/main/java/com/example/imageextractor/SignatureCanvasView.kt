@@ -97,8 +97,10 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja un fondo para que el área del lienzo sea visible
         canvas.drawColor(Color.LTGRAY)
 
-        // Dibuja el trazo del usuario
-        canvas.drawPath(drawingPath, drawingPaint)
+        if (mode == Mode.DRAW) {
+            // Dibuja el trazo del usuario solo en modo dibujo
+            canvas.drawPath(drawingPath, drawingPaint)
+        }
 
         // Dibuja la firma generada
         previewBitmap?.let {
