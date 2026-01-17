@@ -137,7 +137,7 @@ class SignatureSettingsFragment : Fragment() {
         var signatureBitmap = binding.signatureCanvasView.generateProceduralSignatureBitmap()
 
         // Apply wear and tear if the bitmap is not null
-        signatureBitmap?.let {
+        if (signatureBitmap != null) {
             val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
             val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
 
@@ -145,7 +145,7 @@ class SignatureSettingsFragment : Fragment() {
                 val normalizedIntensity = wearIntensity / 100.0f
                 val normalizedSize = wearSize / 100.0f
                 val seed = System.currentTimeMillis()
-                val wornBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, seed)
+                val wornBitmap = applyInkWear(signatureBitmap, normalizedIntensity, normalizedSize, seed)
                 // The original bitmap is replaced by the worn one
                 signatureBitmap = wornBitmap
             }

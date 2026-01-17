@@ -54,6 +54,10 @@ class SignatureCanvasView @JvmOverloads constructor(
     private var markerRadius = 10f
     private var numMarkers = 15
 
+    // Nuevo: para mostrar la firma con desgaste
+    private var previewBitmap: android.graphics.Bitmap? = null
+    private val previewPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
     private var markerListener: (() -> Unit)? = null
 
     fun setNumMarkers(count: Int) {
@@ -90,17 +94,22 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja el trazo del usuario
         canvas.drawPath(drawingPath, drawingPaint)
 
-        // Dibuja la firma generada con grosor variable
-        signaturePoints.forEach { contour ->
-            if (contour.size > 1) {
-                for (i in 0 until contour.size - 1) {
-                    val p1 = contour[i]
-                    val p2 = contour[i + 1]
-                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                    val taper = Math.min(progress, 1 - progress) * 2
-                    val strokeWidth = (2 + taper * 8).toFloat()
-                    signaturePaint.strokeWidth = strokeWidth
-                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+        // Dibuja la firma generada
+        previewBitmap?.let {
+            canvas.drawBitmap(it, 0f, 0f, previewPaint)
+        } ?: run {
+            // Dibuja la firma generada con grosor variable
+            signaturePoints.forEach { contour ->
+                if (contour.size > 1) {
+                    for (i in 0 until contour.size - 1) {
+                        val p1 = contour[i]
+                        val p2 = contour[i + 1]
+                        val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
+                        val taper = Math.min(progress, 1 - progress) * 2
+                        val strokeWidth = (2 + taper * 8).toFloat()
+                        signaturePaint.strokeWidth = strokeWidth
+                        canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                    }
                 }
             }
         }
@@ -214,12 +223,21 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun clearCanvas(switchMode: Boolean = false) {
         markers.clear()
         drawingPath.reset()
+        previewBitmap?.recycle()
+        previewBitmap = null
         generateSignaturePath()
         if (switchMode) {
             mode = Mode.DRAW
         }
         invalidate()
     }
+
+    fun setPreviewBitmap(bitmap: android.graphics.Bitmap?) {
+        previewBitmap?.recycle()
+        previewBitmap = bitmap
+        invalidate()
+    }
+
 
     fun regenerateSignature() {
         generateSignaturePath()
@@ -288,6 +306,60 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
     }
 
+    fun generateProceduralSignatureBitmap(): android.graphics.Bitmap? {
+        val allPoints = markers.flatten()
+        if (allPoints.isEmpty()) return null
+
+        regenerateSignature() // Ensure the points are fresh
+
+        // 1. Calculate bounding box of all generated signature points (not markers)
+        var minX = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = Float.MIN_VALUE
+
+        signaturePoints.flatten().forEach { point ->
+            minX = kotlin.math.min(minX, point.x)
+            maxX = kotlin.math.max(maxX, point.x)
+            minY = kotlin.math.min(minY, point.y)
+            maxY = kotlin.math.max(maxY, point.y)
+        }
+
+        // 2. Add padding to avoid clipping the stroke
+        val maxStrokeWidth = 10f
+        val padding = maxStrokeWidth
+        minX -= padding
+        minY -= padding
+        maxX += padding
+        maxY += padding
+
+        val width = (maxX - minX).toInt()
+        val height = (maxY - minY).toInt()
+
+        if (width <= 0 || height <= 0) return null
+
+        val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.translate(-minX, -minY)
+
+        // Draw the signature onto the new bitmap
+        signaturePoints.forEach { contour ->
+            if (contour.size > 1) {
+                for (i in 0 until contour.size - 1) {
+                    val p1 = contour[i]
+                    val p2 = contour[i + 1]
+                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
+                    val taper = Math.min(progress, 1 - progress) * 2
+                    val strokeWidth = (2 + taper * 8).toFloat()
+                    signaturePaint.strokeWidth = strokeWidth
+                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                }
+            }
+        }
+        return bitmap
+    }
+
+
     private fun generateSignaturePath() {
         if (markers.isEmpty()) {
             signaturePoints = emptyList()
@@ -295,12 +367,13 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
 
         val newSignaturePoints = mutableListOf<List<PointF>>()
+        val randomizationRadius = 20f // Hardcoded for now, can be made configurable
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
                 val randomPoints = contour.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * markerRadius
+                    val radius = random.nextDouble() * randomizationRadius
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
                     val y = marker.y + (radius * Math.sin(angle)).toFloat()
                     PointF(x, y)
