@@ -75,7 +75,7 @@ class PdfPreviewFragment : Fragment() {
     // Signature
     private var isSignatureEnabled: Boolean = false
     private var signatureMarkerContours: List<List<PointF>> = emptyList()
-    private var signatureBitmap: Bitmap? = null
+    private var currentSignaturePreviewBitmap: Bitmap? = null
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -334,22 +334,8 @@ class PdfPreviewFragment : Fragment() {
                                 }
                             }
                         }
-                        signatureBitmap = generateProceduralSignatureBitmap()
-                    }
-                }
-
-                // Apply wear to the signature bitmap
-                signatureBitmap?.let {
-                    val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-                    val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
-                    val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
-
-                    if (wearIntensity > 0 && wearSize > 0) {
-                        val normalizedIntensity = wearIntensity / 100.0f
-                        val normalizedSize = wearSize / 100.0f
-                        val seed = System.currentTimeMillis() // Unique wear for each PDF generation
-                        val wornBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, seed)
-                        signatureBitmap = wornBitmap
+                        // The bitmap is no longer generated here.
+                        // We only load the contours.
                     }
                 }
             }
@@ -514,12 +500,21 @@ class PdfPreviewFragment : Fragment() {
             binding.stamp2OverlayView.visibility = View.GONE
         }
 
-        // Signature overlay is removed from this fragment
-        val bitmapToShowSignature = signatureBitmap
-        if (isSignatureEnabled && signatureState != null && bitmapToShowSignature != null) {
-            binding.signatureOverlayView.visibility = View.VISIBLE
-            val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation, imageMatrix)
+        // Update Signature Overlay (Dynamically Generated)
+        currentSignaturePreviewBitmap?.recycle()
+        currentSignaturePreviewBitmap = null
+
+        if (isSignatureEnabled && signatureState != null) {
+            val seed = System.currentTimeMillis() + currentPageIndex
+            currentSignaturePreviewBitmap = generateDynamicSignature(seed)
+
+            currentSignaturePreviewBitmap?.let {
+                binding.signatureOverlayView.visibility = View.VISIBLE
+                val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
+                binding.signatureOverlayView.setStamp(it, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation, imageMatrix)
+            } ?: run {
+                binding.signatureOverlayView.visibility = View.GONE
+            }
         } else {
             binding.signatureOverlayView.visibility = View.GONE
         }
@@ -666,39 +661,59 @@ class PdfPreviewFragment : Fragment() {
             wornBitmapForPage.recycle()
         }
 
-        // Draw Signature (from bitmap, either procedural or image-based)
-        if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
-            canvas.save()
+        // Draw Signature (dynamically generated for each page)
+        if (isSignatureEnabled && signatureState != null) {
+            val dynamicSignatureBitmap = generateDynamicSignature(stamp2Seed) // Use the same seed as Stamp 2 for this page
+            dynamicSignatureBitmap?.let { signature ->
+                canvas.save()
 
-            // Calculate final dimensions and position in PDF coordinates
-            val scaledScale = signatureState!!.scale * previewToPdfScale
-            val finalWidth = signatureBitmap!!.width * scaledScale
-            val finalHeight = signatureBitmap!!.height * scaledScale
-            val finalX = signatureState!!.x * previewToPdfScale
-            val finalY = signatureState!!.y * previewToPdfScale
+                val scaledScale = signatureState!!.scale * previewToPdfScale
+                val finalWidth = signature.width * scaledScale
+                val finalHeight = signature.height * scaledScale
+                val finalX = signatureState!!.x * previewToPdfScale
+                val finalY = signatureState!!.y * previewToPdfScale
 
-            // Define the destination rectangle on the PDF canvas
-            val dstRect = RectF(finalX, finalY, finalX + finalWidth, finalY + finalHeight)
+                val dstRect = RectF(finalX, finalY, finalX + finalWidth, finalY + finalHeight)
+                canvas.rotate(signatureState!!.rotation, dstRect.centerX(), dstRect.centerY())
+                val srcRect = Rect(0, 0, signature.width, signature.height)
+                canvas.drawBitmap(signature, srcRect, dstRect, highQualityPaint)
 
-            // Rotate the canvas around the center of the destination rectangle
-            canvas.rotate(signatureState!!.rotation, dstRect.centerX(), dstRect.centerY())
-
-            // Define the source rectangle (the entire bitmap)
-            val srcRect = Rect(0, 0, signatureBitmap!!.width, signatureBitmap!!.height)
-
-            // Draw the bitmap into the destination rectangle, this prevents clipping issues
-            canvas.drawBitmap(signatureBitmap!!, srcRect, dstRect, highQualityPaint)
-
-            // Restore canvas to its original state
-            canvas.restore()
+                canvas.restore()
+                signature.recycle() // IMPORTANT: Recycle the bitmap to save memory
+            }
         }
     }
 
-    private fun generateProceduralSignatureBitmap(): Bitmap? {
-        val allPoints = signatureMarkerContours.flatten()
+    private fun generateDynamicSignature(seed: Long): Bitmap? {
+        if (signatureMarkerContours.isEmpty()) return null
+
+        // 1. Generate procedural signature points with a unique seed
+        val proceduralPoints = generateProceduralSignaturePoints(Random(seed))
+        if (proceduralPoints.isEmpty()) return null
+
+        // 2. Create the base bitmap for the signature
+        var baseBitmap = createBitmapFromPoints(proceduralPoints) ?: return null
+
+        // 3. Apply wear to the signature bitmap
+        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
+        val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
+
+        if (wearIntensity > 0f && wearSize > 0f) {
+            val normalizedIntensity = wearIntensity / 100.0f
+            val normalizedSize = wearSize / 100.0f
+            // Use the same seed to make the wear consistent with the signature shape
+            val wornBitmap = applyInkWear(baseBitmap, normalizedIntensity, normalizedSize, seed)
+            baseBitmap.recycle() // Recycle the original bitmap
+            return wornBitmap
+        }
+        return baseBitmap
+    }
+
+    private fun createBitmapFromPoints(points: List<List<PointF>>): Bitmap? {
+        val allPoints = points.flatten()
         if (allPoints.isEmpty()) return null
 
-        // 1. Calculate bounding box of all markers
         var minX = Float.MAX_VALUE
         var maxX = Float.MIN_VALUE
         var minY = Float.MAX_VALUE
@@ -711,9 +726,8 @@ class PdfPreviewFragment : Fragment() {
             maxY = max(maxY, point.y)
         }
 
-        // 2. Add padding to avoid clipping the generated curve
-        val maxStrokeWidth = 10f // Based on (2 + 1 * 8)
-        val padding = randomizationRadius + maxStrokeWidth
+        val maxStrokeWidth = 10f
+        val padding = maxStrokeWidth
         minX -= padding
         minY -= padding
         maxX += padding
@@ -721,14 +735,10 @@ class PdfPreviewFragment : Fragment() {
 
         val width = (maxX - minX).toInt()
         val height = (maxY - minY).toInt()
+        if (width <= 0 || height <= 0) return null
 
-        if (width <= 0 || height <= 0) return null // Avoid creating an invalid bitmap
-
-        // 3. Create a bitmap with the exact size
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-
-        // 4. Translate the canvas so drawing starts at (0,0) relative to the signature bounds
         canvas.translate(-minX, -minY)
 
         val signaturePaint = Paint().apply {
@@ -739,8 +749,7 @@ class PdfPreviewFragment : Fragment() {
             strokeJoin = Paint.Join.ROUND
         }
 
-        val signatureContours = generateProceduralSignaturePoints()
-        signatureContours.forEach { contour ->
+        points.forEach { contour ->
             if (contour.size > 1) {
                 for (i in 0 until contour.size - 1) {
                     val p1 = contour[i]
@@ -756,7 +765,7 @@ class PdfPreviewFragment : Fragment() {
         return bitmap
     }
 
-    private fun generateProceduralSignaturePoints(): List<List<PointF>> {
+    private fun generateProceduralSignaturePoints(random: Random): List<List<PointF>> {
         if (signatureMarkerContours.isEmpty()) {
             return emptyList()
         }
@@ -1103,7 +1112,7 @@ class PdfPreviewFragment : Fragment() {
         lastPageWornStampBitmap?.recycle()
         stamp2Bitmap?.recycle()
         currentStamp2WornPreviewBitmap?.recycle()
-        signatureBitmap?.recycle()
+        currentSignaturePreviewBitmap?.recycle()
         _binding = null
     }
 
