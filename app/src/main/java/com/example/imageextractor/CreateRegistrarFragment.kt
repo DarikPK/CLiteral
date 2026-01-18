@@ -37,8 +37,8 @@ class CreateRegistrarFragment : Fragment() {
 
     private fun setupListeners() {
         binding.saveButton.setOnClickListener {
-            val name = binding.nameEditText.text.toString().trim()
-            val position = binding.positionEditText.text.toString().trim()
+            val name = binding.nameEditText.text.toString().trim().toUpperCase()
+            val position = binding.positionEditText.text.toString().trim().toUpperCase()
             val area = binding.areaEditText.text.toString().trim()
 
             if (name.isEmpty() || position.isEmpty() || area.isEmpty()) {
