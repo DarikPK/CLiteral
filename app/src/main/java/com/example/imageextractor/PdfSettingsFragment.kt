@@ -28,9 +28,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
+class PdfSettingsFragment : Fragment() {
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
 
@@ -590,4 +589,5 @@ import kotlinx.coroutines.launch
         super.onDestroyView()
         _binding = null
     }
+}
 }
