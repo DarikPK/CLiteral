@@ -5,4 +5,8 @@
         <item>PJ</item>
         <item>PN</item>
     </string-array>
+    <string name="registrador_button_text">Registrador</string>
+    <string name="registrador_menu_create">Crear registrador</string>
+    <string name="registrador_menu_edit">Editar registrador</string>
+    <string name="registrador_menu_select">Seleccionar registrador</string>
 </resources>

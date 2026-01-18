@@ -228,6 +228,14 @@
                 android:text="Ajustes de Firma" />
 
             <Button
+                android:id="@+id/registrar_button"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/registrador_button_text" />
+
+            <Button
                 android:id="@+id/watermark_settings_button"
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="match_parent"
