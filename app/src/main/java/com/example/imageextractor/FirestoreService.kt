@@ -1,6 +1,7 @@
 package com.example.imageextractor
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
@@ -118,5 +119,25 @@ object FirestoreService {
         } catch (e: Exception) {
             false
         }
+    }
+
+    /**
+     * Registra un listener para recibir actualizaciones en tiempo real de la colección de registradores.
+     * @param onUpdate El callback que se ejecutará cada vez que la colección cambie.
+     * @return Un objeto ListenerRegistration que puede ser usado para cancelar el listener.
+     */
+    fun addRegistradoresListener(onUpdate: (List<Registrador>) -> Unit): ListenerRegistration {
+        return db.collection(REGISTRADORES_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    // Manejar el error, por ejemplo, logueándolo.
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val registradores = snapshot.toObjects(Registrador::class.java)
+                    onUpdate(registradores)
+                }
+            }
     }
 }

@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.imageextractor.databinding.FragmentEditRegistrarListBinding
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
 
 class EditRegistrarListFragment : Fragment() {
@@ -20,6 +21,7 @@ class EditRegistrarListFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var adapter: EditRegistradorAdapter
+    private var listenerRegistration: ListenerRegistration? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentEditRegistrarListBinding.inflate(inflater, container, false)
@@ -30,7 +32,7 @@ class EditRegistrarListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         setupRecyclerView()
-        loadData()
+        setupListener()
     }
 
     private fun setupToolbar() {
@@ -54,9 +56,8 @@ class EditRegistrarListFragment : Fragment() {
         binding.editRegistradoresRecyclerView.adapter = adapter
     }
 
-    private fun loadData() {
-        lifecycleScope.launch {
-            val registradores = FirestoreService.getRegistradores()
+    private fun setupListener() {
+        listenerRegistration = FirestoreService.addRegistradoresListener { registradores ->
             adapter.updateData(registradores)
         }
     }
@@ -68,7 +69,7 @@ class EditRegistrarListFragment : Fragment() {
             .setPositiveButton("Eliminar") { _, _ ->
                 lifecycleScope.launch {
                     FirestoreService.deleteRegistrador(registrador.id)
-                    loadData() // Recargar la lista
+                    // La lista se actualizará automáticamente gracias al listener
                 }
             }
             .setNegativeButton("Cancelar", null)
@@ -77,6 +78,7 @@ class EditRegistrarListFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        listenerRegistration?.remove()
         _binding = null
     }
 }
