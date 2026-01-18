@@ -84,7 +84,18 @@ class PdfPreviewFragment : Fragment() {
     private var signatureOffsetY: Float = 0f
     private var signatureScale: Float = 100f
     private var signatureRotation: Float = 0f
-    private var randomizationRadius: Float = 20f
+
+    // Primary Signature Settings
+    private var primarySignatureRandomizationRadius: Float = 20f
+    private var primarySignatureMarkerRadius: Float = 5f
+    private var primarySignatureWearIntensity: Float = 0f
+    private var primarySignatureWearSize: Float = 0f
+
+    // Secondary Signature Settings
+    private var secondarySignatureRandomizationRadius: Float = 20f
+    private var secondarySignatureMarkerRadius: Float = 5f
+    private var secondarySignatureWearIntensity: Float = 0f
+    private var secondarySignatureWearSize: Float = 0f
 
 
     private var isStampEnabled: Boolean = false
@@ -212,9 +223,18 @@ class PdfPreviewFragment : Fragment() {
             signatureOffsetY = it.getFloat("signatureOffsetY", 0f)
             signatureScale = it.getFloat("signatureScale", 100f)
             signatureRotation = it.getFloat("signatureRotation", 0f)
-            // Also load the randomization radius from shared prefs
+
+            // Load all signature settings from SharedPreferences
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            randomizationRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
+            primarySignatureRandomizationRadius = sharedPrefs.getFloat("signature_random_radius_primary", 20f)
+            primarySignatureMarkerRadius = sharedPrefs.getFloat("signature_marker_size_primary", 5f)
+            primarySignatureWearIntensity = sharedPrefs.getFloat("signature_wear_intensity_primary", 0f)
+            primarySignatureWearSize = sharedPrefs.getFloat("signature_wear_size_primary", 0f)
+
+            secondarySignatureRandomizationRadius = sharedPrefs.getFloat("signature_random_radius_secondary", 20f)
+            secondarySignatureMarkerRadius = sharedPrefs.getFloat("signature_marker_size_secondary", 5f)
+            secondarySignatureWearIntensity = sharedPrefs.getFloat("signature_wear_intensity_secondary", 0f)
+            secondarySignatureWearSize = sharedPrefs.getFloat("signature_wear_size_secondary", 0f)
         }
         }
     }
@@ -519,10 +539,29 @@ class PdfPreviewFragment : Fragment() {
         if (isSignatureEnabled && signatureState != null) {
             val totalPages = pageBitmaps.size
             val usePrimarySignature = totalPages <= 2 || currentPageIndex == 0 || currentPageIndex == totalPages - 1
-            val markersToUse = if (usePrimarySignature) primarySignatureMarkerContours else secondarySignatureMarkerContours
+
+            val markersToUse: List<List<PointF>>
+            val randomizationRadius: Float
+            val markerRadius: Float
+            val wearIntensity: Float
+            val wearSize: Float
+
+            if (usePrimarySignature) {
+                markersToUse = primarySignatureMarkerContours
+                randomizationRadius = primarySignatureRandomizationRadius
+                markerRadius = primarySignatureMarkerRadius
+                wearIntensity = primarySignatureWearIntensity
+                wearSize = primarySignatureWearSize
+            } else {
+                markersToUse = secondarySignatureMarkerContours
+                randomizationRadius = secondarySignatureRandomizationRadius
+                markerRadius = secondarySignatureMarkerRadius
+                wearIntensity = secondarySignatureWearIntensity
+                wearSize = secondarySignatureWearSize
+            }
 
             val seed = System.currentTimeMillis() + currentPageIndex
-            val bitmapToShow = generateDynamicSignature(markersToUse, seed)
+            val bitmapToShow = generateDynamicSignature(markersToUse, seed, randomizationRadius, markerRadius, wearIntensity, wearSize)
             currentSignaturePreviewBitmap = bitmapToShow // Keep reference to recycle
 
             if (bitmapToShow != null) {
@@ -682,9 +721,28 @@ class PdfPreviewFragment : Fragment() {
         if (isSignatureEnabled && signatureState != null) {
             val totalPages = pageBitmaps.size
             val usePrimarySignature = totalPages <= 2 || index == 0 || index == totalPages - 1
-            val markersToUse = if (usePrimarySignature) primarySignatureMarkerContours else secondarySignatureMarkerContours
 
-            val signatureToDraw = generateDynamicSignature(markersToUse, stamp2Seed)
+            val markersToUse: List<List<PointF>>
+            val randomizationRadius: Float
+            val markerRadius: Float
+            val wearIntensity: Float
+            val wearSize: Float
+
+            if (usePrimarySignature) {
+                markersToUse = primarySignatureMarkerContours
+                randomizationRadius = primarySignatureRandomizationRadius
+                markerRadius = primarySignatureMarkerRadius
+                wearIntensity = primarySignatureWearIntensity
+                wearSize = primarySignatureWearSize
+            } else {
+                markersToUse = secondarySignatureMarkerContours
+                randomizationRadius = secondarySignatureRandomizationRadius
+                markerRadius = secondarySignatureMarkerRadius
+                wearIntensity = secondarySignatureWearIntensity
+                wearSize = secondarySignatureWearSize
+            }
+
+            val signatureToDraw = generateDynamicSignature(markersToUse, stamp2Seed, randomizationRadius, markerRadius, wearIntensity, wearSize)
 
             signatureToDraw?.let { signature ->
                 canvas.save()
@@ -707,21 +765,24 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun generateDynamicSignature(markerContours: List<List<PointF>>, seed: Long): Bitmap? {
+    private fun generateDynamicSignature(
+        markerContours: List<List<PointF>>,
+        seed: Long,
+        randomizationRadius: Float,
+        markerRadius: Float,
+        wearIntensity: Float,
+        wearSize: Float
+    ): Bitmap? {
         if (markerContours.isEmpty()) return null
 
-        // 1. Generate procedural signature points with a unique seed
-        val proceduralPoints = generateProceduralSignaturePoints(markerContours, Random(seed))
+        // 1. Generate procedural signature points with a unique seed and correct settings
+        val proceduralPoints = generateProceduralSignaturePoints(markerContours, Random(seed), randomizationRadius, markerRadius)
         if (proceduralPoints.isEmpty()) return null
 
         // 2. Create the base bitmap for the signature
         var baseBitmap = createBitmapFromPoints(proceduralPoints) ?: return null
 
-        // 3. Apply wear to the signature bitmap
-        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-        val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
-        val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
-
+        // 3. Apply wear to the signature bitmap using passed-in settings
         if (wearIntensity > 0f && wearSize > 0f) {
             val normalizedIntensity = wearIntensity / 100.0f
             val normalizedSize = wearSize / 100.0f
@@ -788,7 +849,12 @@ class PdfPreviewFragment : Fragment() {
         return bitmap
     }
 
-    private fun generateProceduralSignaturePoints(markerContours: List<List<PointF>>, random: Random): List<List<PointF>> {
+    private fun generateProceduralSignaturePoints(
+        markerContours: List<List<PointF>>,
+        random: Random,
+        randomizationRadius: Float,
+        markerRadius: Float
+    ): List<List<PointF>> {
         if (markerContours.isEmpty()) {
             return emptyList()
         }
@@ -797,9 +863,12 @@ class PdfPreviewFragment : Fragment() {
 
         markerContours.forEach { contour ->
             if (contour.size >= 2) {
+                // Scale randomization by marker size, same logic as in SignatureCanvasView
+                val effectiveRandomization = randomizationRadius * (markerRadius / 10.0f)
+
                 val randomPoints = contour.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * randomizationRadius
+                    val radius = random.nextDouble() * effectiveRandomization
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
                     val y = marker.y + (radius * Math.sin(angle)).toFloat()
                     PointF(x, y)

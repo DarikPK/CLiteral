@@ -86,40 +86,42 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
+        // Load general settings that don't depend on signature type
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
 
-        val numMarkers = sharedPrefs.getInt("signature_num_markers", 15)
-        val markerSize = sharedPrefs.getFloat("signature_marker_size", 10f)
-
-        numMarkersEditText.setText(numMarkers.toString())
-        markerSizeEditText.setText(markerSize.toString())
-
-        binding.signatureCanvasView.setNumMarkers(numMarkers)
-        binding.signatureCanvasView.setMarkerRadius(markerSize)
-
-        val randomRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
-        binding.signatureRandomRadiusSlider.value = randomRadius
-        binding.signatureRandomRadiusLabel.text = "Radio de Aleatoriedad (${randomRadius.toInt()})"
-        binding.signatureCanvasView.setRandomizationRadius(randomRadius)
-
-        // Load wear settings
-        val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
-        val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
-        binding.signatureWearIntensitySlider.value = wearIntensity
-        binding.signatureWearSizeSlider.value = wearSize
-        binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${wearIntensity.toInt()})"
-        binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${wearSize.toInt()})"
-
-        // Load markers for the initial selection (Primary)
+        // Load markers and specific settings for the initial selection (Primary)
         loadMarkersForCurrentSelection()
     }
 
     private fun loadMarkersForCurrentSelection() {
-        val key = if (isPrimarySignatureSelected) "signature_markers_primary" else "signature_markers_secondary"
+        // Load settings specific to the selected signature type
+        val numMarkers = sharedPrefs.getInt(getKeyForSetting("signature_num_markers"), 40)
+        val markerSize = sharedPrefs.getFloat(getKeyForSetting("signature_marker_size"), 5f)
+        val randomRadius = sharedPrefs.getFloat(getKeyForSetting("signature_random_radius"), 20f)
+        val wearIntensity = sharedPrefs.getFloat(getKeyForSetting("signature_wear_intensity"), 0f)
+        val wearSize = sharedPrefs.getFloat(getKeyForSetting("signature_wear_size"), 0f)
+
+        // Update UI components
+        numMarkersEditText.setText(numMarkers.toString())
+        markerSizeEditText.setText(markerSize.toString())
+        binding.signatureRandomRadiusSlider.value = randomRadius
+        binding.signatureRandomRadiusLabel.text = "Radio de Aleatoriedad (${randomRadius.toInt()})"
+        binding.signatureWearIntensitySlider.value = wearIntensity
+        binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${wearIntensity.toInt()})"
+        binding.signatureWearSizeSlider.value = wearSize
+        binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${wearSize.toInt()})"
+
+        // Update canvas view with these settings
+        binding.signatureCanvasView.setNumMarkers(numMarkers)
+        binding.signatureCanvasView.setMarkerRadius(markerSize)
+        binding.signatureCanvasView.setRandomizationRadius(randomRadius)
+
+        // Load marker points
+        val key = getKeyForSetting("signature_markers")
         val markersString = sharedPrefs.getString(key, null)
         val contours = if (!markersString.isNullOrEmpty()) {
             markersString.split("|").map { contourString ->
@@ -150,8 +152,8 @@ class SignatureSettingsFragment : Fragment() {
 
         // Apply wear and tear if the bitmap is not null
         if (signatureBitmap != null) {
-            val wearIntensity = sharedPrefs.getFloat("signature_wear_intensity", 0f)
-            val wearSize = sharedPrefs.getFloat("signature_wear_size", 0f)
+            val wearIntensity = binding.signatureWearIntensitySlider.value
+            val wearSize = binding.signatureWearSizeSlider.value
 
             if (wearIntensity > 0 && wearSize > 0) {
                 val normalizedIntensity = wearIntensity / 100.0f
@@ -222,38 +224,42 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
 
         numMarkersEditText.doOnTextChanged { text, _, _, _ ->
-            val numMarkers = text.toString().toIntOrNull() ?: 15
-            saveInt("signature_num_markers", numMarkers)
+            val numMarkers = text.toString().toIntOrNull() ?: 40
+            saveInt(getKeyForSetting("signature_num_markers"), numMarkers)
             binding.signatureCanvasView.setNumMarkers(numMarkers)
         }
 
         markerSizeEditText.doOnTextChanged { text, _, _, _ ->
-            val markerSize = text.toString().toFloatOrNull() ?: 10f
-            saveFloat("signature_marker_size", markerSize)
+            val markerSize = text.toString().toFloatOrNull() ?: 5f
+            saveFloat(getKeyForSetting("signature_marker_size"), markerSize)
             binding.signatureCanvasView.setMarkerRadius(markerSize)
         }
 
         binding.signatureRandomRadiusSlider.addOnChangeListener { _, value, _ ->
             binding.signatureRandomRadiusLabel.text = "Radio de Aleatoriedad (${value.toInt()})"
-            saveFloat("signature_random_radius", value)
+            saveFloat(getKeyForSetting("signature_random_radius"), value)
             binding.signatureCanvasView.setRandomizationRadius(value)
         }
 
         binding.signatureWearIntensitySlider.addOnChangeListener { _, value, _ ->
             binding.signatureWearIntensityLabel.text = "Intensidad del Desgaste (${value.toInt()})"
-            saveFloat("signature_wear_intensity", value)
+            saveFloat(getKeyForSetting("signature_wear_intensity"), value)
             generateAndShowSignature()
         }
 
         binding.signatureWearSizeSlider.addOnChangeListener { _, value, _ ->
             binding.signatureWearSizeLabel.text = "Tamaño del Desgaste (${value.toInt()})"
-            saveFloat("signature_wear_size", value)
+            saveFloat(getKeyForSetting("signature_wear_size"), value)
             generateAndShowSignature()
         }
     }
 
+    private fun getKeyForSetting(baseKey: String): String {
+        return if (isPrimarySignatureSelected) "${baseKey}_primary" else "${baseKey}_secondary"
+    }
+
     private fun saveMarkers() {
-        val key = if (isPrimarySignatureSelected) "signature_markers_primary" else "signature_markers_secondary"
+        val key = getKeyForSetting("signature_markers")
         val contours = binding.signatureCanvasView.getMarkerContours()
         val markersString = contours.joinToString("|") { contour ->
             contour.joinToString(";") { "${it.x},${it.y}" }
