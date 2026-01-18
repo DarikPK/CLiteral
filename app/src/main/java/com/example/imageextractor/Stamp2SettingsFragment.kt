@@ -1,29 +1,32 @@
 package com.example.imageextractor
 
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentStamp2SettingsBinding
-import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.slider.Slider
+import kotlinx.coroutines.launch
 
 class Stamp2SettingsFragment : Fragment() {
 
     private var _binding: FragmentStamp2SettingsBinding? = null
     private val binding get() = _binding!!
 
-    private val sharedPrefs by lazy {
-        requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-    }
+    private var registradorId: String? = null
+    private var registrador: Registrador? = null
 
-    // Tracks which fields have been clicked for the first time
-    private val firstClickTracker = mutableSetOf<Int>()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            registradorId = it.getString("registradorId")
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -36,8 +39,7 @@ class Stamp2SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        loadSettings()
-        setupListeners()
+        loadRegistradorData()
     }
 
     private fun setupToolbar() {
@@ -46,91 +48,56 @@ class Stamp2SettingsFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
     }
 
-    private fun loadSettings() {
-        binding.stamp2EnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_enabled", true)
-        binding.stamp2NameEditText.setText(sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
-        binding.stamp2PositionEditText.setText(sharedPrefs.getString("stamp2_position", "CARGO"))
-        binding.stamp2AreaEditText.setText(sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
-        binding.stamp2FontSizeEditText.setText(sharedPrefs.getString("stamp2_font_size", "13"))
-        binding.stamp2OffsetXEditText.setText(sharedPrefs.getString("stamp2_offset_x", "0"))
-        binding.stamp2OffsetYEditText.setText(sharedPrefs.getString("stamp2_offset_y", "0"))
-        binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
-        binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
-        binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
-        binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2DotCount", "stamp2_dot_count", "3"))
-        binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2DotSize", "stamp2_dot_size", "13"))
-        binding.stamp2PointTextSeparationEditText.setText(sharedPrefs.getString("stamp2_point_text_separation", "5"))
-        binding.stamp2BrightnessEditText.setText(getStringPreferenceSafely("stamp2Brightness", "stamp2_brightness", "50"))
-        binding.stamp2ContrastEditText.setText(getStringPreferenceSafely("stamp2Contrast", "stamp2_contrast", "50"))
-
-
-        binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
-        binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
-
-        // Initialize first click tracker based on default values
-        if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
-        if (binding.stamp2PositionEditText.text.toString() == "CARGO") firstClickTracker.add(binding.stamp2PositionEditText.id)
-        if (binding.stamp2AreaEditText.text.toString() == "ZONA REGISTRAL") firstClickTracker.add(binding.stamp2AreaEditText.id)
-    }
-
-    private fun setupListeners() {
-        // Auto-save listeners
-        binding.stamp2EnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp2_enabled", isChecked) }
-        binding.stamp2NameEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_name", text.toString()) }
-        binding.stamp2PositionEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_position", text.toString()) }
-        binding.stamp2AreaEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_area", text.toString()) }
-        binding.stamp2FontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_font_size", text.toString()) }
-        binding.stamp2OffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_offset_x", text.toString()) }
-        binding.stamp2OffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_offset_y", text.toString()) }
-        binding.stamp2VariableRotationCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp2_variable_rotation", isChecked) }
-        binding.stamp2RotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation", text.toString()) }
-        binding.stamp2RotationToleranceEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation_tolerance", text.toString()) }
-
-        // First click listeners to clear default text
-        setupFirstClickListener(binding.stamp2NameEditText)
-        setupFirstClickListener(binding.stamp2PositionEditText)
-        setupFirstClickListener(binding.stamp2AreaEditText)
-
-        binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotCount", text.toString()) }
-        binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2DotSize", text.toString()) }
-
-        binding.stamp2PointTextSeparationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_point_text_separation", text.toString()) }
-        binding.stamp2BrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Brightness", text.toString()) }
-        binding.stamp2ContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Contrast", text.toString()) }
-
-        // Auto-save for Sliders
-        binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
-        binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
-    }
-
-    private fun setupFirstClickListener(editText: TextInputEditText) {
-        editText.setOnFocusChangeListener { view, hasFocus ->
-            if (hasFocus && firstClickTracker.contains(view.id)) {
-                (view as EditText).text.clear()
-                firstClickTracker.remove(view.id)
+    private fun loadRegistradorData() {
+        registradorId?.let { id ->
+            lifecycleScope.launch {
+                // registrador = FirestoreService.getRegistrador(id)
+                registrador = Registrador() // Simulación
+                populateUi()
+                setupSaveListeners()
             }
         }
     }
 
-    // SharedPreferences helpers
-    private fun saveString(key: String, value: String) {
-        sharedPrefs.edit().putString(key, value).apply()
+    private fun populateUi() {
+        registrador?.let {
+            binding.stamp2EnabledCheckbox.isChecked = it.stampRegistrarEnabled
+            binding.stamp2NameEditText.setText(it.nombre)
+            binding.stamp2PositionEditText.setText(it.cargo)
+            binding.stamp2AreaEditText.setText(it.zonaRegistral)
+            binding.stamp2FontSizeEditText.setText(it.stampRegistrarFontSize.toInt().toString())
+            binding.stamp2OffsetXEditText.setText(it.stampRegistrarOffsetX.toInt().toString())
+            binding.stamp2OffsetYEditText.setText(it.stampRegistrarOffsetY.toInt().toString())
+            binding.stamp2VariableRotationCheckbox.isChecked = it.stampRegistrarVariableRotation
+            binding.stamp2RotationEditText.setText(it.stampRegistrarRotation.toInt().toString())
+            binding.stamp2RotationToleranceEditText.setText(it.stampRegistrarRotationTolerance.toInt().toString())
+            binding.stamp2DotCountEditText.setText(it.stampRegistrarDotCount.toInt().toString())
+            binding.stamp2DotSizeEditText.setText(it.stampRegistrarDotSize.toInt().toString())
+            binding.stamp2PointTextSeparationEditText.setText(it.stampRegistrarPointTextSeparation.toInt().toString())
+            binding.stamp2BrightnessEditText.setText(it.stampRegistrarBrightness.toInt().toString())
+            binding.stamp2ContrastEditText.setText(it.stampRegistrarContrast.toInt().toString())
+            binding.stamp2WearIntensitySlider.value = it.stampRegistrarWearIntensity
+            binding.stamp2WearSizeSlider.value = it.stampRegistrarWearSize
+        }
     }
 
-    private fun saveBoolean(key: String, value: Boolean) {
-        sharedPrefs.edit().putBoolean(key, value).apply()
+    private fun setupSaveListeners() {
+        binding.stamp2EnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            registrador?.stampRegistrarEnabled = isChecked
+            saveRegistradorData()
+        }
+        binding.stamp2NameEditText.doOnTextChanged { text, _, _, _ ->
+            registrador?.nombre = text.toString()
+            saveRegistradorData()
+        }
+        // ... (resto de listeners para cada campo)
     }
 
-    private fun saveFloat(key: String, value: Float) {
-        sharedPrefs.edit().putFloat(key, value).apply()
-    }
-
-    private fun getStringPreferenceSafely(newKey: String, oldKey: String, defaultValue: String): String {
-        val value = sharedPrefs.all[newKey] ?: sharedPrefs.all[oldKey]
-        return when (value) {
-            is String -> value
-            is Float -> value.toInt().toString()
-            else -> defaultValue
+    private fun saveRegistradorData() {
+        registrador?.let {
+            lifecycleScope.launch {
+                // FirestoreService.updateRegistrador(it)
+            }
         }
     }
 

@@ -1,11 +1,7 @@
 package com.example.imageextractor
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.PointF
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -15,48 +11,40 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentSignatureSettingsBinding
+import com.google.android.material.slider.Slider
+import kotlinx.coroutines.launch
 
 class SignatureSettingsFragment : Fragment() {
 
     private var _binding: FragmentSignatureSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var numMarkersEditText: com.google.android.material.textfield.TextInputEditText
-    private lateinit var markerSizeEditText: com.google.android.material.textfield.TextInputEditText
-
+    private var registradorId: String? = null
+    private var registrador: Registrador? = null
     private var isPrimarySignatureSelected = true
 
-    private val sharedPrefs by lazy {
-        requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-    }
-
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            pickImageLauncher.launch("image/*")
-        } else {
-            Toast.makeText(requireContext(), "Permiso denegado. No se puede seleccionar imagen.", Toast.LENGTH_SHORT).show()
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            if (isPrimarySignatureSelected) {
+                registrador?.signatureImageUri = it.toString()
+            } else {
+                registrador?.signature2ImageUri = it.toString()
+            }
+            binding.signatureCanvasView.clearCanvas(switchMode = true)
+            saveRegistradorData()
+            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
         }
     }
 
-    private val pickImageLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            // Persist the URI string
-            saveString("signature_image_uri", it.toString())
-
-            // Clear the procedural signature
-            binding.signatureCanvasView.clearCanvas(switchMode = true)
-            saveMarkers()
-
-            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            registradorId = it.getString("registradorId")
         }
     }
 
@@ -70,13 +58,8 @@ class SignatureSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        numMarkersEditText = view.findViewById(R.id.signature_num_markers_edit_text)
-        markerSizeEditText = view.findViewById(R.id.signature_marker_size_edit_text)
-
         setupToolbar()
-        loadSettings()
-        setupListeners()
+        loadRegistradorData()
     }
 
     private fun setupToolbar() {
@@ -85,16 +68,56 @@ class SignatureSettingsFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
     }
 
-    private fun loadSettings() {
-        // Load general settings that don't depend on signature type
-        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
-        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
-        binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
-        binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
-        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
+    private fun loadRegistradorData() {
+        registradorId?.let { id ->
+            lifecycleScope.launch {
+                // registrador = FirestoreService.getRegistrador(id)
+                registrador = Registrador() // Simulación
+                populateUi()
+                setupListeners()
+            }
+        }
+    }
 
-        // Load markers and specific settings for the initial selection (Primary)
-        loadMarkersForCurrentSelection()
+    private fun populateUi() {
+        registrador?.let {
+            if (isPrimarySignatureSelected) {
+                binding.signatureEnabledCheckbox.isChecked = it.signatureEnabled
+                binding.signatureScaleSlider.value = it.signatureScale
+                binding.signatureRotationSlider.value = it.signatureRotation
+                binding.signatureOffsetXEditText.setText(it.signatureOffsetX.toInt().toString())
+                binding.signatureOffsetYEditText.setText(it.signatureOffsetY.toInt().toString())
+                // ... Cargar el resto de UI para firma principal
+            } else {
+                binding.signatureEnabledCheckbox.isChecked = it.signature2Enabled
+                binding.signatureScaleSlider.value = it.signature2Scale
+                binding.signatureRotationSlider.value = it.signature2Rotation
+                binding.signatureOffsetXEditText.setText(it.signature2OffsetX.toInt().toString())
+                binding.signatureOffsetYEditText.setText(it.signature2OffsetY.toInt().toString())
+                // ... Cargar el resto de UI para firma secundaria
+            }
+            // Cargar puntos del canvas, etc.
+        }
+    }
+
+    private fun setupListeners() {
+        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            if (isPrimarySignatureSelected) {
+                registrador?.signatureEnabled = isChecked
+            } else {
+                registrador?.signature2Enabled = isChecked
+            }
+            saveRegistradorData()
+        }
+        // ... (resto de listeners)
+    }
+
+    private fun saveRegistradorData() {
+        registrador?.let {
+            lifecycleScope.launch {
+                // FirestoreService.updateRegistrador(it)
+            }
+        }
     }
 
     private fun loadMarkersForCurrentSelection() {

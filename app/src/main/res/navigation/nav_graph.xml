@@ -57,6 +57,12 @@
         <action
             android:id="@+id/action_registrarFragment_to_selectRegistrarFragment"
             app:destination="@id/selectRegistrarFragment" />
+        <action
+            android:id="@+id/action_registrarFragment_to_createRegistrarFragment"
+            app:destination="@id/createRegistrarFragment" />
+        <action
+            android:id="@+id/action_registrarFragment_to_editRegistrarListFragment"
+            app:destination="@id/editRegistrarListFragment" />
     </fragment>
 
     <fragment
@@ -64,6 +70,57 @@
         android:name="com.example.imageextractor.SelectRegistrarFragment"
         android:label="Seleccionar Registrador"
         tools:layout="@layout/fragment_select_registrar" />
+
+    <fragment
+        android:id="@+id/createRegistrarFragment"
+        android:name="com.example.imageextractor.CreateRegistrarFragment"
+        android:label="Crear Nuevo Registrador"
+        tools:layout="@layout/fragment_create_registrar">
+        <action
+            android:id="@+id/action_createRegistrarFragment_to_editRegistrarHubFragment"
+            app:destination="@id/editRegistrarHubFragment"
+            app:popUpTo="@id/registrarFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/editRegistrarListFragment"
+        android:name="com.example.imageextractor.EditRegistrarListFragment"
+        android:label="Editar / Eliminar Registrador"
+        tools:layout="@layout/fragment_edit_registrar_list">
+        <action
+            android:id="@+id/action_editRegistrarListFragment_to_editRegistrarHubFragment"
+            app:destination="@id/editRegistrarHubFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/editRegistrarHubFragment"
+        android:name="com.example.imageextractor.EditRegistrarHubFragment"
+        android:label="Editando Registrador"
+        tools:layout="@layout/fragment_edit_registrar_hub">
+        <argument
+            android:name="registradorId"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_editRegistrarHubFragment_to_stamp1SettingsFragment"
+            app:destination="@id/stamp1SettingsFragment" />
+        <action
+            android:id="@+id/action_editRegistrarHubFragment_to_stamp2SettingsFragment"
+            app:destination="@id/stamp2SettingsFragment" />
+        <action
+            android:id="@+id/action_editRegistrarHubFragment_to_signatureSettingsFragment"
+            app:destination="@id/signatureSettingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/stamp1SettingsFragment"
+        android:name="com.example.imageextractor.Stamp1SettingsFragment"
+        android:label="Ajustes del Sello de Fecha"
+        tools:layout="@layout/fragment_stamp1_settings">
+        <argument
+            android:name="registradorId"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
 
     <fragment
         android:id="@+id/pageImageSettingsFragment"

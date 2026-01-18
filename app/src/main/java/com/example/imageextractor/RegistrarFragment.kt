@@ -39,10 +39,10 @@ class RegistrarFragment : Fragment() {
 
     private fun setupListeners() {
         binding.createRegistrarButton.setOnClickListener {
-            Toast.makeText(requireContext(), "Crear registrador", Toast.LENGTH_SHORT).show()
+            findNavController().navigate(R.id.action_registrarFragment_to_createRegistrarFragment)
         }
         binding.editRegistrarButton.setOnClickListener {
-            Toast.makeText(requireContext(), "Editar registrador", Toast.LENGTH_SHORT).show()
+            findNavController().navigate(R.id.action_registrarFragment_to_editRegistrarListFragment)
         }
         binding.selectRegistrarButton.setOnClickListener {
             findNavController().navigate(R.id.action_registrarFragment_to_selectRegistrarFragment)

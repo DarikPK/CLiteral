@@ -98,13 +98,6 @@ class PdfSettingsFragment : Fragment() {
     private fun setupListeners() {
         binding.datePickerButton.setOnClickListener { showDatePicker() }
 
-        // Auto-save for all EditTexts
-        binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
-        binding.stampSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_size", text.toString()) }
-        binding.stampRotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_rotation", text.toString()) }
-        binding.stampBrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_brightness", text.toString()) }
-        binding.stampContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_contrast", text.toString()) }
-
         // Dynamic fields auto-save
         binding.dynamicNumeroPublicidad.doOnTextChanged { text, _, _, _ -> saveString("dynamic_numero_publicidad", text.toString()) }
         binding.dynamicAno.doOnTextChanged { text, _, _, _ -> saveString("dynamic_ano", text.toString()) }
@@ -114,20 +107,6 @@ class PdfSettingsFragment : Fragment() {
             saveString("dynamic_hora", text.toString())
             validateTime()
         }
-
-        // Auto-save for CheckBox
-        binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_enabled", isChecked) }
-        binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
-
-
-        binding.advancedStampSettingsToggleButton.setOnClickListener {
-            val layout = binding.advancedStampSettingsLayout
-            layout.visibility = if (layout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-        }
-
-        // Auto-save for Sliders
-        binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_intensity", value) })
-        binding.stampWearSizeSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ -> saveFloat("stamp_wear_size", value) })
 
         // Auto-save for Spinner
         binding.dynamicTipoPartidaSpinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
@@ -141,20 +120,8 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_watermarkSettingsFragment)
         }
 
-        binding.stamp2SettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_stamp2SettingsFragment)
-        }
-
-        binding.signatureSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
-        }
-
         binding.pageImageSettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
-        }
-
-        binding.signatureSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
         }
 
         binding.pageImageSettingsButton.setOnClickListener {
@@ -171,19 +138,6 @@ class PdfSettingsFragment : Fragment() {
         val savedDateMillis = sharedPrefs.getLong("selected_date", System.currentTimeMillis())
         selectedDate.timeInMillis = savedDateMillis
         updateDateButtonText()
-
-        // Los ajustes de imagen y márgenes ahora se cargan en PageImageSettingsFragment
-        binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
-        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
-        binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
-        binding.stampBrightnessEditText.setText(sharedPrefs.getString("stamp_brightness", "50"))
-        binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
-
-        binding.stampEnabledCheckbox.isChecked = sharedPrefs.getBoolean("stamp_enabled", true)
-        binding.stampOnFirstLastPageCheckbox.isChecked = sharedPrefs.getBoolean("stamp_on_first_last", true)
-
-        binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
-        binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
 
         // Load dynamic fields
         binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
