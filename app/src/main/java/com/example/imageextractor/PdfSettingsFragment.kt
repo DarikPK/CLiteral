@@ -590,4 +590,3 @@ class PdfSettingsFragment : Fragment() {
         _binding = null
     }
 }
-}
