@@ -3,19 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/loginFragment">
-
-    <fragment
-        android:id="@+id/loginFragment"
-        android:name="com.example.imageextractor.LoginFragment"
-        android:label="Inicio de Sesión"
-        tools:layout="@layout/fragment_login">
-        <action
-            android:id="@+id/action_loginFragment_to_pdfSettingsFragment"
-            app:destination="@id/pdfSettingsFragment"
-            app:popUpTo="@id/loginFragment"
-            app:popUpToInclusive="true" />
-    </fragment>
+    app:startDestination="@id/pdfSettingsFragment">
 
     <fragment
         android:id="@+id/mainMenuFragment"
