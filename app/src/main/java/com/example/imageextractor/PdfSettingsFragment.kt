@@ -28,7 +28,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.widget.PopupMenu
 
 class PdfSettingsFragment : Fragment() {
 
@@ -163,26 +162,9 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
         }
 
-        binding.registrarButton.setOnClickListener { view ->
-            showRegistrarMenu(view)
+        binding.registrarButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarFragment)
         }
-    }
-
-    private fun showRegistrarMenu(anchor: View) {
-        val popup = PopupMenu(requireContext(), anchor)
-        popup.menuInflater.inflate(R.menu.registrar_menu, popup.menu)
-
-        popup.setOnMenuItemClickListener { item ->
-            val message = when (item.itemId) {
-                R.id.action_create_registrar -> "Crear registrador seleccionado"
-                R.id.action_edit_registrar -> "Editar registrador seleccionado"
-                R.id.action_select_registrar -> "Seleccionar registrador seleccionado"
-                else -> return@setOnMenuItemClickListener false
-            }
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-            true
-        }
-        popup.show()
     }
 
     private fun loadSettings() {

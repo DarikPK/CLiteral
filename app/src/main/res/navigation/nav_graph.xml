@@ -44,7 +44,16 @@
         <action
             android:id="@+id/action_pdfSettingsFragment_to_pageImageSettingsFragment"
             app:destination="@id/pageImageSettingsFragment" />
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_registrarFragment"
+            app:destination="@id/registrarFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/registrarFragment"
+        android:name="com.example.imageextractor.RegistrarFragment"
+        android:label="Registrador"
+        tools:layout="@layout/fragment_registrar" />
 
     <fragment
         android:id="@+id/pageImageSettingsFragment"
