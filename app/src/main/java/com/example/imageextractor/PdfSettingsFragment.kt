@@ -28,8 +28,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-
-class PdfSettingsFragment : Fragment() {
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
     private var _binding: FragmentPdfSettingsBinding? = null
     private val binding get() = _binding!!
@@ -326,158 +326,206 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun navigateToPreview(folder: ImageFolder) {
-        val watermarkPrefs = requireActivity().getSharedPreferences("WatermarkSettings", Context.MODE_PRIVATE)
+        lifecycleScope.launch {
+            val activeRegistrarId = sharedPrefs.getString("active_registrar_id", null)
+            val allRegistradores = FirestoreService.getRegistradores()
+            val registradorActivo = allRegistradores.find { it.id == activeRegistrarId }
 
-        val bundle = Bundle().apply {
-            putString("partidaId", folder.partidaId)
-            putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
+            val watermarkPrefs = requireActivity().getSharedPreferences("WatermarkSettings", Context.MODE_PRIVATE)
+            val bundle = Bundle().apply {
+                putString("partidaId", folder.partidaId)
+                putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-            putFloat("brightness", sharedPrefs.getString("brightness", "27")?.toFloatOrNull() ?: 27f)
-            putFloat("contrast", sharedPrefs.getString("contrast", "100")?.toFloatOrNull() ?: 100f)
+                if (registradorActivo != null) {
+                    // Usar datos del registrador activo desde Firestore
+                    // Sello 1
+                    putBoolean("isStampEnabled", registradorActivo.stampDateEnabled)
+                    if (registradorActivo.stampDateEnabled) {
+                        putBoolean("stampOnFirstLast", registradorActivo.stampDateOnFirstLast)
+                        val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
+                        val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
+                        val stampYear = selectedDate.get(Calendar.YEAR).toString()
+                        putString("stampDateText", "$stampDay $stampMonth. $stampYear")
+                        putFloat("stampFontSize", registradorActivo.stampDateFontSize)
+                        putFloat("stampWearIntensity", registradorActivo.stampDateWearIntensity)
+                        putFloat("stampWearSize", registradorActivo.stampDateWearSize)
+                        putFloat("stampSizePercent", registradorActivo.stampDateSizePercent)
+                        putFloat("stampMaxRotation", registradorActivo.stampDateMaxRotation)
+                        putFloat("stampBrightness", registradorActivo.stampDateBrightness)
+                        putFloat("stampContrast", registradorActivo.stampDateContrast)
+                    }
 
-            // Pasar los valores de los márgenes
-            putFloat("marginTop", sharedPrefs.getString("margin_top", "55")?.toFloatOrNull() ?: 55f)
-            putFloat("marginBottom", sharedPrefs.getString("margin_bottom", "50")?.toFloatOrNull() ?: 50f)
-            putFloat("marginLeft", sharedPrefs.getString("margin_left", "0")?.toFloatOrNull() ?: 0f)
-            putFloat("marginRight", sharedPrefs.getString("margin_right", "15")?.toFloatOrNull() ?: 15f)
+                    // Sello 2
+                    putBoolean("isStamp2Enabled", registradorActivo.stampRegistrarEnabled)
+                    if (registradorActivo.stampRegistrarEnabled) {
+                        putString("stamp2Name", registradorActivo.nombre)
+                        putString("stamp2Position", registradorActivo.cargo)
+                        putString("stamp2Area", registradorActivo.zonaRegistral)
+                        putFloat("stamp2FontSize", registradorActivo.stampRegistrarFontSize)
+                        putFloat("stamp2OffsetX", registradorActivo.stampRegistrarOffsetX)
+                        putFloat("stamp2OffsetY", registradorActivo.stampRegistrarOffsetY)
+                        putBoolean("stamp2VariableRotation", registradorActivo.stampRegistrarVariableRotation)
+                        putFloat("stamp2Rotation", registradorActivo.stampRegistrarRotation)
+                        putFloat("stamp2RotationTolerance", registradorActivo.stampRegistrarRotationTolerance)
+                        putFloat("stamp2WearIntensity", registradorActivo.stampRegistrarWearIntensity)
+                        putFloat("stamp2WearSize", registradorActivo.stampRegistrarWearSize)
+                        putFloat("stamp2DotCount", registradorActivo.stampRegistrarDotCount)
+                        putFloat("stamp2DotSize", registradorActivo.stampRegistrarDotSize)
+                        putFloat("stamp2PointTextSeparation", registradorActivo.stampRegistrarPointTextSeparation)
+                        putFloat("stamp2Brightness", registradorActivo.stampRegistrarBrightness)
+                        putFloat("stamp2Contrast", registradorActivo.stampRegistrarContrast)
+                    }
 
-            putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
-            if (binding.stampEnabledCheckbox.isChecked) {
-                putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
-                val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
-                // Capitaliza la primera letra del mes
-                val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES"))
-                    .format(selectedDate.time)
-                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("es", "ES")) else it.toString() }
-                val stampYear = selectedDate.get(Calendar.YEAR).toString()
-                putString("stampDateText", "$stampDay $stampMonth. $stampYear")
-                putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
-                putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
-                putFloat("stampWearSize", binding.stampWearSizeSlider.value)
-                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
-                putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
-                putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
-                putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
+                    // Firma Principal
+                    putBoolean("isSignatureEnabled", registradorActivo.signatureEnabled)
+                    if (registradorActivo.signatureEnabled) {
+                        putString("signatureImageUri", registradorActivo.signatureImageUri)
+                        putFloat("signatureOffsetX", registradorActivo.signatureOffsetX)
+                        putFloat("signatureOffsetY", registradorActivo.signatureOffsetY)
+                        putFloat("signatureScale", registradorActivo.signatureScale)
+                        putFloat("signatureRotation", registradorActivo.signatureRotation)
+                        putString("signaturePoints", registradorActivo.signaturePoints)
+                    }
+
+                } else {
+                    // Fallback a SharedPreferences si no hay registrador activo
+                    // (Lógica anterior)
+                    putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
+                    if (binding.stampEnabledCheckbox.isChecked) {
+                        putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
+                        val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
+                        val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
+                        val stampYear = selectedDate.get(Calendar.YEAR).toString()
+                        putString("stampDateText", "$stampDay $stampMonth. $stampYear")
+                        putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
+                        putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
+                        putFloat("stampWearSize", binding.stampWearSizeSlider.value)
+                        putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
+                        putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
+                        putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
+                        putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
+                    }
+
+                    // Sello 2 data (Fallback)
+                    val isStamp2Enabled = sharedPrefs.getBoolean("stamp2_enabled", true)
+                    putBoolean("isStamp2Enabled", isStamp2Enabled)
+                    if (isStamp2Enabled) {
+                        putString("stamp2Name", sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
+                        putString("stamp2Position", sharedPrefs.getString("stamp2_position", "CARGO"))
+                        putString("stamp2Area", sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
+                        putFloat("stamp2FontSize", sharedPrefs.getString("stamp2_font_size", "13")?.toFloatOrNull() ?: 13f)
+                        putFloat("stamp2OffsetX", sharedPrefs.getString("stamp2_offset_x", "0")?.toFloatOrNull() ?: 0f)
+                        putFloat("stamp2OffsetY", sharedPrefs.getString("stamp2_offset_y", "0")?.toFloatOrNull() ?: 0f)
+                        putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
+                        putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
+                        putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
+                        putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
+                        putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
+                        putFloat("stamp2DotCount", getFloatPreferenceSafely("stamp2DotCount", "stamp2_dot_count", 3f))
+                        putFloat("stamp2DotSize", getFloatPreferenceSafely("stamp2DotSize", "stamp2_dot_size", 13f))
+                        putFloat("stamp2PointTextSeparation", sharedPrefs.getString("stamp2_point_text_separation", "5")?.toFloatOrNull() ?: 5f)
+                        putFloat("stamp2Brightness", getFloatPreferenceSafely("stamp2Brightness", "stamp2_brightness", 50f))
+                        putFloat("stamp2Contrast", getFloatPreferenceSafely("stamp2Contrast", "stamp2_contrast", 50f))
+                    }
+
+                    // Signature Data (Fallback)
+                    val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
+                    putBoolean("isSignatureEnabled", isSignatureEnabled)
+                    if (isSignatureEnabled) {
+                        putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
+                        putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
+                        putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
+                        putFloat("signatureScale", sharedPrefs.getFloat("signature_scale", 100f))
+                        putFloat("signatureRotation", sharedPrefs.getFloat("signature_rotation", 0f))
+                    }
+                }
+
+                // Lógica de Watermarks (sin cambios)
+                // Pasar los valores de los márgenes
+                putFloat("marginTop", sharedPrefs.getString("margin_top", "55")?.toFloatOrNull() ?: 55f)
+                putFloat("marginBottom", sharedPrefs.getString("margin_bottom", "50")?.toFloatOrNull() ?: 50f)
+                putFloat("marginLeft", sharedPrefs.getString("margin_left", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("marginRight", sharedPrefs.getString("margin_right", "15")?.toFloatOrNull() ?: 15f)
+                putFloat("brightness", sharedPrefs.getString("brightness", "27")?.toFloatOrNull() ?: 27f)
+                putFloat("contrast", sharedPrefs.getString("contrast", "100")?.toFloatOrNull() ?: 100f)
+
+                // Pass data for all 4 watermarks
+                for (i in 1..4) {
+                    val defaultText = when (i) {
+                        1 -> "Certificado Literal"
+                        2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
+                        3 -> "PUBLICIDAD : \"Número publicidad\" Recibo N° \"Año\"-\"Digito 1\"-\"Digito 2\" Partida N° \"número partida\" CERTI. LITERAL - \"Tipo partida\""
+                        4 -> "Pág. Solicitadas : Todas  IMPRESION :  \"fecha\" \"Hora\" Página \"x\" de \"y\"\nNo existen Títulos Pendientes y/o Suspendidos  Inmovilización: Ninguno"
+                        else -> ""
+                    }
+                    val defaultOpacity = when (i) {
+                        1, 2 -> "25"
+                        3 -> "90"
+                        4 -> "80"
+                        else -> "50"
+                    }
+                    val defaultSize = when (i) {
+                        1 -> "114"
+                        2 -> "71"
+                        3 -> "23"
+                        4 -> "15"
+                        else -> "72"
+                    }
+                    val defaultScale = when (i) {
+                        2 -> "80"
+                        3 -> "90"
+                        4 -> "100"
+                        else -> "100"
+                    }
+                    val defaultDx = when (i) {
+                        1 -> "-15"
+                        2 -> "29"
+                        4 -> "165"
+                        else -> "0"
+                    }
+                    val defaultDy = when (i) {
+                        1 -> "-14"
+                        2 -> "19"
+                        3 -> "-232"
+                        4 -> "0"
+                        else -> "0"
+                    }
+                    val defaultAngle = when (i) {
+                        1 -> "-55"
+                        2 -> "55"
+                        4 -> "-90"
+                        else -> "0"
+                    }
+
+                    putString("w${i}_text", watermarkPrefs.getString("w${i}_text", defaultText))
+                    putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", defaultOpacity)?.toFloatOrNull() ?: 50f)
+                    putFloat("w${i}_size", watermarkPrefs.getString("w${i}_size", defaultSize)?.toFloatOrNull() ?: 72f)
+                    putFloat("w${i}_scale", watermarkPrefs.getString("w${i}_scale", defaultScale)?.toFloatOrNull() ?: 100f)
+                    putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", defaultDx)?.toFloatOrNull() ?: 0f)
+                    putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", defaultDy)?.toFloatOrNull() ?: 0f)
+                    putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", defaultAngle)?.toFloatOrNull() ?: 0f)
+
+                    if (i == 2) {
+                        putInt("w2_align", watermarkPrefs.getInt("w2_align", 1)) // 1 = Center
+                        putFloat("w2_right_crop", watermarkPrefs.getString("w2_right_crop", "319")?.toFloatOrNull() ?: 319f)
+                    }
+                }
+
+                // Pass dynamic values for watermark 3
+                putString("dynamic_numero_publicidad", binding.dynamicNumeroPublicidad.text.toString())
+                putString("dynamic_ano", binding.dynamicAno.text.toString())
+                putString("dynamic_digito1", binding.dynamicDigito1.text.toString())
+                putString("dynamic_digito2", binding.dynamicDigito2.text.toString())
+                putString("dynamic_numero_partida", folder.partidaId)
+                putString("dynamic_tipo_partida", binding.dynamicTipoPartidaSpinner.selectedItem.toString())
+
+                // Pass data for watermark 4
+                val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                putString("dynamic_fecha", sdf.format(selectedDate.time))
+                putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
             }
-
-            // Sello 2 data
-            val isStamp2Enabled = sharedPrefs.getBoolean("stamp2_enabled", true)
-            putBoolean("isStamp2Enabled", isStamp2Enabled)
-            if (isStamp2Enabled) {
-                putString("stamp2Name", sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
-                putString("stamp2Position", sharedPrefs.getString("stamp2_position", "CARGO"))
-                putString("stamp2Area", sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
-                putFloat("stamp2FontSize", sharedPrefs.getString("stamp2_font_size", "13")?.toFloatOrNull() ?: 13f)
-                putFloat("stamp2OffsetX", sharedPrefs.getString("stamp2_offset_x", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("stamp2OffsetY", sharedPrefs.getString("stamp2_offset_y", "0")?.toFloatOrNull() ?: 0f)
-                putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
-                putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
-                putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
-                putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
-                putFloat("stamp2DotCount", getFloatPreferenceSafely("stamp2DotCount", "stamp2_dot_count", 3f))
-                putFloat("stamp2DotSize", getFloatPreferenceSafely("stamp2DotSize", "stamp2_dot_size", 13f))
-                putFloat("stamp2PointTextSeparation", sharedPrefs.getString("stamp2_point_text_separation", "5")?.toFloatOrNull() ?: 5f)
-                putFloat("stamp2Brightness", getFloatPreferenceSafely("stamp2Brightness", "stamp2_brightness", 50f))
-                putFloat("stamp2Contrast", getFloatPreferenceSafely("stamp2Contrast", "stamp2_contrast", 50f))
-            }
-
-            // Watermark 1 data
-            putString("w1_text", watermarkPrefs.getString("w1_text", "Certificado Literal"))
-            putFloat("w1_opacity", watermarkPrefs.getString("w1_opacity", "25")?.toFloatOrNull() ?: 25f)
-            putFloat("w1_size", watermarkPrefs.getString("w1_size", "114")?.toFloatOrNull() ?: 114f)
-            putFloat("w1_scale", watermarkPrefs.getString("w1_scale", "100")?.toFloatOrNull() ?: 100f)
-            putFloat("w1_dx", watermarkPrefs.getString("w1_dx", "-15")?.toFloatOrNull() ?: -15f)
-            putFloat("w1_dy", watermarkPrefs.getString("w1_dy", "-14")?.toFloatOrNull() ?: -14f)
-            putFloat("w1_angle", watermarkPrefs.getString("w1_angle", "-55")?.toFloatOrNull() ?: -55f)
-
-            // Pass data for all 4 watermarks
-            for (i in 1..4) {
-                val defaultText = when (i) {
-                    1 -> "Certificado Literal"
-                    2 -> "Sin inscripcion al Dorso\nNo hay Títulos Suspendidos y/o Pendientes de Inscripci\nA las Horas : 8:00 AM"
-                    3 -> "PUBLICIDAD : \"Número publicidad\" Recibo N° \"Año\"-\"Digito 1\"-\"Digito 2\" Partida N° \"número partida\" CERTI. LITERAL - \"Tipo partida\""
-                    4 -> "Pág. Solicitadas : Todas  IMPRESION :  \"fecha\" \"Hora\" Página \"x\" de \"y\"\nNo existen Títulos Pendientes y/o Suspendidos  Inmovilización: Ninguno"
-                    else -> ""
-                }
-                val defaultOpacity = when (i) {
-                    1, 2 -> "25"
-                    3 -> "90"
-                    4 -> "80"
-                    else -> "50"
-                }
-                val defaultSize = when (i) {
-                    1 -> "114"
-                    2 -> "71"
-                    3 -> "23"
-                    4 -> "15"
-                    else -> "72"
-                }
-                val defaultScale = when (i) {
-                    2 -> "80"
-                    3 -> "90"
-                    4 -> "100"
-                    else -> "100"
-                }
-                val defaultDx = when (i) {
-                    1 -> "-15"
-                    2 -> "29"
-                    4 -> "165"
-                    else -> "0"
-                }
-                val defaultDy = when (i) {
-                    1 -> "-14"
-                    2 -> "19"
-                    3 -> "-232"
-                    4 -> "0"
-                    else -> "0"
-                }
-                val defaultAngle = when (i) {
-                    1 -> "-55"
-                    2 -> "55"
-                    4 -> "-90"
-                    else -> "0"
-                }
-
-                putString("w${i}_text", watermarkPrefs.getString("w${i}_text", defaultText))
-                putFloat("w${i}_opacity", watermarkPrefs.getString("w${i}_opacity", defaultOpacity)?.toFloatOrNull() ?: 50f)
-                putFloat("w${i}_size", watermarkPrefs.getString("w${i}_size", defaultSize)?.toFloatOrNull() ?: 72f)
-                putFloat("w${i}_scale", watermarkPrefs.getString("w${i}_scale", defaultScale)?.toFloatOrNull() ?: 100f)
-                putFloat("w${i}_dx", watermarkPrefs.getString("w${i}_dx", defaultDx)?.toFloatOrNull() ?: 0f)
-                putFloat("w${i}_dy", watermarkPrefs.getString("w${i}_dy", defaultDy)?.toFloatOrNull() ?: 0f)
-                putFloat("w${i}_angle", watermarkPrefs.getString("w${i}_angle", defaultAngle)?.toFloatOrNull() ?: 0f)
-
-                if (i == 2) {
-                    putInt("w2_align", watermarkPrefs.getInt("w2_align", 1)) // 1 = Center
-                    putFloat("w2_right_crop", watermarkPrefs.getString("w2_right_crop", "319")?.toFloatOrNull() ?: 319f)
-                }
-            }
-
-            // Pass dynamic values for watermark 3
-            putString("dynamic_numero_publicidad", binding.dynamicNumeroPublicidad.text.toString())
-            putString("dynamic_ano", binding.dynamicAno.text.toString())
-            putString("dynamic_digito1", binding.dynamicDigito1.text.toString())
-            putString("dynamic_digito2", binding.dynamicDigito2.text.toString())
-            putString("dynamic_numero_partida", folder.partidaId)
-            putString("dynamic_tipo_partida", binding.dynamicTipoPartidaSpinner.selectedItem.toString())
-
-            // Pass data for watermark 4
-            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            putString("dynamic_fecha", sdf.format(selectedDate.time))
-            putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
-
-            // Signature Data
-            val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
-            putBoolean("isSignatureEnabled", isSignatureEnabled)
-            if (isSignatureEnabled) {
-                putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
-                putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("signatureScale", sharedPrefs.getFloat("signature_scale", 100f))
-                putFloat("signatureRotation", sharedPrefs.getFloat("signature_rotation", 0f))
-            }
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
         }
-        findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }
 
     private fun getCapturedFolders(): List<ImageFolder> {

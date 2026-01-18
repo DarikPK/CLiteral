@@ -53,7 +53,17 @@
         android:id="@+id/registrarFragment"
         android:name="com.example.imageextractor.RegistrarFragment"
         android:label="Registrador"
-        tools:layout="@layout/fragment_registrar" />
+        tools:layout="@layout/fragment_registrar">
+        <action
+            android:id="@+id/action_registrarFragment_to_selectRegistrarFragment"
+            app:destination="@id/selectRegistrarFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/selectRegistrarFragment"
+        android:name="com.example.imageextractor.SelectRegistrarFragment"
+        android:label="Seleccionar Registrador"
+        tools:layout="@layout/fragment_select_registrar" />
 
     <fragment
         android:id="@+id/pageImageSettingsFragment"

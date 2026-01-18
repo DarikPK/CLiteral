@@ -45,7 +45,7 @@ class RegistrarFragment : Fragment() {
             Toast.makeText(requireContext(), "Editar registrador", Toast.LENGTH_SHORT).show()
         }
         binding.selectRegistrarButton.setOnClickListener {
-            Toast.makeText(requireContext(), "Seleccionar registrador", Toast.LENGTH_SHORT).show()
+            findNavController().navigate(R.id.action_registrarFragment_to_selectRegistrarFragment)
         }
     }
 
