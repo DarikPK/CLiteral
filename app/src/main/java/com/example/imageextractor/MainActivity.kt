@@ -3,23 +3,45 @@ package com.example.imageextractor
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.example.imageextractor.databinding.ActivityMainBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Lanza la migración en una corutina para no bloquear el hilo principal.
-        lifecycleScope.launch {
-            migrateInitialRegistrador()
-        }
+        auth = Firebase.auth
+        signInAnonymously()
+    }
+
+    private fun signInAnonymously() {
+        auth.signInAnonymously()
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    Log.d("Auth", "signInAnonymously:success")
+                    // Lanza la migración en una corutina para no bloquear el hilo principal.
+                    lifecycleScope.launch {
+                        migrateInitialRegistrador()
+                    }
+                } else {
+                    // If sign in fails, display a message to the user.
+                    Log.w("Auth", "signInAnonymously:failure", task.exception)
+                    Toast.makeText(baseContext, "Authentication failed.", Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
     /**
