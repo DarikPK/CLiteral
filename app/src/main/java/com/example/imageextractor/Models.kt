@@ -28,55 +28,55 @@ data class ImageFolder(
  * Esta clase está diseñada para ser almacenada como un documento en Firebase Firestore.
  */
 data class Registrador(
-    @DocumentId val id: String = "",
-    val nombre: String = "",
-    val cargo: String = "",
-    val zonaRegistral: String = "",
+    @DocumentId var id: String = "",
+    var nombre: String = "",
+    var cargo: String = "",
+    var zonaRegistral: String = "",
 
     // Ajustes Sello 1 (Fecha)
-    val stampDateEnabled: Boolean = true,
-    val stampDateOnFirstLast: Boolean = true,
-    val stampDateFontSize: Float = 220f,
-    val stampDateWearIntensity: Float = 30f,
-    val stampDateWearSize: Float = 50f,
-    val stampDateSizePercent: Float = 20f,
-    val stampDateMaxRotation: Float = 5f,
-    val stampDateBrightness: Float = 50f,
-    val stampDateContrast: Float = 50f,
+    var stampDateEnabled: Boolean = true,
+    var stampDateOnFirstLast: Boolean = true,
+    var stampDateFontSize: Float = 220f,
+    var stampDateWearIntensity: Float = 30f,
+    var stampDateWearSize: Float = 50f,
+    var stampDateSizePercent: Float = 20f,
+    var stampDateMaxRotation: Float = 5f,
+    var stampDateBrightness: Float = 50f,
+    var stampDateContrast: Float = 50f,
 
     // Ajustes Sello 2 (Registrador)
-    val stampRegistrarEnabled: Boolean = true,
-    val stampRegistrarFontSize: Float = 13f,
-    val stampRegistrarOffsetX: Float = 0f,
-    val stampRegistrarOffsetY: Float = 0f,
-    val stampRegistrarVariableRotation: Boolean = true,
-    val stampRegistrarRotation: Float = 0f,
-    val stampRegistrarRotationTolerance: Float = 5f,
-    val stampRegistrarWearIntensity: Float = 30f,
-    val stampRegistrarWearSize: Float = 50f,
-    val stampRegistrarDotCount: Float = 3f,
-    val stampRegistrarDotSize: Float = 13f,
-    val stampRegistrarPointTextSeparation: Float = 5f,
-    val stampRegistrarBrightness: Float = 50f,
-    val stampRegistrarContrast: Float = 50f,
+    var stampRegistrarEnabled: Boolean = true,
+    var stampRegistrarFontSize: Float = 13f,
+    var stampRegistrarOffsetX: Float = 0f,
+    var stampRegistrarOffsetY: Float = 0f,
+    var stampRegistrarVariableRotation: Boolean = true,
+    var stampRegistrarRotation: Float = 0f,
+    var stampRegistrarRotationTolerance: Float = 5f,
+    var stampRegistrarWearIntensity: Float = 30f,
+    var stampRegistrarWearSize: Float = 50f,
+    var stampRegistrarDotCount: Float = 3f,
+    var stampRegistrarDotSize: Float = 13f,
+    var stampRegistrarPointTextSeparation: Float = 5f,
+    var stampRegistrarBrightness: Float = 50f,
+    var stampRegistrarContrast: Float = 50f,
 
     // Ajustes Firma Principal
-    val signatureEnabled: Boolean = false,
-    val signatureImageUri: String? = null,
-    val signatureOffsetX: Float = 0f,
-    val signatureOffsetY: Float = 0f,
-    val signatureScale: Float = 100f,
-    val signatureRotation: Float = 0f,
-    val signaturePoints: String = "", // Puntos de la firma procedural serializados
+    var signatureEnabled: Boolean = false,
+    var signatureImageUri: String? = null,
+    var signatureOffsetX: Float = 0f,
+    var signatureOffsetY: Float = 0f,
+    var signatureScale: Float = 100f,
+    var signatureRotation: Float = 0f,
+    var signaturePoints: String = "", // Puntos de la firma procedural serializados
 
     // Ajustes Firma Secundaria (se deja la estructura lista)
-    val signature2Enabled: Boolean = false,
-    val signature2ImageUri: String? = null,
-    val signature2OffsetX: Float = 0f,
-    val signature2OffsetY: Float = 0f,
-    val signature2Scale: Float = 100f,
-    val signature2Rotation: Float = 0f,
-    val signature2Points: String = ""
+    var signature2Enabled: Boolean = false,
+    var signature2ImageUri: String? = null,
+    var signature2OffsetX: Float = 0f,
+    var signature2OffsetY: Float = 0f,
+    var signature2Scale: Float = 100f,
+    var signature2Rotation: Float = 0f,
+    var signature2Points: String = ""
 ) {
     // Constructor sin argumentos requerido por Firestore para la deserialización.
     constructor() : this(

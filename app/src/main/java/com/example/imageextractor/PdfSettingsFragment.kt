@@ -342,21 +342,21 @@ class PdfSettingsFragment : Fragment() {
 
                 } else {
                     // Fallback a SharedPreferences si no hay registrador activo
-                    // (Lógica anterior)
-                    putBoolean("isStampEnabled", binding.stampEnabledCheckbox.isChecked)
-                    if (binding.stampEnabledCheckbox.isChecked) {
-                        putBoolean("stampOnFirstLast", binding.stampOnFirstLastPageCheckbox.isChecked)
+                    val isStampEnabled = sharedPrefs.getBoolean("stamp_enabled", true)
+                    putBoolean("isStampEnabled", isStampEnabled)
+                    if (isStampEnabled) {
+                        putBoolean("stampOnFirstLast", sharedPrefs.getBoolean("stamp_on_first_last", true))
                         val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
                         val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
                         val stampYear = selectedDate.get(Calendar.YEAR).toString()
                         putString("stampDateText", "$stampDay $stampMonth. $stampYear")
-                        putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
-                        putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
-                        putFloat("stampWearSize", binding.stampWearSizeSlider.value)
-                        putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
-                        putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
-                        putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
-                        putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
+                        putFloat("stampFontSize", sharedPrefs.getString("stamp_font_size", "220")?.toFloatOrNull() ?: 220f)
+                        putFloat("stampWearIntensity", sharedPrefs.getFloat("stamp_wear_intensity", 30f))
+                        putFloat("stampWearSize", sharedPrefs.getFloat("stamp_wear_size", 50f))
+                        putFloat("stampSizePercent", sharedPrefs.getString("stamp_size", "20")?.toFloatOrNull() ?: 20f)
+                        putFloat("stampMaxRotation", sharedPrefs.getString("stamp_rotation", "5")?.toFloatOrNull() ?: 5f)
+                        putFloat("stampBrightness", sharedPrefs.getString("stamp_brightness", "50")?.toFloatOrNull() ?: 50f)
+                        putFloat("stampContrast", sharedPrefs.getString("stamp_contrast", "50")?.toFloatOrNull() ?: 50f)
                     }
 
                     // Sello 2 data (Fallback)
