@@ -52,13 +52,15 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Comprueba si es necesario crear el primer registrador y lo migra
-     * desde SharedPreferences a Firestore. Esta operación se ejecuta solo una vez.
+     * desde SharedPreferences a Firestore. Se asegura de que el registrador por defecto exista.
      */
     private suspend fun migrateInitialRegistrador() {
-        if (FirestoreService.isRegistradoresCollectionEmpty()) {
+        val defaultName = "ALFARO MORILLO MELISSA KARINA"
+        if (!FirestoreService.checkIfRegistradorExistsByName(defaultName)) {
             val sharedPrefs = getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
 
-            val nombre = sharedPrefs.getString("stamp2_name", "ALFARO MORILLO MELISSA KARINA") ?: "ALFARO MORILLO MELISSA KARINA"
+            // Usa el nombre por defecto como valor de respaldo final
+            val nombre = sharedPrefs.getString("stamp2_name", defaultName) ?: defaultName
             val cargo = sharedPrefs.getString("stamp2_position", "Registrador Público") ?: "Registrador Público"
             val zona = sharedPrefs.getString("stamp2_area", "Zona Registral N° IX - Sede Lima") ?: "Zona Registral N° IX - Sede Lima"
 

@@ -140,4 +140,23 @@ object FirestoreService {
                 }
             }
     }
+
+    /**
+     * Comprueba si un registrador con un nombre específico ya existe en la base de datos.
+     * @param nombre El nombre del registrador a buscar.
+     * @return true si existe al menos un registrador con ese nombre, false en caso contrario.
+     */
+    suspend fun checkIfRegistradorExistsByName(nombre: String): Boolean {
+        return try {
+            val snapshot = db.collection(REGISTRADORES_COLLECTION)
+                .whereEqualTo("nombre", nombre)
+                .limit(1)
+                .get()
+                .await()
+            !snapshot.isEmpty
+        } catch (e: Exception) {
+            // En caso de error, asumimos que no existe para potencialmente permitir la creación.
+            false
+        }
+    }
 }
