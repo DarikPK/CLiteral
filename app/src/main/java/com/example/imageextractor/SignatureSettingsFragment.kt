@@ -278,13 +278,15 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveChanges() {
-        currentRegistrador?.let {
+        currentRegistrador?.let { registrador ->
             lifecycleScope.launch {
-                val success = FirestoreService.updateRegistrador(it)
+                val success = FirestoreService.updateRegistrador(registrador)
                 if (success) {
-                    initialRegistrador = it.copy()
+                    initialRegistrador = registrador.copy()
                     checkForChanges()
                     Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show()
+
+                    findNavController().previousBackStackEntry?.savedStateHandle?.set("updatedRegistrador", registrador)
                 } else {
                     Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
                 }

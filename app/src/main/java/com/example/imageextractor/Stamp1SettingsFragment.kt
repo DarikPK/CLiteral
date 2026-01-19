@@ -66,6 +66,7 @@ class Stamp1SettingsFragment : Fragment() {
         binding.previewStamp1Button.setOnClickListener {
             generateStampPreview()
         }
+        generateStampPreview()
     }
 
     private fun generateStampPreview() {
@@ -216,13 +217,16 @@ class Stamp1SettingsFragment : Fragment() {
     }
 
     private fun saveChanges() {
-        currentRegistrador?.let {
+        currentRegistrador?.let { registrador ->
             lifecycleScope.launch {
-                val success = FirestoreService.updateRegistrador(it)
+                val success = FirestoreService.updateRegistrador(registrador)
                 if (success) {
-                    initialRegistrador = it.copy() // Actualiza el estado base
-                    checkForChanges() // Oculta el botón de guardar
+                    initialRegistrador = registrador.copy()
+                    checkForChanges()
                     Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show()
+
+                    // Devuelve el registrador actualizado a la pantalla anterior
+                    findNavController().previousBackStackEntry?.savedStateHandle?.set("updatedRegistrador", registrador)
                 } else {
                     Toast.makeText(context, "Error al guardar los cambios", Toast.LENGTH_SHORT).show()
                 }

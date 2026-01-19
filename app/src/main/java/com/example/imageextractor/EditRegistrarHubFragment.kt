@@ -19,6 +19,7 @@ class EditRegistrarHubFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var registradorId: String? = null
+    private var currentRegistrador: Registrador? = null
     private var isNavigating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +39,12 @@ class EditRegistrarHubFragment : Fragment() {
         setupToolbar()
         loadHeader()
         setupListeners()
+
+        val navController = findNavController()
+        navController.currentBackStackEntry?.savedStateHandle?.getLiveData<Registrador>("updatedRegistrador")?.observe(viewLifecycleOwner) { updatedRegistrador ->
+            currentRegistrador = updatedRegistrador
+            binding.registradorNameHeader.text = "Editando a: ${updatedRegistrador.nombre}"
+        }
     }
 
     private fun setupToolbar() {
@@ -49,10 +56,9 @@ class EditRegistrarHubFragment : Fragment() {
     private fun loadHeader() {
         registradorId?.let { id ->
             lifecycleScope.launch {
-                val registrador = FirestoreService.getRegistrador(id)
-                // Comprobar si el binding todavía es válido antes de actualizar la UI
+                currentRegistrador = FirestoreService.getRegistrador(id)
                 if (_binding != null) {
-                    binding.registradorNameHeader.text = "Editando a: ${registrador?.nombre ?: "Desconocido"}"
+                    binding.registradorNameHeader.text = "Editando a: ${currentRegistrador?.nombre ?: "Desconocido"}"
                 }
             }
         }
@@ -65,20 +71,29 @@ class EditRegistrarHubFragment : Fragment() {
     }
 
     private fun navigateTo(actionId: Int) {
-        if (isNavigating) return // Prevenir doble clic
+        if (isNavigating) return
         isNavigating = true
 
-        registradorId?.let { id ->
-            lifecycleScope.launch {
-                val registrador = FirestoreService.getRegistrador(id)
-                if (registrador != null && _binding != null) {
-                    val bundle = bundleOf("registrador" to registrador)
-                    findNavController().navigate(actionId, bundle)
+        if (currentRegistrador != null) {
+            val bundle = bundleOf("registrador" to currentRegistrador)
+            findNavController().navigate(actionId, bundle)
+        } else {
+            // Fallback por si currentRegistrador es nulo
+            registradorId?.let { id ->
+                lifecycleScope.launch {
+                    val registrador = FirestoreService.getRegistrador(id)
+                    if (registrador != null && _binding != null) {
+                        currentRegistrador = registrador
+                        val bundle = bundleOf("registrador" to registrador)
+                        findNavController().navigate(actionId, bundle)
+                    }
                 }
-                // Resetear la bandera después de un breve retardo para permitir que la navegación se complete
-                delay(500)
-                isNavigating = false
             }
+        }
+
+        lifecycleScope.launch {
+            delay(500)
+            isNavigating = false
         }
     }
 
