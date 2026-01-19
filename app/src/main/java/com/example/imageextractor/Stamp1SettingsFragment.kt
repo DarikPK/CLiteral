@@ -1,9 +1,10 @@
 package com.example.imageextractor
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
@@ -19,13 +20,16 @@ class Stamp1SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var registradorId: String? = null
-    private var registrador: Registrador? = null
+    private var initialRegistrador: Registrador? = null
+    private var currentRegistrador: Registrador? = null
+    private var saveMenuItem: MenuItem? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
             registradorId = it.getString("registradorId")
         }
+        setHasOptionsMenu(true)
     }
 
     override fun onCreateView(
@@ -40,32 +44,52 @@ class Stamp1SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         loadRegistradorData()
+        setupBackButtonInterceptor()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_save, menu)
+        saveMenuItem = menu.findItem(R.id.action_save)
+        checkForChanges() // Actualiza la visibilidad inicial del botón
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_save -> {
+                saveChanges()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
-            findNavController().navigateUp()
+            handleNavigateBack()
         }
     }
 
     private fun loadRegistradorData() {
         registradorId?.let { id ->
             lifecycleScope.launch {
-                // Suponiendo que FirestoreService tiene una función para obtener un registrador por ID.
-                // Esta función la crearemos en el `FirestoreService`.
-                // registrador = FirestoreService.getRegistrador(id)
-                // Por ahora, simularemos la carga con los datos por defecto.
-                registrador = Registrador() // Carga un registrador con valores por defecto
-                populateUi()
-                setupSaveListeners()
+                val registradorFromDb = FirestoreService.getRegistrador(id)
+                if (registradorFromDb != null) {
+                    initialRegistrador = registradorFromDb.copy()
+                    currentRegistrador = registradorFromDb.copy()
+                    populateUi()
+                    setupChangeListeners()
+                } else {
+                    // Manejar el caso en que el registrador no se encuentra
+                }
             }
         }
     }
 
     private fun populateUi() {
-        registrador?.let {
+        currentRegistrador?.let {
             binding.stampEnabledCheckbox.isChecked = it.stampDateEnabled
             binding.stampOnFirstLastPageCheckbox.isChecked = it.stampDateOnFirstLast
             binding.stampSizeEditText.setText(it.stampDateSizePercent.toInt().toString())
@@ -78,52 +102,85 @@ class Stamp1SettingsFragment : Fragment() {
         }
     }
 
-    private fun setupSaveListeners() {
+    private fun setupChangeListeners() {
         binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            registrador?.stampDateEnabled = isChecked
-            saveRegistradorData()
+            currentRegistrador?.stampDateEnabled = isChecked
+            checkForChanges()
         }
         binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            registrador?.stampDateOnFirstLast = isChecked
-            saveRegistradorData()
+            currentRegistrador?.stampDateOnFirstLast = isChecked
+            checkForChanges()
         }
         binding.stampSizeEditText.doOnTextChanged { text, _, _, _ ->
-            registrador?.stampDateSizePercent = text.toString().toFloatOrNull() ?: 20f
-            saveRegistradorData()
+            currentRegistrador?.stampDateSizePercent = text.toString().toFloatOrNull() ?: 20f
+            checkForChanges()
         }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ ->
-            registrador?.stampDateFontSize = text.toString().toFloatOrNull() ?: 220f
-            saveRegistradorData()
+            currentRegistrador?.stampDateFontSize = text.toString().toFloatOrNull() ?: 220f
+            checkForChanges()
         }
         binding.stampRotationEditText.doOnTextChanged { text, _, _, _ ->
-            registrador?.stampDateMaxRotation = text.toString().toFloatOrNull() ?: 5f
-            saveRegistradorData()
+            currentRegistrador?.stampDateMaxRotation = text.toString().toFloatOrNull() ?: 5f
+            checkForChanges()
         }
-        binding.stampWearIntensitySlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
-            registrador?.stampDateWearIntensity = value
-            saveRegistradorData()
-        })
-        binding.stampWearSizeSlider.addOnChangeListener(Slider.OnChangeListener { _, value, _ ->
-            registrador?.stampDateWearSize = value
-            saveRegistradorData()
-        })
+        binding.stampWearIntensitySlider.addOnChangeListener { _, value, _ ->
+            currentRegistrador?.stampDateWearIntensity = value
+            checkForChanges()
+        }
+        binding.stampWearSizeSlider.addOnChangeListener { _, value, _ ->
+            currentRegistrador?.stampDateWearSize = value
+            checkForChanges()
+        }
         binding.stampBrightnessEditText.doOnTextChanged { text, _, _, _ ->
-            registrador?.stampDateBrightness = text.toString().toFloatOrNull() ?: 50f
-            saveRegistradorData()
+            currentRegistrador?.stampDateBrightness = text.toString().toFloatOrNull() ?: 50f
+            checkForChanges()
         }
         binding.stampContrastEditText.doOnTextChanged { text, _, _, _ ->
-            registrador?.stampDateContrast = text.toString().toFloatOrNull() ?: 50f
-            saveRegistradorData()
+            currentRegistrador?.stampDateContrast = text.toString().toFloatOrNull() ?: 50f
+            checkForChanges()
         }
     }
 
-    private fun saveRegistradorData() {
-        registrador?.let {
+    private fun checkForChanges() {
+        val hasChanges = initialRegistrador != currentRegistrador
+        saveMenuItem?.isVisible = hasChanges
+    }
+
+    private fun saveChanges() {
+        currentRegistrador?.let {
             lifecycleScope.launch {
-                // Suponiendo que FirestoreService tiene una función de actualización.
-                // Esta función la crearemos en el `FirestoreService`.
-                // FirestoreService.updateRegistrador(it)
+                val success = FirestoreService.updateRegistrador(it)
+                if (success) {
+                    initialRegistrador = it.copy() // Actualiza el estado base
+                    checkForChanges() // Oculta el botón de guardar
+                    Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Error al guardar los cambios", Toast.LENGTH_SHORT).show()
+                }
             }
+        }
+    }
+
+    private fun setupBackButtonInterceptor() {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleNavigateBack()
+            }
+        })
+    }
+
+    private fun handleNavigateBack() {
+        if (saveMenuItem?.isVisible == true) {
+            AlertDialog.Builder(requireContext())
+                .setTitle("Cambios no guardados")
+                .setMessage("¿Estás seguro de que quieres salir sin guardar los cambios?")
+                .setPositiveButton("Salir") { _, _ ->
+                    findNavController().navigateUp()
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        } else {
+            findNavController().navigateUp()
         }
     }
 

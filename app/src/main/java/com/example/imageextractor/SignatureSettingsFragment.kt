@@ -3,20 +3,19 @@ package com.example.imageextractor
 import android.graphics.PointF
 import android.net.Uri
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentSignatureSettingsBinding
-import com.google.android.material.slider.Slider
 import kotlinx.coroutines.launch
 
 class SignatureSettingsFragment : Fragment() {
@@ -25,18 +24,20 @@ class SignatureSettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var registradorId: String? = null
-    private var registrador: Registrador? = null
+    private var initialRegistrador: Registrador? = null
+    private var currentRegistrador: Registrador? = null
     private var isPrimarySignatureSelected = true
+    private var saveMenuItem: MenuItem? = null
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             if (isPrimarySignatureSelected) {
-                registrador?.signatureImageUri = it.toString()
+                currentRegistrador?.signatureImageUri = it.toString()
             } else {
-                registrador?.signature2ImageUri = it.toString()
+                currentRegistrador?.signature2ImageUri = it.toString()
             }
             binding.signatureCanvasView.clearCanvas(switchMode = true)
-            saveRegistradorData()
+            checkForChanges()
             Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
         }
     }
@@ -46,12 +47,10 @@ class SignatureSettingsFragment : Fragment() {
         arguments?.let {
             registradorId = it.getString("registradorId")
         }
+        setHasOptionsMenu(true)
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSignatureSettingsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -60,19 +59,39 @@ class SignatureSettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         loadRegistradorData()
+        setupBackButtonInterceptor()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_save, menu)
+        saveMenuItem = menu.findItem(R.id.action_save)
+        checkForChanges()
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_save -> {
+                saveChanges()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
+        binding.toolbar.setNavigationOnClickListener { handleNavigateBack() }
     }
 
     private fun loadRegistradorData() {
         registradorId?.let { id ->
             lifecycleScope.launch {
-                registrador = FirestoreService.getRegistrador(id)
-                if (registrador != null) {
+                val registradorFromDb = FirestoreService.getRegistrador(id)
+                if (registradorFromDb != null) {
+                    initialRegistrador = registradorFromDb.copy()
+                    currentRegistrador = registradorFromDb.copy()
                     populateUi()
                     setupListeners()
                 } else {
@@ -84,11 +103,11 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun populateUi() {
-        registrador?.let { reg ->
+        currentRegistrador?.let { reg ->
             val (enabled, scale, rotation, offsetX, offsetY, points) = if (isPrimarySignatureSelected) {
-                Sixple(reg.signatureEnabled, reg.signatureScale, reg.signatureRotation, reg.signatureOffsetX, reg.signatureOffsetY, reg.signaturePoints)
+                Triple(reg.signatureEnabled, reg.signatureScale, reg.signatureRotation) + Triple(reg.signatureOffsetX, reg.signatureOffsetY, reg.signaturePoints)
             } else {
-                Sixple(reg.signature2Enabled, reg.signature2Scale, reg.signature2Rotation, reg.signature2OffsetX, reg.signature2OffsetY, reg.signature2Points)
+                Triple(reg.signature2Enabled, reg.signature2Scale, reg.signature2Rotation) + Triple(reg.signature2OffsetX, reg.signature2OffsetY, reg.signature2Points)
             }
 
             binding.signatureEnabledCheckbox.isChecked = enabled
@@ -104,43 +123,39 @@ class SignatureSettingsFragment : Fragment() {
                         if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
                     }
                 }
-            } else {
-                emptyList()
-            }
+            } else { emptyList() }
             binding.signatureCanvasView.setMarkerContours(contours)
-            updateButtonLabels()
         }
     }
 
     private fun setupListeners() {
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            if (isPrimarySignatureSelected) registrador?.signatureEnabled = isChecked else registrador?.signature2Enabled = isChecked
-            saveRegistradorData()
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureEnabled = isChecked else currentRegistrador?.signature2Enabled = isChecked
+            checkForChanges()
         }
         binding.signatureScaleSlider.addOnChangeListener { _, value, _ ->
-            if (isPrimarySignatureSelected) registrador?.signatureScale = value else registrador?.signature2Scale = value
-            saveRegistradorData()
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureScale = value else currentRegistrador?.signature2Scale = value
+            checkForChanges()
         }
         binding.signatureRotationSlider.addOnChangeListener { _, value, _ ->
-            if (isPrimarySignatureSelected) registrador?.signatureRotation = value else registrador?.signature2Rotation = value
-            saveRegistradorData()
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureRotation = value else currentRegistrador?.signature2Rotation = value
+            checkForChanges()
         }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ ->
             val value = text.toString().toFloatOrNull() ?: 0f
-            if (isPrimarySignatureSelected) registrador?.signatureOffsetX = value else registrador?.signature2OffsetX = value
-            saveRegistradorData()
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureOffsetX = value else currentRegistrador?.signature2OffsetX = value
+            checkForChanges()
         }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ ->
             val value = text.toString().toFloatOrNull() ?: 0f
-            if (isPrimarySignatureSelected) registrador?.signatureOffsetY = value else registrador?.signature2OffsetY = value
-            saveRegistradorData()
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureOffsetY = value else currentRegistrador?.signature2OffsetY = value
+            checkForChanges()
         }
 
         binding.signatureCanvasView.setMarkerListener {
-            saveMarkers()
+            saveMarkersAndUpdateChanges()
         }
 
-        // Spinner para seleccionar entre firma principal y secundaria
         val signatureTypes = listOf("Firma Principal", "Firma Secundaria")
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, signatureTypes)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -149,41 +164,63 @@ class SignatureSettingsFragment : Fragment() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val isPrimary = position == 0
                 if (isPrimary != isPrimarySignatureSelected) {
-                    saveMarkers() // Guardar los puntos de la firma actual antes de cambiar
                     isPrimarySignatureSelected = isPrimary
-                    populateUi() // Recargar la UI con los datos de la otra firma
+                    populateUi()
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
-    private fun saveMarkers() {
+    private fun saveMarkersAndUpdateChanges() {
         val contours = binding.signatureCanvasView.getMarkerContours()
-        val markersString = contours.joinToString("|") { contour ->
-            contour.joinToString(";") { "${it.x},${it.y}" }
-        }
+        val markersString = contours.joinToString("|") { c -> c.joinToString(";") { "${it.x},${it.y}" } }
         if (isPrimarySignatureSelected) {
-            registrador?.signaturePoints = markersString
+            currentRegistrador?.signaturePoints = markersString
         } else {
-            registrador?.signature2Points = markersString
+            currentRegistrador?.signature2Points = markersString
         }
-        saveRegistradorData()
+        checkForChanges()
     }
 
-    private fun updateButtonLabels() {
-        if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
-            binding.primaryActionButton.text = "Generar Marcadores"
-        } else {
-            binding.primaryActionButton.text = "Refrescar Firma"
-        }
+    private fun checkForChanges() {
+        val hasChanges = initialRegistrador != currentRegistrador
+        saveMenuItem?.isVisible = hasChanges
     }
 
-    private fun saveRegistradorData() {
-        registrador?.let {
+    private fun saveChanges() {
+        currentRegistrador?.let {
             lifecycleScope.launch {
-                FirestoreService.updateRegistrador(it)
+                val success = FirestoreService.updateRegistrador(it)
+                if (success) {
+                    initialRegistrador = it.copy()
+                    checkForChanges()
+                    Toast.makeText(context, "Cambios guardados", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Error al guardar", Toast.LENGTH_SHORT).show()
+                }
             }
+        }
+    }
+
+    private fun setupBackButtonInterceptor() {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleNavigateBack()
+            }
+        })
+    }
+
+    private fun handleNavigateBack() {
+        if (saveMenuItem?.isVisible == true) {
+            AlertDialog.Builder(requireContext())
+                .setTitle("Cambios no guardados")
+                .setMessage("¿Quieres salir sin guardar?")
+                .setPositiveButton("Salir") { _, _ -> findNavController().navigateUp() }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        } else {
+            findNavController().navigateUp()
         }
     }
 
@@ -193,5 +230,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 }
 
-// Helper data class for managing signature data temporarily
+private operator fun <A, B, C> Triple<A, B, C>.plus(other: Triple<A, B, C>): Sixple<A, B, C, A, B, C> {
+    return Sixple(this.first, this.second, this.third, other.first, other.second, other.third)
+}
 private data class Sixple<A, B, C, D, E, F>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F)
