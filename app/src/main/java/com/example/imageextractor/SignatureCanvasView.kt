@@ -54,6 +54,8 @@ class SignatureCanvasView @JvmOverloads constructor(
     private var markerRadius = 10f
     private var randomizationRadius = 20f // Re-add randomization radius
     private var numMarkers = 15
+    private var wearIntensity = 0f
+    private var wearSize = 0f
 
     fun getNumMarkers(): Int = numMarkers
     fun getMarkerRadius(): Float = markerRadius
@@ -87,6 +89,12 @@ class SignatureCanvasView @JvmOverloads constructor(
             this.randomizationRadius = radius
             regenerateSignature()
         }
+    }
+
+    fun setWearParameters(intensity: Float, size: Float) {
+        this.wearIntensity = intensity
+        this.wearSize = size
+        regenerateSignature()
     }
 
     private var draggedMarker: PointF? = null
@@ -256,7 +264,20 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     fun regenerateSignature() {
         generateSignaturePath()
+        updateSignatureBitmap()
         invalidate()
+    }
+
+    private fun updateSignatureBitmap() {
+        val cleanBitmap = generateProceduralSignatureBitmap(false) // Pass false to prevent recursion
+        if (cleanBitmap != null) {
+            val normalizedIntensity = wearIntensity / 100f
+            val normalizedSize = wearSize / 100f
+            val wornBitmap = applyInkWear(cleanBitmap, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+            setPreviewBitmap(wornBitmap)
+        } else {
+            setPreviewBitmap(null)
+        }
     }
 
     private fun autoPlaceMarkers() {
@@ -321,11 +342,13 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
     }
 
-    fun generateProceduralSignatureBitmap(): android.graphics.Bitmap? {
+    fun generateProceduralSignatureBitmap(refreshPoints: Boolean = true): android.graphics.Bitmap? {
         val allPoints = markers.flatten()
         if (allPoints.isEmpty()) return null
 
-        regenerateSignature() // Ensure the points are fresh
+        if (refreshPoints) {
+            generateSignaturePath() // Ensure the points are fresh
+        }
 
         // 1. Calculate bounding box of all generated signature points (not markers)
         val bounds = getSignatureBounds() ?: return null

@@ -6,6 +6,16 @@ import android.view.*
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
@@ -53,6 +63,81 @@ class Stamp1SettingsFragment : Fragment() {
         isLoading = false
         checkForChanges() // Comprobar una vez después de la carga inicial
         setupBackButtonInterceptor()
+        binding.previewStamp1Button.setOnClickListener {
+            generateStampPreview()
+        }
+    }
+
+    private fun generateStampPreview() {
+        // Collect all settings from the UI
+        val stampSize = binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 20f
+        val fontSize = binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f
+        val rotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f
+        val wearIntensity = binding.stampWearIntensitySlider.value
+        val wearSize = binding.stampWearSizeSlider.value
+        val brightness = binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f
+        val contrast = binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f
+
+        // Generate the clean stamp bitmap
+        var previewBitmap = createStampBitmap(fontSize)
+
+        // Apply adjustments (brightness/contrast)
+        previewBitmap = applyStampAdjustments(previewBitmap, brightness, contrast)
+
+        // Apply ink wear
+        val normalizedIntensity = wearIntensity / 100f
+        val normalizedSize = wearSize / 100f
+        previewBitmap = applyInkWear(previewBitmap, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+
+        // Display the final bitmap
+        binding.stamp1PreviewImageView.setImageBitmap(previewBitmap)
+        binding.stamp1PreviewImageView.visibility = View.VISIBLE
+    }
+
+    private fun createStampBitmap(fontSize: Float): Bitmap {
+        val context = requireContext()
+        val baseStampDrawable = ContextCompat.getDrawable(context, R.drawable.ic_stamp_base)!!
+        val bitmap = baseStampDrawable.toBitmap(baseStampDrawable.intrinsicWidth, baseStampDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+
+        val customTypeface = ResourcesCompat.getFont(context, R.font.d_din_condensed_bold)
+
+        val textPaint = Paint().apply {
+            color = Color.RED
+            textSize = fontSize
+            typeface = customTypeface ?: Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+        }
+
+        val canvas = Canvas(bitmap)
+        val x = canvas.width / 2f
+        val y = (canvas.height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f) - 25f
+
+        // Use a placeholder date for preview
+        canvas.drawText("24 JUL 2023", x, y, textPaint)
+
+        return bitmap
+    }
+
+    private fun applyStampAdjustments(originalBitmap: Bitmap, brightness: Float, contrast: Float): Bitmap {
+        if (brightness == 50f && contrast == 50f) {
+            return originalBitmap
+        }
+        val brightnessValue = (brightness - 50) * 5f
+        val contrastValue = contrast / 50f
+        val colorMatrix = ColorMatrix(floatArrayOf(
+            contrastValue, 0f, 0f, 0f, brightnessValue,
+            0f, contrastValue, 0f, 0f, brightnessValue,
+            0f, 0f, contrastValue, 0f, brightnessValue,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        val adjustedBitmap = Bitmap.createBitmap(originalBitmap.width, originalBitmap.height, originalBitmap.config)
+        adjustedBitmap.density = originalBitmap.density
+        val canvas = Canvas(adjustedBitmap)
+        val paint = Paint()
+        paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
+        return adjustedBitmap
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {

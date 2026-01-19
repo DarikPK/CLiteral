@@ -71,6 +71,8 @@ data class Registrador(
     var signatureScale: Float = 100f,
     var signatureRotation: Float = 0f,
     var signaturePoints: String = "", // Puntos de la firma procedural serializados
+    var signatureWearIntensity: Float = 30f,
+    var signatureWearSize: Float = 50f,
 
     // Ajustes Firma Secundaria (se deja la estructura lista)
     var signature2Enabled: Boolean = false,
@@ -79,7 +81,9 @@ data class Registrador(
     var signature2OffsetY: Float = 0f,
     var signature2Scale: Float = 100f,
     var signature2Rotation: Float = 0f,
-    var signature2Points: String = ""
+    var signature2Points: String = "",
+    var signature2WearIntensity: Float = 30f,
+    var signature2WearSize: Float = 50f
 ) : Parcelable {
     // Constructor sin argumentos requerido por Firestore para la deserialización.
     constructor() : this(
@@ -93,8 +97,8 @@ data class Registrador(
         stampRegistrarWearSize = 50f, stampRegistrarDotCount = 3f, stampRegistrarDotSize = 13f,
         stampRegistrarPointTextSeparation = 5f, stampRegistrarBrightness = 50f, stampRegistrarContrast = 50f,
         signatureEnabled = false, signatureImageUri = null, signatureOffsetX = 0f, signatureOffsetY = 0f,
-        signatureScale = 100f, signatureRotation = 0f, signaturePoints = "",
+        signatureScale = 100f, signatureRotation = 0f, signaturePoints = "", signatureWearIntensity = 30f, signatureWearSize = 50f,
         signature2Enabled = false, signature2ImageUri = null, signature2OffsetX = 0f, signature2OffsetY = 0f,
-        signature2Scale = 100f, signature2Rotation = 0f, signature2Points = ""
+        signature2Scale = 100f, signature2Rotation = 0f, signature2Points = "", signature2WearIntensity = 30f, signature2WearSize = 50f
     )
 }

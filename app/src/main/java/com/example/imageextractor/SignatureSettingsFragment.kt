@@ -103,6 +103,8 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureRotationSlider.value = reg.signatureRotation
                 binding.signatureOffsetXEditText.setText(reg.signatureOffsetX.toInt().toString())
                 binding.signatureOffsetYEditText.setText(reg.signatureOffsetY.toInt().toString())
+                binding.signatureWearIntensitySlider.value = reg.signatureWearIntensity
+                binding.signatureWearSizeSlider.value = reg.signatureWearSize
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signaturePoints))
             } else {
                 binding.signatureEnabledCheckbox.isChecked = reg.signature2Enabled
@@ -110,13 +112,22 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureRotationSlider.value = reg.signature2Rotation
                 binding.signatureOffsetXEditText.setText(reg.signature2OffsetX.toInt().toString())
                 binding.signatureOffsetYEditText.setText(reg.signature2OffsetY.toInt().toString())
+                binding.signatureWearIntensitySlider.value = reg.signature2WearIntensity
+                binding.signatureWearSizeSlider.value = reg.signature2WearSize
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
             }
         // Poblar campos de configuración del canvas
         binding.signatureNumMarkersEditText.setText(binding.signatureCanvasView.getNumMarkers().toString())
         binding.signatureMarkerSizeEditText.setText(binding.signatureCanvasView.getMarkerRadius().toInt().toString())
             updateButtonLabels()
+            updateWearParameters()
         }
+    }
+
+    private fun updateWearParameters() {
+        val intensity = binding.signatureWearIntensitySlider.value
+        val size = binding.signatureWearSizeSlider.value
+        binding.signatureCanvasView.setWearParameters(intensity, size)
     }
 
     private fun parsePoints(pointsString: String?): List<List<PointF>> {
@@ -153,6 +164,18 @@ class SignatureSettingsFragment : Fragment() {
             checkForChanges()
         }
 
+        binding.signatureWearIntensitySlider.addOnChangeListener { _, value, _ ->
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureWearIntensity = value else currentRegistrador?.signature2WearIntensity = value
+            updateWearParameters()
+            checkForChanges()
+        }
+
+        binding.signatureWearSizeSlider.addOnChangeListener { _, value, _ ->
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureWearSize = value else currentRegistrador?.signature2WearSize = value
+            updateWearParameters()
+            checkForChanges()
+        }
+
         binding.signatureCanvasView.setMarkerListener {
             saveMarkersAndUpdateChanges()
         }
@@ -170,6 +193,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.secondaryActionButton.setOnClickListener {
             binding.signatureCanvasView.clearCanvas()
             saveMarkersAndUpdateChanges() // Guardar los puntos (ahora vacíos)
+            updateButtonLabels()
         }
 
         binding.primaryActionButton.setOnClickListener {
@@ -237,13 +261,17 @@ class SignatureSettingsFragment : Fragment() {
                 !i.signatureScale.isCloseTo(c.signatureScale) ||
                 !i.signatureRotation.isCloseTo(c.signatureRotation) ||
                 i.signaturePoints != c.signaturePoints ||
+                !i.signatureWearIntensity.isCloseTo(c.signatureWearIntensity) ||
+                !i.signatureWearSize.isCloseTo(c.signatureWearSize) ||
                 i.signature2Enabled != c.signature2Enabled ||
                 i.signature2ImageUri != c.signature2ImageUri ||
                 !i.signature2OffsetX.isCloseTo(c.signature2OffsetX) ||
                 !i.signature2OffsetY.isCloseTo(c.signature2OffsetY) ||
                 !i.signature2Scale.isCloseTo(c.signature2Scale) ||
                 !i.signature2Rotation.isCloseTo(c.signature2Rotation) ||
-                i.signature2Points != c.signature2Points
+                i.signature2Points != c.signature2Points ||
+                !i.signature2WearIntensity.isCloseTo(c.signature2WearIntensity) ||
+                !i.signature2WearSize.isCloseTo(c.signature2WearSize)
 
         saveMenuItem?.isEnabled = hasChanges
         saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130
