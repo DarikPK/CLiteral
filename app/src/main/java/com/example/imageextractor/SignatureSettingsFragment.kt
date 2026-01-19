@@ -109,6 +109,9 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureOffsetYEditText.setText(reg.signature2OffsetY.toInt().toString())
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
             }
+        // Poblar campos de configuración del canvas
+        binding.signatureNumMarkersEditText.setText(binding.signatureCanvasView.getNumMarkers().toString())
+        binding.signatureMarkerSizeEditText.setText(binding.signatureCanvasView.getMarkerRadius().toInt().toString())
             updateButtonLabels()
         }
     }
@@ -149,6 +152,16 @@ class SignatureSettingsFragment : Fragment() {
 
         binding.signatureCanvasView.setMarkerListener {
             saveMarkersAndUpdateChanges()
+        }
+
+        binding.signatureNumMarkersEditText.doOnTextChanged { text, _, _, _ ->
+            val numMarkers = text.toString().toIntOrNull() ?: 15
+            binding.signatureCanvasView.setNumMarkers(numMarkers)
+        }
+
+        binding.signatureMarkerSizeEditText.doOnTextChanged { text, _, _, _ ->
+            val markerSize = text.toString().toFloatOrNull() ?: 10f
+            binding.signatureCanvasView.setMarkerRadius(markerSize)
         }
 
         binding.secondaryActionButton.setOnClickListener {

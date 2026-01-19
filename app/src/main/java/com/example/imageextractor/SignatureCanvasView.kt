@@ -55,6 +55,9 @@ class SignatureCanvasView @JvmOverloads constructor(
     private var randomizationRadius = 20f // Re-add randomization radius
     private var numMarkers = 15
 
+    fun getNumMarkers(): Int = numMarkers
+    fun getMarkerRadius(): Float = markerRadius
+
     // Nuevo: para mostrar la firma con desgaste
     private var previewBitmap: android.graphics.Bitmap? = null
     private var previewBitmapBounds: android.graphics.RectF? = null
