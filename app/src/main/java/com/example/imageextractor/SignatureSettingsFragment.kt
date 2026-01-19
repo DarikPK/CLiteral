@@ -104,27 +104,31 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun populateUi() {
         currentRegistrador?.let { reg ->
-            val (enabled, scale, rotation, offsetX, offsetY, points) = if (isPrimarySignatureSelected) {
-                Triple(reg.signatureEnabled, reg.signatureScale, reg.signatureRotation) + Triple(reg.signatureOffsetX, reg.signatureOffsetY, reg.signaturePoints)
+            if (isPrimarySignatureSelected) {
+                binding.signatureEnabledCheckbox.isChecked = reg.signatureEnabled
+                binding.signatureScaleSlider.value = reg.signatureScale
+                binding.signatureRotationSlider.value = reg.signatureRotation
+                binding.signatureOffsetXEditText.setText(reg.signatureOffsetX.toInt().toString())
+                binding.signatureOffsetYEditText.setText(reg.signatureOffsetY.toInt().toString())
+                binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signaturePoints))
             } else {
-                Triple(reg.signature2Enabled, reg.signature2Scale, reg.signature2Rotation) + Triple(reg.signature2OffsetX, reg.signature2OffsetY, reg.signature2Points)
+                binding.signatureEnabledCheckbox.isChecked = reg.signature2Enabled
+                binding.signatureScaleSlider.value = reg.signature2Scale
+                binding.signatureRotationSlider.value = reg.signature2Rotation
+                binding.signatureOffsetXEditText.setText(reg.signature2OffsetX.toInt().toString())
+                binding.signatureOffsetYEditText.setText(reg.signature2OffsetY.toInt().toString())
+                binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
             }
+        }
+    }
 
-            binding.signatureEnabledCheckbox.isChecked = enabled
-            binding.signatureScaleSlider.value = scale
-            binding.signatureRotationSlider.value = rotation
-            binding.signatureOffsetXEditText.setText(offsetX.toInt().toString())
-            binding.signatureOffsetYEditText.setText(offsetY.toInt().toString())
-
-            val contours = if (points.isNotEmpty()) {
-                points.split("|").map { contourString ->
-                    contourString.split(";").mapNotNull {
-                        val parts = it.split(",")
-                        if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
-                    }
-                }
-            } else { emptyList() }
-            binding.signatureCanvasView.setMarkerContours(contours)
+    private fun parsePoints(pointsString: String?): List<List<PointF>> {
+        if (pointsString.isNullOrEmpty()) return emptyList()
+        return pointsString.split("|").map { contourString ->
+            contourString.split(";").mapNotNull {
+                val parts = it.split(",")
+                if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
+            }
         }
     }
 
@@ -229,8 +233,3 @@ class SignatureSettingsFragment : Fragment() {
         _binding = null
     }
 }
-
-private operator fun <A, B, C> Triple<A, B, C>.plus(other: Triple<A, B, C>): Sixple<A, B, C, A, B, C> {
-    return Sixple(this.first, this.second, this.third, other.first, other.second, other.third)
-}
-private data class Sixple<A, B, C, D, E, F>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F)
