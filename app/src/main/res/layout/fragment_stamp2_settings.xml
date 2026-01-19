@@ -43,7 +43,7 @@
                     android:id="@+id/stamp2_preview_image_view"
                     android:layout_width="250dp"
                     android:layout_height="150dp"
-                    android:background="@drawable/dotted_border"
+                    android:background="@android:color/white"
                     android:visibility="gone"
                     tools:visibility="visible"
                     android:scaleType="fitCenter"/>
