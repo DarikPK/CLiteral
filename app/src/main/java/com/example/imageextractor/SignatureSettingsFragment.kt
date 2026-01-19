@@ -109,6 +109,7 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureOffsetYEditText.setText(reg.signature2OffsetY.toInt().toString())
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
             }
+            updateButtonLabels()
         }
     }
 
@@ -156,8 +157,13 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.primaryActionButton.setOnClickListener {
-            binding.signatureCanvasView.generateMarkers()
-            saveMarkersAndUpdateChanges() // Guardar los nuevos puntos generados
+            if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
+                binding.signatureCanvasView.switchToEditMode()
+            } else {
+                binding.signatureCanvasView.regenerateSignature()
+            }
+            updateButtonLabels()
+            saveMarkersAndUpdateChanges()
         }
 
         val signatureTypes = listOf("Firma Principal", "Firma Secundaria")
@@ -177,7 +183,17 @@ class SignatureSettingsFragment : Fragment() {
         }
     }
 
+    private fun updateButtonLabels() {
+        if (_binding == null) return
+        if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
+            binding.primaryActionButton.text = "Generar Marcadores"
+        } else {
+            binding.primaryActionButton.text = "Refrescar Firma"
+        }
+    }
+
     private fun saveMarkersAndUpdateChanges() {
+        if (_binding == null) return
         val contours = binding.signatureCanvasView.getMarkerContours()
         val markersString = contours.joinToString("|") { c -> c.joinToString(";") { "${it.x},${it.y}" } }
         if (isPrimarySignatureSelected) {
