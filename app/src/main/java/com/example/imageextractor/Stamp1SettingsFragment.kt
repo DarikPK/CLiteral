@@ -23,6 +23,7 @@ class Stamp1SettingsFragment : Fragment() {
     private var initialRegistrador: Registrador? = null
     private var currentRegistrador: Registrador? = null
     private var saveMenuItem: MenuItem? = null
+    private var isLoading = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,8 +47,11 @@ class Stamp1SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
+        isLoading = true
         populateUi()
         setupChangeListeners()
+        isLoading = false
+        checkForChanges() // Comprobar una vez después de la carga inicial
         setupBackButtonInterceptor()
     }
 
@@ -91,42 +95,16 @@ class Stamp1SettingsFragment : Fragment() {
     }
 
     private fun setupChangeListeners() {
-        binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            currentRegistrador?.stampDateEnabled = isChecked
-            checkForChanges()
-        }
-        binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            currentRegistrador?.stampDateOnFirstLast = isChecked
-            checkForChanges()
-        }
-        binding.stampSizeEditText.doOnTextChanged { text, _, _, _ ->
-            currentRegistrador?.stampDateSizePercent = text.toString().toFloatOrNull() ?: 20f
-            checkForChanges()
-        }
-        binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ ->
-            currentRegistrador?.stampDateFontSize = text.toString().toFloatOrNull() ?: 220f
-            checkForChanges()
-        }
-        binding.stampRotationEditText.doOnTextChanged { text, _, _, _ ->
-            currentRegistrador?.stampDateMaxRotation = text.toString().toFloatOrNull() ?: 5f
-            checkForChanges()
-        }
-        binding.stampWearIntensitySlider.addOnChangeListener { _, value, _ ->
-            currentRegistrador?.stampDateWearIntensity = value
-            checkForChanges()
-        }
-        binding.stampWearSizeSlider.addOnChangeListener { _, value, _ ->
-            currentRegistrador?.stampDateWearSize = value
-            checkForChanges()
-        }
-        binding.stampBrightnessEditText.doOnTextChanged { text, _, _, _ ->
-            currentRegistrador?.stampDateBrightness = text.toString().toFloatOrNull() ?: 50f
-            checkForChanges()
-        }
-        binding.stampContrastEditText.doOnTextChanged { text, _, _, _ ->
-            currentRegistrador?.stampDateContrast = text.toString().toFloatOrNull() ?: 50f
-            checkForChanges()
-        }
+        val action = { checkForChanges() }
+        binding.stampEnabledCheckbox.setOnCheckedChangeListener { _, _ -> action() }
+        binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, _ -> action() }
+        binding.stampSizeEditText.doOnTextChanged { _, _, _, _ -> currentRegistrador?.stampDateSizePercent = binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 20f; action() }
+        binding.stampFontSizeEditText.doOnTextChanged { _, _, _, _ -> currentRegistrador?.stampDateFontSize = binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f; action() }
+        binding.stampRotationEditText.doOnTextChanged { _, _, _, _ -> currentRegistrador?.stampDateMaxRotation = binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f; action() }
+        binding.stampWearIntensitySlider.addOnChangeListener { _, value, _ -> currentRegistrador?.stampDateWearIntensity = value; action() }
+        binding.stampWearSizeSlider.addOnChangeListener { _, value, _ -> currentRegistrador?.stampDateWearSize = value; action() }
+        binding.stampBrightnessEditText.doOnTextChanged { _, _, _, _ -> currentRegistrador?.stampDateBrightness = binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f; action() }
+        binding.stampContrastEditText.doOnTextChanged { _, _, _, _ -> currentRegistrador?.stampDateContrast = binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f; action() }
     }
 
     private fun checkForChanges() {

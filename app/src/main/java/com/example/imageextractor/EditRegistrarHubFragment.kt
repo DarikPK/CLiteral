@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentEditRegistrarHubBinding
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class EditRegistrarHubFragment : Fragment() {
@@ -18,6 +19,7 @@ class EditRegistrarHubFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var registradorId: String? = null
+    private var isNavigating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,13 +65,19 @@ class EditRegistrarHubFragment : Fragment() {
     }
 
     private fun navigateTo(actionId: Int) {
+        if (isNavigating) return // Prevenir doble clic
+        isNavigating = true
+
         registradorId?.let { id ->
             lifecycleScope.launch {
                 val registrador = FirestoreService.getRegistrador(id)
-                if (registrador != null) {
+                if (registrador != null && _binding != null) {
                     val bundle = bundleOf("registrador" to registrador)
                     findNavController().navigate(actionId, bundle)
                 }
+                // Resetear la bandera después de un breve retardo para permitir que la navegación se complete
+                delay(500)
+                isNavigating = false
             }
         }
     }

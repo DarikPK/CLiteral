@@ -22,6 +22,7 @@ class Stamp2SettingsFragment : Fragment() {
     private var initialRegistrador: Registrador? = null
     private var currentRegistrador: Registrador? = null
     private var saveMenuItem: MenuItem? = null
+    private var isLoading = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +45,7 @@ class Stamp2SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        isLoading = true
         setupToolbar()
         populateUi()
         setupChangeListeners()
@@ -93,6 +95,7 @@ class Stamp2SettingsFragment : Fragment() {
             binding.stamp2WearIntensitySlider.value = it.stampRegistrarWearIntensity
             binding.stamp2WearSizeSlider.value = it.stampRegistrarWearSize
         }
+        isLoading = false
     }
 
     private fun setupChangeListeners() {
@@ -119,6 +122,7 @@ class Stamp2SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
+        if (isLoading) return
         val i = initialRegistrador
         val c = currentRegistrador
         if (i == null || c == null) {

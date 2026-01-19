@@ -28,6 +28,7 @@ class SignatureSettingsFragment : Fragment() {
     private var currentRegistrador: Registrador? = null
     private var isPrimarySignatureSelected = true
     private var saveMenuItem: MenuItem? = null
+    private var isLoading = true
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -63,10 +64,12 @@ class SignatureSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        isLoading = true
         setupToolbar()
         populateUi()
         setupListeners()
         setupBackButtonInterceptor()
+        isLoading = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -218,6 +221,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
+        if (isLoading) return
         val i = initialRegistrador
         val c = currentRegistrador
         if (i == null || c == null) {
