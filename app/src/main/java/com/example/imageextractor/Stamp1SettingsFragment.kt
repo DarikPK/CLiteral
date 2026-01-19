@@ -130,20 +130,23 @@ class Stamp1SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        if (initialRegistrador == null || currentRegistrador == null) {
+        val i = initialRegistrador
+        val c = currentRegistrador
+        if (i == null || c == null) {
             saveMenuItem?.isEnabled = false
             saveMenuItem?.icon?.alpha = 130 // Deshabilitado
             return
         }
-        val hasChanges = initialRegistrador?.stampDateEnabled != currentRegistrador?.stampDateEnabled ||
-                initialRegistrador?.stampDateOnFirstLast != currentRegistrador?.stampDateOnFirstLast ||
-                initialRegistrador?.stampDateSizePercent != currentRegistrador?.stampDateSizePercent ||
-                initialRegistrador?.stampDateFontSize != currentRegistrador?.stampDateFontSize ||
-                initialRegistrador?.stampDateMaxRotation != currentRegistrador?.stampDateMaxRotation ||
-                initialRegistrador?.stampDateWearIntensity != currentRegistrador?.stampDateWearIntensity ||
-                initialRegistrador?.stampDateWearSize != currentRegistrador?.stampDateWearSize ||
-                initialRegistrador?.stampDateBrightness != currentRegistrador?.stampDateBrightness ||
-                initialRegistrador?.stampDateContrast != currentRegistrador?.stampDateContrast
+
+        val hasChanges = i.stampDateEnabled != c.stampDateEnabled ||
+                i.stampDateOnFirstLast != c.stampDateOnFirstLast ||
+                !i.stampDateSizePercent.isCloseTo(c.stampDateSizePercent) ||
+                !i.stampDateFontSize.isCloseTo(c.stampDateFontSize) ||
+                !i.stampDateMaxRotation.isCloseTo(c.stampDateMaxRotation) ||
+                !i.stampDateWearIntensity.isCloseTo(c.stampDateWearIntensity) ||
+                !i.stampDateWearSize.isCloseTo(c.stampDateWearSize) ||
+                !i.stampDateBrightness.isCloseTo(c.stampDateBrightness) ||
+                !i.stampDateContrast.isCloseTo(c.stampDateContrast)
 
         saveMenuItem?.isEnabled = hasChanges
         saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130 // Opacidad completa vs. atenuado
@@ -191,4 +194,8 @@ class Stamp1SettingsFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+}
+
+private fun Float.isCloseTo(other: Float, tolerance: Float = 0.01f): Boolean {
+    return Math.abs(this - other) < tolerance
 }

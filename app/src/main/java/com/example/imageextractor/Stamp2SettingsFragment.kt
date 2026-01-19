@@ -119,28 +119,31 @@ class Stamp2SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        if (initialRegistrador == null || currentRegistrador == null) {
+        val i = initialRegistrador
+        val c = currentRegistrador
+        if (i == null || c == null) {
             saveMenuItem?.isEnabled = false
             saveMenuItem?.icon?.alpha = 130
             return
         }
-        val hasChanges = initialRegistrador?.stampRegistrarEnabled != currentRegistrador?.stampRegistrarEnabled ||
-                initialRegistrador?.nombre != currentRegistrador?.nombre ||
-                initialRegistrador?.cargo != currentRegistrador?.cargo ||
-                initialRegistrador?.zonaRegistral != currentRegistrador?.zonaRegistral ||
-                initialRegistrador?.stampRegistrarFontSize != currentRegistrador?.stampRegistrarFontSize ||
-                initialRegistrador?.stampRegistrarOffsetX != currentRegistrador?.stampRegistrarOffsetX ||
-                initialRegistrador?.stampRegistrarOffsetY != currentRegistrador?.stampRegistrarOffsetY ||
-                initialRegistrador?.stampRegistrarVariableRotation != currentRegistrador?.stampRegistrarVariableRotation ||
-                initialRegistrador?.stampRegistrarRotation != currentRegistrador?.stampRegistrarRotation ||
-                initialRegistrador?.stampRegistrarRotationTolerance != currentRegistrador?.stampRegistrarRotationTolerance ||
-                initialRegistrador?.stampRegistrarDotCount != currentRegistrador?.stampRegistrarDotCount ||
-                initialRegistrador?.stampRegistrarDotSize != currentRegistrador?.stampRegistrarDotSize ||
-                initialRegistrador?.stampRegistrarPointTextSeparation != currentRegistrador?.stampRegistrarPointTextSeparation ||
-                initialRegistrador?.stampRegistrarBrightness != currentRegistrador?.stampRegistrarBrightness ||
-                initialRegistrador?.stampRegistrarContrast != currentRegistrador?.stampRegistrarContrast ||
-                initialRegistrador?.stampRegistrarWearIntensity != currentRegistrador?.stampRegistrarWearIntensity ||
-                initialRegistrador?.stampRegistrarWearSize != currentRegistrador?.stampRegistrarWearSize
+
+        val hasChanges = i.stampRegistrarEnabled != c.stampRegistrarEnabled ||
+                i.nombre != c.nombre ||
+                i.cargo != c.cargo ||
+                i.zonaRegistral != c.zonaRegistral ||
+                !i.stampRegistrarFontSize.isCloseTo(c.stampRegistrarFontSize) ||
+                !i.stampRegistrarOffsetX.isCloseTo(c.stampRegistrarOffsetX) ||
+                !i.stampRegistrarOffsetY.isCloseTo(c.stampRegistrarOffsetY) ||
+                i.stampRegistrarVariableRotation != c.stampRegistrarVariableRotation ||
+                !i.stampRegistrarRotation.isCloseTo(c.stampRegistrarRotation) ||
+                !i.stampRegistrarRotationTolerance.isCloseTo(c.stampRegistrarRotationTolerance) ||
+                !i.stampRegistrarDotCount.isCloseTo(c.stampRegistrarDotCount) ||
+                !i.stampRegistrarDotSize.isCloseTo(c.stampRegistrarDotSize) ||
+                !i.stampRegistrarPointTextSeparation.isCloseTo(c.stampRegistrarPointTextSeparation) ||
+                !i.stampRegistrarBrightness.isCloseTo(c.stampRegistrarBrightness) ||
+                !i.stampRegistrarContrast.isCloseTo(c.stampRegistrarContrast) ||
+                !i.stampRegistrarWearIntensity.isCloseTo(c.stampRegistrarWearIntensity) ||
+                !i.stampRegistrarWearSize.isCloseTo(c.stampRegistrarWearSize)
 
         saveMenuItem?.isEnabled = hasChanges
         saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130
@@ -186,4 +189,8 @@ class Stamp2SettingsFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+}
+
+private fun Float.isCloseTo(other: Float, tolerance: Float = 0.01f): Boolean {
+    return Math.abs(this - other) < tolerance
 }

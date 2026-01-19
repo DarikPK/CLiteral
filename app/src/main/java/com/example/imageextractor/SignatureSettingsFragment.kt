@@ -150,6 +150,16 @@ class SignatureSettingsFragment : Fragment() {
             saveMarkersAndUpdateChanges()
         }
 
+        binding.secondaryActionButton.setOnClickListener {
+            binding.signatureCanvasView.clearCanvas()
+            saveMarkersAndUpdateChanges() // Guardar los puntos (ahora vacíos)
+        }
+
+        binding.primaryActionButton.setOnClickListener {
+            binding.signatureCanvasView.generateMarkers()
+            saveMarkersAndUpdateChanges() // Guardar los nuevos puntos generados
+        }
+
         val signatureTypes = listOf("Firma Principal", "Firma Secundaria")
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, signatureTypes)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -160,6 +170,7 @@ class SignatureSettingsFragment : Fragment() {
                 if (isPrimary != isPrimarySignatureSelected) {
                     isPrimarySignatureSelected = isPrimary
                     populateUi()
+                    binding.signatureCanvasView.invalidate() // Forzar redibujado
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -178,25 +189,28 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        if (initialRegistrador == null || currentRegistrador == null) {
+        val i = initialRegistrador
+        val c = currentRegistrador
+        if (i == null || c == null) {
             saveMenuItem?.isEnabled = false
             saveMenuItem?.icon?.alpha = 130
             return
         }
-        val hasChanges = initialRegistrador?.signatureEnabled != currentRegistrador?.signatureEnabled ||
-                initialRegistrador?.signatureImageUri != currentRegistrador?.signatureImageUri ||
-                initialRegistrador?.signatureOffsetX != currentRegistrador?.signatureOffsetX ||
-                initialRegistrador?.signatureOffsetY != currentRegistrador?.signatureOffsetY ||
-                initialRegistrador?.signatureScale != currentRegistrador?.signatureScale ||
-                initialRegistrador?.signatureRotation != currentRegistrador?.signatureRotation ||
-                initialRegistrador?.signaturePoints != currentRegistrador?.signaturePoints ||
-                initialRegistrador?.signature2Enabled != currentRegistrador?.signature2Enabled ||
-                initialRegistrador?.signature2ImageUri != currentRegistrador?.signature2ImageUri ||
-                initialRegistrador?.signature2OffsetX != currentRegistrador?.signature2OffsetX ||
-                initialRegistrador?.signature2OffsetY != currentRegistrador?.signature2OffsetY ||
-                initialRegistrador?.signature2Scale != currentRegistrador?.signature2Scale ||
-                initialRegistrador?.signature2Rotation != currentRegistrador?.signature2Rotation ||
-                initialRegistrador?.signature2Points != currentRegistrador?.signature2Points
+
+        val hasChanges = i.signatureEnabled != c.signatureEnabled ||
+                i.signatureImageUri != c.signatureImageUri ||
+                !i.signatureOffsetX.isCloseTo(c.signatureOffsetX) ||
+                !i.signatureOffsetY.isCloseTo(c.signatureOffsetY) ||
+                !i.signatureScale.isCloseTo(c.signatureScale) ||
+                !i.signatureRotation.isCloseTo(c.signatureRotation) ||
+                i.signaturePoints != c.signaturePoints ||
+                i.signature2Enabled != c.signature2Enabled ||
+                i.signature2ImageUri != c.signature2ImageUri ||
+                !i.signature2OffsetX.isCloseTo(c.signature2OffsetX) ||
+                !i.signature2OffsetY.isCloseTo(c.signature2OffsetY) ||
+                !i.signature2Scale.isCloseTo(c.signature2Scale) ||
+                !i.signature2Rotation.isCloseTo(c.signature2Rotation) ||
+                i.signature2Points != c.signature2Points
 
         saveMenuItem?.isEnabled = hasChanges
         saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130
@@ -242,4 +256,8 @@ class SignatureSettingsFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+}
+
+private fun Float.isCloseTo(other: Float, tolerance: Float = 0.01f): Boolean {
+    return Math.abs(this - other) < tolerance
 }
