@@ -142,7 +142,20 @@ class Stamp1SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        val hasChanges = initialRegistrador != currentRegistrador
+        if (initialRegistrador == null || currentRegistrador == null) {
+            saveMenuItem?.isVisible = false
+            return
+        }
+        val hasChanges = initialRegistrador?.stampDateEnabled != currentRegistrador?.stampDateEnabled ||
+                initialRegistrador?.stampDateOnFirstLast != currentRegistrador?.stampDateOnFirstLast ||
+                initialRegistrador?.stampDateSizePercent != currentRegistrador?.stampDateSizePercent ||
+                initialRegistrador?.stampDateFontSize != currentRegistrador?.stampDateFontSize ||
+                initialRegistrador?.stampDateMaxRotation != currentRegistrador?.stampDateMaxRotation ||
+                initialRegistrador?.stampDateWearIntensity != currentRegistrador?.stampDateWearIntensity ||
+                initialRegistrador?.stampDateWearSize != currentRegistrador?.stampDateWearSize ||
+                initialRegistrador?.stampDateBrightness != currentRegistrador?.stampDateBrightness ||
+                initialRegistrador?.stampDateContrast != currentRegistrador?.stampDateContrast
+
         saveMenuItem?.isVisible = hasChanges
     }
 

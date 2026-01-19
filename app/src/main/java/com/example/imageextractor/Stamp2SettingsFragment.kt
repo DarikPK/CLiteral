@@ -126,7 +126,28 @@ class Stamp2SettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        val hasChanges = initialRegistrador != currentRegistrador
+        if (initialRegistrador == null || currentRegistrador == null) {
+            saveMenuItem?.isVisible = false
+            return
+        }
+        val hasChanges = initialRegistrador?.stampRegistrarEnabled != currentRegistrador?.stampRegistrarEnabled ||
+                initialRegistrador?.nombre != currentRegistrador?.nombre ||
+                initialRegistrador?.cargo != currentRegistrador?.cargo ||
+                initialRegistrador?.zonaRegistral != currentRegistrador?.zonaRegistral ||
+                initialRegistrador?.stampRegistrarFontSize != currentRegistrador?.stampRegistrarFontSize ||
+                initialRegistrador?.stampRegistrarOffsetX != currentRegistrador?.stampRegistrarOffsetX ||
+                initialRegistrador?.stampRegistrarOffsetY != currentRegistrador?.stampRegistrarOffsetY ||
+                initialRegistrador?.stampRegistrarVariableRotation != currentRegistrador?.stampRegistrarVariableRotation ||
+                initialRegistrador?.stampRegistrarRotation != currentRegistrador?.stampRegistrarRotation ||
+                initialRegistrador?.stampRegistrarRotationTolerance != currentRegistrador?.stampRegistrarRotationTolerance ||
+                initialRegistrador?.stampRegistrarDotCount != currentRegistrador?.stampRegistrarDotCount ||
+                initialRegistrador?.stampRegistrarDotSize != currentRegistrador?.stampRegistrarDotSize ||
+                initialRegistrador?.stampRegistrarPointTextSeparation != currentRegistrador?.stampRegistrarPointTextSeparation ||
+                initialRegistrador?.stampRegistrarBrightness != currentRegistrador?.stampRegistrarBrightness ||
+                initialRegistrador?.stampRegistrarContrast != currentRegistrador?.stampRegistrarContrast ||
+                initialRegistrador?.stampRegistrarWearIntensity != currentRegistrador?.stampRegistrarWearIntensity ||
+                initialRegistrador?.stampRegistrarWearSize != currentRegistrador?.stampRegistrarWearSize
+
         saveMenuItem?.isVisible = hasChanges
     }
 

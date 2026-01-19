@@ -188,7 +188,25 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun checkForChanges() {
-        val hasChanges = initialRegistrador != currentRegistrador
+        if (initialRegistrador == null || currentRegistrador == null) {
+            saveMenuItem?.isVisible = false
+            return
+        }
+        val hasChanges = initialRegistrador?.signatureEnabled != currentRegistrador?.signatureEnabled ||
+                initialRegistrador?.signatureImageUri != currentRegistrador?.signatureImageUri ||
+                initialRegistrador?.signatureOffsetX != currentRegistrador?.signatureOffsetX ||
+                initialRegistrador?.signatureOffsetY != currentRegistrador?.signatureOffsetY ||
+                initialRegistrador?.signatureScale != currentRegistrador?.signatureScale ||
+                initialRegistrador?.signatureRotation != currentRegistrador?.signatureRotation ||
+                initialRegistrador?.signaturePoints != currentRegistrador?.signaturePoints ||
+                initialRegistrador?.signature2Enabled != currentRegistrador?.signature2Enabled ||
+                initialRegistrador?.signature2ImageUri != currentRegistrador?.signature2ImageUri ||
+                initialRegistrador?.signature2OffsetX != currentRegistrador?.signature2OffsetX ||
+                initialRegistrador?.signature2OffsetY != currentRegistrador?.signature2OffsetY ||
+                initialRegistrador?.signature2Scale != currentRegistrador?.signature2Scale ||
+                initialRegistrador?.signature2Rotation != currentRegistrador?.signature2Rotation ||
+                initialRegistrador?.signature2Points != currentRegistrador?.signature2Points
+
         saveMenuItem?.isVisible = hasChanges
     }
 
