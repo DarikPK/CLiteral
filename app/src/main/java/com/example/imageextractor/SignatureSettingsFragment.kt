@@ -23,7 +23,6 @@ class SignatureSettingsFragment : Fragment() {
     private var _binding: FragmentSignatureSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private var registradorId: String? = null
     private var initialRegistrador: Registrador? = null
     private var currentRegistrador: Registrador? = null
     private var isPrimarySignatureSelected = true
@@ -45,7 +44,13 @@ class SignatureSettingsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            registradorId = it.getString("registradorId")
+            currentRegistrador = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                it.getParcelable("registrador", Registrador::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                it.getParcelable("registrador")
+            }
+            initialRegistrador = currentRegistrador?.copy()
         }
         setHasOptionsMenu(true)
     }
@@ -58,7 +63,8 @@ class SignatureSettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        loadRegistradorData()
+        populateUi()
+        setupListeners()
         setupBackButtonInterceptor()
     }
 
@@ -83,23 +89,6 @@ class SignatureSettingsFragment : Fragment() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { handleNavigateBack() }
-    }
-
-    private fun loadRegistradorData() {
-        registradorId?.let { id ->
-            lifecycleScope.launch {
-                val registradorFromDb = FirestoreService.getRegistrador(id)
-                if (registradorFromDb != null) {
-                    initialRegistrador = registradorFromDb.copy()
-                    currentRegistrador = registradorFromDb.copy()
-                    populateUi()
-                    setupListeners()
-                } else {
-                    Toast.makeText(requireContext(), "Error: No se pudo cargar el registrador.", Toast.LENGTH_LONG).show()
-                    findNavController().popBackStack()
-                }
-            }
-        }
     }
 
     private fun populateUi() {
@@ -189,7 +178,8 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun checkForChanges() {
         if (initialRegistrador == null || currentRegistrador == null) {
-            saveMenuItem?.isVisible = false
+            saveMenuItem?.isEnabled = false
+            saveMenuItem?.icon?.alpha = 130
             return
         }
         val hasChanges = initialRegistrador?.signatureEnabled != currentRegistrador?.signatureEnabled ||
@@ -207,7 +197,8 @@ class SignatureSettingsFragment : Fragment() {
                 initialRegistrador?.signature2Rotation != currentRegistrador?.signature2Rotation ||
                 initialRegistrador?.signature2Points != currentRegistrador?.signature2Points
 
-        saveMenuItem?.isVisible = hasChanges
+        saveMenuItem?.isEnabled = hasChanges
+        saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130
     }
 
     private fun saveChanges() {

@@ -117,9 +117,8 @@
         android:label="Ajustes del Sello de Fecha"
         tools:layout="@layout/fragment_stamp1_settings">
         <argument
-            android:name="registradorId"
-            app:argType="string"
-            app:nullable="true" />
+            android:name="registrador"
+            app:argType="com.example.imageextractor.Registrador" />
     </fragment>
 
     <fragment
@@ -132,13 +131,21 @@
         android:id="@+id/signatureSettingsFragment"
         android:name="com.example.imageextractor.SignatureSettingsFragment"
         android:label="Ajustes de Firma"
-        tools:layout="@layout/fragment_signature_settings" />
+        tools:layout="@layout/fragment_signature_settings">
+        <argument
+            android:name="registrador"
+            app:argType="com.example.imageextractor.Registrador" />
+    </fragment>
 
     <fragment
         android:id="@+id/stamp2SettingsFragment"
         android:name="com.example.imageextractor.Stamp2SettingsFragment"
         android:label="Ajustes del Sello 2"
-        tools:layout="@layout/fragment_stamp2_settings" />
+        tools:layout="@layout/fragment_stamp2_settings">
+        <argument
+            android:name="registrador"
+            app:argType="com.example.imageextractor.Registrador" />
+    </fragment>
 
     <fragment
         android:id="@+id/watermarkSettingsFragment"

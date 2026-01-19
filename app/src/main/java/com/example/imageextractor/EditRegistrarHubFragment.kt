@@ -57,16 +57,20 @@ class EditRegistrarHubFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        val bundle = bundleOf("registradorId" to registradorId)
+        binding.editStamp1Button.setOnClickListener { navigateTo(R.id.action_editRegistrarHubFragment_to_stamp1SettingsFragment) }
+        binding.editStamp2Button.setOnClickListener { navigateTo(R.id.action_editRegistrarHubFragment_to_stamp2SettingsFragment) }
+        binding.editSignaturesButton.setOnClickListener { navigateTo(R.id.action_editRegistrarHubFragment_to_signatureSettingsFragment) }
+    }
 
-        binding.editStamp1Button.setOnClickListener {
-            findNavController().navigate(R.id.action_editRegistrarHubFragment_to_stamp1SettingsFragment, bundle)
-        }
-        binding.editStamp2Button.setOnClickListener {
-            findNavController().navigate(R.id.action_editRegistrarHubFragment_to_stamp2SettingsFragment, bundle)
-        }
-        binding.editSignaturesButton.setOnClickListener {
-            findNavController().navigate(R.id.action_editRegistrarHubFragment_to_signatureSettingsFragment, bundle)
+    private fun navigateTo(actionId: Int) {
+        registradorId?.let { id ->
+            lifecycleScope.launch {
+                val registrador = FirestoreService.getRegistrador(id)
+                if (registrador != null) {
+                    val bundle = bundleOf("registrador" to registrador)
+                    findNavController().navigate(actionId, bundle)
+                }
+            }
         }
     }
 

@@ -1,7 +1,9 @@
 package com.example.imageextractor
 
 import android.net.Uri
+import android.os.Parcelable
 import com.google.firebase.firestore.DocumentId
+import kotlinx.parcelize.Parcelize
 
 /**
  * Represents a single image file, containing its URI for modern API access
@@ -27,6 +29,7 @@ data class ImageFolder(
  * Representa la configuración completa de un registrador.
  * Esta clase está diseñada para ser almacenada como un documento en Firebase Firestore.
  */
+@Parcelize
 data class Registrador(
     @DocumentId var id: String = "",
     var nombre: String = "",
@@ -77,7 +80,7 @@ data class Registrador(
     var signature2Scale: Float = 100f,
     var signature2Rotation: Float = 0f,
     var signature2Points: String = ""
-) {
+) : Parcelable {
     // Constructor sin argumentos requerido por Firestore para la deserialización.
     constructor() : this(
         id = "", nombre = "", cargo = "", zonaRegistral = "",

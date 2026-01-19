@@ -19,7 +19,6 @@ class Stamp1SettingsFragment : Fragment() {
     private var _binding: FragmentStamp1SettingsBinding? = null
     private val binding get() = _binding!!
 
-    private var registradorId: String? = null
     private var initialRegistrador: Registrador? = null
     private var currentRegistrador: Registrador? = null
     private var saveMenuItem: MenuItem? = null
@@ -27,15 +26,18 @@ class Stamp1SettingsFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            registradorId = it.getString("registradorId")
+            currentRegistrador = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                it.getParcelable("registrador", Registrador::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                it.getParcelable("registrador")
+            }
+            initialRegistrador = currentRegistrador?.copy()
         }
         setHasOptionsMenu(true)
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentStamp1SettingsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -43,7 +45,8 @@ class Stamp1SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        loadRegistradorData()
+        populateUi()
+        setupChangeListeners()
         setupBackButtonInterceptor()
     }
 
@@ -69,22 +72,6 @@ class Stamp1SettingsFragment : Fragment() {
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
             handleNavigateBack()
-        }
-    }
-
-    private fun loadRegistradorData() {
-        registradorId?.let { id ->
-            lifecycleScope.launch {
-                val registradorFromDb = FirestoreService.getRegistrador(id)
-                if (registradorFromDb != null) {
-                    initialRegistrador = registradorFromDb.copy()
-                    currentRegistrador = registradorFromDb.copy()
-                    populateUi()
-                    setupChangeListeners()
-                } else {
-                    // Manejar el caso en que el registrador no se encuentra
-                }
-            }
         }
     }
 
@@ -143,7 +130,8 @@ class Stamp1SettingsFragment : Fragment() {
 
     private fun checkForChanges() {
         if (initialRegistrador == null || currentRegistrador == null) {
-            saveMenuItem?.isVisible = false
+            saveMenuItem?.isEnabled = false
+            saveMenuItem?.icon?.alpha = 130 // Deshabilitado
             return
         }
         val hasChanges = initialRegistrador?.stampDateEnabled != currentRegistrador?.stampDateEnabled ||
@@ -156,7 +144,8 @@ class Stamp1SettingsFragment : Fragment() {
                 initialRegistrador?.stampDateBrightness != currentRegistrador?.stampDateBrightness ||
                 initialRegistrador?.stampDateContrast != currentRegistrador?.stampDateContrast
 
-        saveMenuItem?.isVisible = hasChanges
+        saveMenuItem?.isEnabled = hasChanges
+        saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130 // Opacidad completa vs. atenuado
     }
 
     private fun saveChanges() {

@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_save"
-        android:icon="@drawable/ic_save"
+        android:icon="@drawable/ic_save_with_background"
         android:title="Guardar"
-        app:showAsAction="ifRoom"
-        android:visible="false" />
+        app:showAsAction="ifRoom" />
 </menu>
