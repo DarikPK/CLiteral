@@ -76,7 +76,8 @@ class ExtractionConfigFragment : Fragment() {
     private fun setupAutofillHighlight() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
-                val color = ContextCompat.getColor(requireContext(), R.color.button_blue)
+                // Usar un color de acento existente en lugar de uno no definido.
+                val color = ContextCompat.getColor(requireContext(), R.color.purple_200)
                 val highlightDrawable = ColorDrawable(color)
                 val method = View::class.java.getMethod("setAutofillHighlight", android.graphics.drawable.Drawable::class.java)
 

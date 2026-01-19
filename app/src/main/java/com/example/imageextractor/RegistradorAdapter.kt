@@ -43,7 +43,7 @@ class RegistradorAdapter(
             val backgroundColor = if (isActive) {
                 ContextCompat.getColor(binding.root.context, R.color.selected_item_background)
             } else {
-                Color.TRANSPARENT
+                ContextCompat.getColor(binding.root.context, android.R.color.transparent)
             }
             binding.cardView.setCardBackgroundColor(backgroundColor)
         }
