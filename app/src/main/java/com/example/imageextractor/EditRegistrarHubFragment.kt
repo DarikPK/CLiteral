@@ -48,7 +48,10 @@ class EditRegistrarHubFragment : Fragment() {
         registradorId?.let { id ->
             lifecycleScope.launch {
                 val registrador = FirestoreService.getRegistrador(id)
-                binding.registradorNameHeader.text = "Editando a: ${registrador?.nombre ?: "Desconocido"}"
+                // Comprobar si el binding todavía es válido antes de actualizar la UI
+                if (_binding != null) {
+                    binding.registradorNameHeader.text = "Editando a: ${registrador?.nombre ?: "Desconocido"}"
+                }
             }
         }
     }
