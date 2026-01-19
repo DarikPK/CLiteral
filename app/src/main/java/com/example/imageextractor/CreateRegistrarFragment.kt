@@ -46,21 +46,26 @@ class CreateRegistrarFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            // Crear un nuevo registrador con valores por defecto para todo lo demás
-            val newRegistrador = Registrador(
-                nombre = name,
-                cargo = position,
-                zonaRegistral = area
-            )
-
             lifecycleScope.launch {
-                val newId = FirestoreService.addRegistrador(newRegistrador)
-                if (newId != null) {
-                    // Navegar al hub de edición para configurar el nuevo registrador
-                    val bundle = bundleOf("registradorId" to newId)
-                    findNavController().navigate(R.id.action_createRegistrarFragment_to_editRegistrarHubFragment, bundle)
+                // Verificar si ya existe un registrador con el mismo nombre
+                if (FirestoreService.checkIfRegistradorExistsByName(name)) {
+                    Toast.makeText(requireContext(), "Ya existe un registrador con este nombre.", Toast.LENGTH_LONG).show()
                 } else {
-                    Toast.makeText(requireContext(), "Error al guardar el registrador", Toast.LENGTH_SHORT).show()
+                    // Crear un nuevo registrador con valores por defecto para todo lo demás
+                    val newRegistrador = Registrador(
+                        nombre = name,
+                        cargo = position,
+                        zonaRegistral = area
+                    )
+
+                    val newId = FirestoreService.addRegistrador(newRegistrador)
+                    if (newId != null) {
+                        // Navegar al hub de edición para configurar el nuevo registrador
+                        val bundle = bundleOf("registradorId" to newId)
+                        findNavController().navigate(R.id.action_createRegistrarFragment_to_editRegistrarHubFragment, bundle)
+                    } else {
+                        Toast.makeText(requireContext(), "Error al guardar el registrador", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

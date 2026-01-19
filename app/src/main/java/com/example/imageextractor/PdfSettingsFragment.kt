@@ -280,117 +280,68 @@ class PdfSettingsFragment : Fragment() {
 
     private fun navigateToPreview(folder: ImageFolder) {
         lifecycleScope.launch {
-            val activeRegistrarId = sharedPrefs.getString("active_registrar_id", null)
             val allRegistradores = FirestoreService.getRegistradores()
-            val registradorActivo = allRegistradores.find { it.id == activeRegistrarId }
+            if (allRegistradores.isEmpty()) {
+                Toast.makeText(context, "No hay registradores configurados.", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val activeRegistrarId = sharedPrefs.getString("active_registrar_id", null)
+            val registradorActivo = allRegistradores.find { it.id == activeRegistrarId } ?: allRegistradores.first()
 
             val watermarkPrefs = requireActivity().getSharedPreferences("WatermarkSettings", Context.MODE_PRIVATE)
             val bundle = Bundle().apply {
                 putString("partidaId", folder.partidaId)
                 putStringArray("imagePaths", folder.imageFiles.map { it.path }.toTypedArray())
 
-                if (registradorActivo != null) {
-                    // Usar datos del registrador activo desde Firestore
-                    // Sello 1
-                    putBoolean("isStampEnabled", registradorActivo.stampDateEnabled)
-                    if (registradorActivo.stampDateEnabled) {
-                        putBoolean("stampOnFirstLast", registradorActivo.stampDateOnFirstLast)
-                        val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
-                        val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
-                        val stampYear = selectedDate.get(Calendar.YEAR).toString()
-                        putString("stampDateText", "$stampDay $stampMonth. $stampYear")
-                        putFloat("stampFontSize", registradorActivo.stampDateFontSize)
-                        putFloat("stampWearIntensity", registradorActivo.stampDateWearIntensity)
-                        putFloat("stampWearSize", registradorActivo.stampDateWearSize)
-                        putFloat("stampSizePercent", registradorActivo.stampDateSizePercent)
-                        putFloat("stampMaxRotation", registradorActivo.stampDateMaxRotation)
-                        putFloat("stampBrightness", registradorActivo.stampDateBrightness)
-                        putFloat("stampContrast", registradorActivo.stampDateContrast)
-                    }
+                // Usar siempre los datos del registradorActivo
+                // Sello 1
+                putBoolean("isStampEnabled", registradorActivo.stampDateEnabled)
+                if (registradorActivo.stampDateEnabled) {
+                    putBoolean("stampOnFirstLast", registradorActivo.stampDateOnFirstLast)
+                    val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
+                    val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
+                    val stampYear = selectedDate.get(Calendar.YEAR).toString()
+                    putString("stampDateText", "$stampDay $stampMonth. $stampYear")
+                    putFloat("stampFontSize", registradorActivo.stampDateFontSize)
+                    putFloat("stampWearIntensity", registradorActivo.stampDateWearIntensity)
+                    putFloat("stampWearSize", registradorActivo.stampDateWearSize)
+                    putFloat("stampSizePercent", registradorActivo.stampDateSizePercent)
+                    putFloat("stampMaxRotation", registradorActivo.stampDateMaxRotation)
+                    putFloat("stampBrightness", registradorActivo.stampDateBrightness)
+                    putFloat("stampContrast", registradorActivo.stampDateContrast)
+                }
 
-                    // Sello 2
-                    putBoolean("isStamp2Enabled", registradorActivo.stampRegistrarEnabled)
-                    if (registradorActivo.stampRegistrarEnabled) {
-                        putString("stamp2Name", registradorActivo.nombre)
-                        putString("stamp2Position", registradorActivo.cargo)
-                        putString("stamp2Area", registradorActivo.zonaRegistral)
-                        putFloat("stamp2FontSize", registradorActivo.stampRegistrarFontSize)
-                        putFloat("stamp2OffsetX", registradorActivo.stampRegistrarOffsetX)
-                        putFloat("stamp2OffsetY", registradorActivo.stampRegistrarOffsetY)
-                        putBoolean("stamp2VariableRotation", registradorActivo.stampRegistrarVariableRotation)
-                        putFloat("stamp2Rotation", registradorActivo.stampRegistrarRotation)
-                        putFloat("stamp2RotationTolerance", registradorActivo.stampRegistrarRotationTolerance)
-                        putFloat("stamp2WearIntensity", registradorActivo.stampRegistrarWearIntensity)
-                        putFloat("stamp2WearSize", registradorActivo.stampRegistrarWearSize)
-                        putFloat("stamp2DotCount", registradorActivo.stampRegistrarDotCount)
-                        putFloat("stamp2DotSize", registradorActivo.stampRegistrarDotSize)
-                        putFloat("stamp2PointTextSeparation", registradorActivo.stampRegistrarPointTextSeparation)
-                        putFloat("stamp2Brightness", registradorActivo.stampRegistrarBrightness)
-                        putFloat("stamp2Contrast", registradorActivo.stampRegistrarContrast)
-                    }
+                // Sello 2
+                putBoolean("isStamp2Enabled", registradorActivo.stampRegistrarEnabled)
+                if (registradorActivo.stampRegistrarEnabled) {
+                    putString("stamp2Name", registradorActivo.nombre)
+                    putString("stamp2Position", registradorActivo.cargo)
+                    putString("stamp2Area", registradorActivo.zonaRegistral)
+                    putFloat("stamp2FontSize", registradorActivo.stampRegistrarFontSize)
+                    putFloat("stamp2OffsetX", registradorActivo.stampRegistrarOffsetX)
+                    putFloat("stamp2OffsetY", registradorActivo.stampRegistrarOffsetY)
+                    putBoolean("stamp2VariableRotation", registradorActivo.stampRegistrarVariableRotation)
+                    putFloat("stamp2Rotation", registradorActivo.stampRegistrarRotation)
+                    putFloat("stamp2RotationTolerance", registradorActivo.stampRegistrarRotationTolerance)
+                    putFloat("stamp2WearIntensity", registradorActivo.stampRegistrarWearIntensity)
+                    putFloat("stamp2WearSize", registradorActivo.stampRegistrarWearSize)
+                    putFloat("stamp2DotCount", registradorActivo.stampRegistrarDotCount)
+                    putFloat("stamp2DotSize", registradorActivo.stampRegistrarDotSize)
+                    putFloat("stamp2PointTextSeparation", registradorActivo.stampRegistrarPointTextSeparation)
+                    putFloat("stamp2Brightness", registradorActivo.stampRegistrarBrightness)
+                    putFloat("stamp2Contrast", registradorActivo.stampRegistrarContrast)
+                }
 
-                    // Firma Principal
-                    putBoolean("isSignatureEnabled", registradorActivo.signatureEnabled)
-                    if (registradorActivo.signatureEnabled) {
-                        putString("signatureImageUri", registradorActivo.signatureImageUri)
-                        putFloat("signatureOffsetX", registradorActivo.signatureOffsetX)
-                        putFloat("signatureOffsetY", registradorActivo.signatureOffsetY)
-                        putFloat("signatureScale", registradorActivo.signatureScale)
-                        putFloat("signatureRotation", registradorActivo.signatureRotation)
-                        putString("signaturePoints", registradorActivo.signaturePoints)
-                    }
-
-                } else {
-                    // Fallback a SharedPreferences si no hay registrador activo
-                    val isStampEnabled = sharedPrefs.getBoolean("stamp_enabled", true)
-                    putBoolean("isStampEnabled", isStampEnabled)
-                    if (isStampEnabled) {
-                        putBoolean("stampOnFirstLast", sharedPrefs.getBoolean("stamp_on_first_last", true))
-                        val stampDay = String.format("%02d", selectedDate.get(Calendar.DAY_OF_MONTH))
-                        val stampMonth = SimpleDateFormat("MMMM", Locale("es", "ES")).format(selectedDate.time).replaceFirstChar { it.titlecase(Locale("es", "ES")) }
-                        val stampYear = selectedDate.get(Calendar.YEAR).toString()
-                        putString("stampDateText", "$stampDay $stampMonth. $stampYear")
-                        putFloat("stampFontSize", sharedPrefs.getString("stamp_font_size", "220")?.toFloatOrNull() ?: 220f)
-                        putFloat("stampWearIntensity", sharedPrefs.getFloat("stamp_wear_intensity", 30f))
-                        putFloat("stampWearSize", sharedPrefs.getFloat("stamp_wear_size", 50f))
-                        putFloat("stampSizePercent", sharedPrefs.getString("stamp_size", "20")?.toFloatOrNull() ?: 20f)
-                        putFloat("stampMaxRotation", sharedPrefs.getString("stamp_rotation", "5")?.toFloatOrNull() ?: 5f)
-                        putFloat("stampBrightness", sharedPrefs.getString("stamp_brightness", "50")?.toFloatOrNull() ?: 50f)
-                        putFloat("stampContrast", sharedPrefs.getString("stamp_contrast", "50")?.toFloatOrNull() ?: 50f)
-                    }
-
-                    // Sello 2 data (Fallback)
-                    val isStamp2Enabled = sharedPrefs.getBoolean("stamp2_enabled", true)
-                    putBoolean("isStamp2Enabled", isStamp2Enabled)
-                    if (isStamp2Enabled) {
-                        putString("stamp2Name", sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
-                        putString("stamp2Position", sharedPrefs.getString("stamp2_position", "CARGO"))
-                        putString("stamp2Area", sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
-                        putFloat("stamp2FontSize", sharedPrefs.getString("stamp2_font_size", "13")?.toFloatOrNull() ?: 13f)
-                        putFloat("stamp2OffsetX", sharedPrefs.getString("stamp2_offset_x", "0")?.toFloatOrNull() ?: 0f)
-                        putFloat("stamp2OffsetY", sharedPrefs.getString("stamp2_offset_y", "0")?.toFloatOrNull() ?: 0f)
-                        putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
-                        putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
-                        putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
-                        putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
-                        putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
-                        putFloat("stamp2DotCount", getFloatPreferenceSafely("stamp2DotCount", "stamp2_dot_count", 3f))
-                        putFloat("stamp2DotSize", getFloatPreferenceSafely("stamp2DotSize", "stamp2_dot_size", 13f))
-                        putFloat("stamp2PointTextSeparation", sharedPrefs.getString("stamp2_point_text_separation", "5")?.toFloatOrNull() ?: 5f)
-                        putFloat("stamp2Brightness", getFloatPreferenceSafely("stamp2Brightness", "stamp2_brightness", 50f))
-                        putFloat("stamp2Contrast", getFloatPreferenceSafely("stamp2Contrast", "stamp2_contrast", 50f))
-                    }
-
-                    // Signature Data (Fallback)
-                    val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
-                    putBoolean("isSignatureEnabled", isSignatureEnabled)
-                    if (isSignatureEnabled) {
-                        putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
-                        putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
-                        putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
-                        putFloat("signatureScale", sharedPrefs.getFloat("signature_scale", 100f))
-                        putFloat("signatureRotation", sharedPrefs.getFloat("signature_rotation", 0f))
-                    }
+                // Firma Principal
+                putBoolean("isSignatureEnabled", registradorActivo.signatureEnabled)
+                if (registradorActivo.signatureEnabled) {
+                    putString("signatureImageUri", registradorActivo.signatureImageUri)
+                    putFloat("signatureOffsetX", registradorActivo.signatureOffsetX)
+                    putFloat("signatureOffsetY", registradorActivo.signatureOffsetY)
+                    putFloat("signatureScale", registradorActivo.signatureScale)
+                    putFloat("signatureRotation", registradorActivo.signatureRotation)
+                    putString("signaturePoints", registradorActivo.signaturePoints)
                 }
 
                 // Lógica de Watermarks (sin cambios)

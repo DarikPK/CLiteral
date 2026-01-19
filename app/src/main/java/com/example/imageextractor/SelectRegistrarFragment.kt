@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -44,12 +45,15 @@ class SelectRegistrarFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        registradorAdapter = RegistradorAdapter(emptyList()) { registrador ->
-            // Guarda el ID del registrador seleccionado en SharedPreferences
-            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        val activeId = sharedPrefs.getString("active_registrar_id", null)
+
+        registradorAdapter = RegistradorAdapter(emptyList(), activeId) { registrador ->
+            // Guarda el ID del registrador seleccionado
             sharedPrefs.edit().putString("active_registrar_id", registrador.id).apply()
 
-            // Regresa a la pantalla anterior
+            // Muestra confirmación y regresa
+            Toast.makeText(requireContext(), "Registrador '${registrador.nombre}' seleccionado.", Toast.LENGTH_SHORT).show()
             findNavController().popBackStack()
         }
         binding.registradoresRecyclerView.apply {
@@ -61,7 +65,9 @@ class SelectRegistrarFragment : Fragment() {
     private fun loadRegistradores() {
         lifecycleScope.launch {
             val registradores = FirestoreService.getRegistradores()
-            registradorAdapter.updateData(registradores)
+            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val activeId = sharedPrefs.getString("active_registrar_id", null)
+            registradorAdapter.updateData(registradores, activeId)
         }
     }
 
