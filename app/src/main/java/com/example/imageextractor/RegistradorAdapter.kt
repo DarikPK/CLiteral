@@ -1,7 +1,7 @@
 package com.example.imageextractor
 
-import android.graphics.Color
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -39,13 +39,8 @@ class RegistradorAdapter(
             binding.registradorNameTextView.text = registrador.nombre
             binding.registradorDetailsTextView.text = "${registrador.cargo} - ${registrador.zonaRegistral}"
 
-            // Cambia el color de fondo si el registrador está activo
-            val backgroundColor = if (isActive) {
-                ContextCompat.getColor(binding.root.context, R.color.selected_item_background)
-            } else {
-                ContextCompat.getColor(binding.root.context, android.R.color.transparent)
-            }
-            binding.cardView.setCardBackgroundColor(backgroundColor)
+            // Muestra u oculta el checkmark en lugar de cambiar el color de fondo
+            binding.checkIcon.visibility = if (isActive) View.VISIBLE else View.GONE
         }
     }
 }

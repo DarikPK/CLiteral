@@ -60,6 +60,7 @@ class CreateRegistrarFragment : Fragment() {
 
                     val newId = FirestoreService.addRegistrador(newRegistrador)
                     if (newId != null) {
+                        Toast.makeText(requireContext(), "Registrador guardado con éxito.", Toast.LENGTH_SHORT).show()
                         // Navegar al hub de edición para configurar el nuevo registrador
                         val bundle = bundleOf("registradorId" to newId)
                         findNavController().navigate(R.id.action_createRegistrarFragment_to_editRegistrarHubFragment, bundle)

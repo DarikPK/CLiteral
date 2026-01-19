@@ -8,27 +8,44 @@
     android:layout_marginTop="4dp"
     android:layout_marginEnd="8dp"
     android:layout_marginBottom="4dp"
-    app:cardElevation="2dp"
-    app:contentPadding="16dp">
+    app:cardElevation="2dp">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:padding="16dp">
 
-        <TextView
-            android:id="@+id/registrador_name_text_view"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:text="Nombre del Registrador" />
+            android:orientation="vertical"
+            android:layout_toStartOf="@+id/check_icon"
+            android:layout_centerVertical="true">
 
-        <TextView
-            android:id="@+id/registrador_details_text_view"
-            android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/registrador_name_text_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceListItem"
+                android:text="Nombre del Registrador" />
+
+            <TextView
+                android:id="@+id/registrador_details_text_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceListItemSecondary"
+                android:text="Cargo - Zona Registral" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/check_icon"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceListItemSecondary"
-            android:text="Cargo - Zona Registral" />
-    </LinearLayout>
+            android:src="@drawable/ic_check"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:visibility="gone"
+            app:tint="@color/purple_500"/>
 
+    </RelativeLayout>
 </com.google.android.material.card.MaterialCardView>
