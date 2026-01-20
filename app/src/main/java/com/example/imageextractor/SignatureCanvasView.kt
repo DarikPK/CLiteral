@@ -317,7 +317,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         if (totalLength == 0f || numMarkers < 2) return
 
         // Reiniciamos el pathMeasure para empezar desde el primer contorno de nuevo
-        pathMeasure.setPath(drawingPath, false)
+        pathMeasure.setPath(basePathForMarkers, false)
 
         // Distribuimos los marcadores proporcionalmente a la longitud de cada trazo
         var markersPlaced = 0
@@ -346,7 +346,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         // Asegurarse de que al menos el número mínimo de marcadores se coloquen si algo falla
         if (markers.isEmpty() && totalLength > 0 && numMarkers > 1) {
-            pathMeasure.setPath(drawingPath, false)
+            pathMeasure.setPath(basePathForMarkers, false)
             val fallbackContour = mutableListOf<PointF>()
             val pos = FloatArray(2)
             val tan = FloatArray(2)
