@@ -493,8 +493,16 @@ class SignatureCanvasView @JvmOverloads constructor(
         val opaquePoints = mutableListOf<PointF>()
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if (Color.alpha(pixels[y * width + x]) > 128) {
-                    opaquePoints.add(PointF(x.toFloat(), y.toFloat()))
+                val pixel = pixels[y * width + x]
+                // Consider a pixel as "ink" if it's not transparent and dark enough
+                if (Color.alpha(pixel) > 128) {
+                    val r = Color.red(pixel)
+                    val g = Color.green(pixel)
+                    val b = Color.blue(pixel)
+                    val brightness = (r + g + b) / 3
+                    if (brightness < 200) { // A threshold to separate dark ink from a light background
+                        opaquePoints.add(PointF(x.toFloat(), y.toFloat()))
+                    }
                 }
             }
         }
