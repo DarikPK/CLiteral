@@ -218,9 +218,6 @@ class SignatureSettingsFragment : Fragment() {
             val numMarkers = text.toString().toIntOrNull()
             if (numMarkers != null) {
                 binding.signatureCanvasView.setNumMarkers(numMarkers)
-                if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.EDIT) {
-                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
-                }
             }
         }
 
@@ -247,7 +244,7 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
-                binding.signatureCanvasView.regenerateSignature()
+                binding.signatureCanvasView.recalculateMarkersFromBasePath()
             }
             saveMarkersAndUpdateChanges()
         }
