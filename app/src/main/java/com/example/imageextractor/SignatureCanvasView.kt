@@ -440,18 +440,30 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
+                // The randomization radius is now directly controlled by the marker size.
+                val effectiveRandomization = markerRadius
+
+                val randomPoints = contour.map { marker ->
+                    val angle = random.nextDouble() * 2 * Math.PI
+                    val radius = random.nextDouble() * effectiveRandomization
+                    val x = marker.x + (radius * Math.cos(angle)).toFloat()
+                    val y = marker.y + (radius * Math.sin(angle)).toFloat()
+                    PointF(x, y)
+                }
+
                 val interpolatedPoints = mutableListOf<PointF>()
+                if (randomPoints.size < 2) return@forEach
 
                 // Add the first point
-                interpolatedPoints.add(contour[0])
+                interpolatedPoints.add(randomPoints[0])
 
                 val pointsPerSegment = 20 // Density of the curve
 
-                for (i in 0 until contour.size - 1) {
-                    val p0 = if (i == 0) contour[i] else contour[i - 1]
-                    val p1 = contour[i]
-                    val p2 = contour[i + 1]
-                    val p3 = if (i + 2 < contour.size) contour[i + 2] else p2
+                for (i in 0 until randomPoints.size - 1) {
+                    val p0 = if (i == 0) randomPoints[i] else randomPoints[i - 1]
+                    val p1 = randomPoints[i]
+                    val p2 = randomPoints[i + 1]
+                    val p3 = if (i + 2 < randomPoints.size) randomPoints[i + 2] else p2
 
                     for (j in 1..pointsPerSegment) {
                         val t = j.toFloat() / pointsPerSegment
