@@ -485,62 +485,122 @@ class SignatureCanvasView @JvmOverloads constructor(
         markers.clear()
         drawingPath.reset()
 
+        // 1. Pixel analysis to find all opaque points
         val width = bitmap.width
         val height = bitmap.height
         val pixels = IntArray(width * height)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-        val points = mutableListOf<PointF>()
+        val opaquePoints = mutableListOf<PointF>()
         for (y in 0 until height) {
             for (x in 0 until width) {
-                val pixel = pixels[y * width + x]
-                if (Color.alpha(pixel) > 128) { // Threshold for opacity
-                    points.add(PointF(x.toFloat(), y.toFloat()))
+                if (Color.alpha(pixels[y * width + x]) > 128) {
+                    opaquePoints.add(PointF(x.toFloat(), y.toFloat()))
                 }
             }
         }
-
-        if (points.isEmpty()) {
+        if (opaquePoints.isEmpty()) {
             invalidate()
             return
         }
 
-        // Extremely simplified contour tracing
-        // This is a placeholder for a more sophisticated algorithm
-        // For now, we treat all points as a single contour
-        markers.add(points.toMutableList())
+        // 2. Point simplification using a grid
+        val gridSize = 10
+        val grid = mutableMapOf<Pair<Int, Int>, MutableList<PointF>>()
+        opaquePoints.forEach { point ->
+            val gridX = (point.x / gridSize).toInt()
+            val gridY = (point.y / gridSize).toInt()
+            grid.computeIfAbsent(Pair(gridX, gridY)) { mutableListOf() }.add(point)
+        }
+        val simplifiedPoints = grid.values.map { pointsInCell ->
+            val centerX = pointsInCell.sumOf { it.x.toDouble() } / pointsInCell.size
+            val centerY = pointsInCell.sumOf { it.y.toDouble() } / pointsInCell.size
+            PointF(centerX.toFloat(), centerY.toFloat())
+        }.toMutableList()
 
+        // 3. Path tracing using nearest-neighbor algorithm
+        val contours = mutableListOf<MutableList<PointF>>()
+        val distThresholdSq = (gridSize * 3.5) * (gridSize * 3.5)
+        while (simplifiedPoints.isNotEmpty()) {
+            val newContour = mutableListOf<PointF>()
+            var currentPoint = simplifiedPoints.minWithOrNull(compareBy({ it.y }, { it.x }))!!
+            newContour.add(currentPoint)
+            simplifiedPoints.remove(currentPoint)
 
-        // Scale the traced markers to fit the canvas view
+            while (true) {
+                val closestPoint = simplifiedPoints.minByOrNull { p ->
+                    val dx = p.x - currentPoint.x
+                    val dy = p.y - currentPoint.y
+                    dx * dx + dy * dy
+                }
+                if (closestPoint != null) {
+                    val dx = closestPoint.x - currentPoint.x
+                    val dy = closestPoint.y - currentPoint.y
+                    if (dx * dx + dy * dy < distThresholdSq) {
+                        currentPoint = closestPoint
+                        newContour.add(currentPoint)
+                        simplifiedPoints.remove(currentPoint)
+                    } else {
+                        break
+                    }
+                } else {
+                    break
+                }
+            }
+            contours.add(newContour)
+        }
+
+        // 4. Scale all contours to fit the canvas view
+        val combinedPath = Path()
+        contours.forEach { contour ->
+            if (contour.isNotEmpty()) {
+                combinedPath.moveTo(contour.first().x, contour.first().y)
+                contour.drop(1).forEach { p -> combinedPath.lineTo(p.x, p.y) }
+            }
+        }
+        if (combinedPath.isEmpty) {
+            invalidate()
+            return
+        }
         val bounds = android.graphics.RectF()
-        val path = Path()
-        path.moveTo(markers[0][0].x, markers[0][0].y)
-        markers[0].forEach { path.lineTo(it.x, it.y) }
-        path.computeBounds(bounds, true)
+        combinedPath.computeBounds(bounds, true)
+        val scale = minOf(this.width / bounds.width(), this.height / bounds.height()) * 0.9f
+        val matrix = android.graphics.Matrix().apply {
+            postTranslate(-bounds.centerX(), -bounds.centerY())
+            postScale(scale, scale)
+            postTranslate(this@SignatureCanvasView.width / 2f, this@SignatureCanvasView.height / 2f)
+        }
 
-        val scaleX = this.width / bounds.width()
-        val scaleY = this.height / bounds.height()
-        val scale = minOf(scaleX, scaleY) * 0.9f // 90% of the smaller dimension
-
-        val matrix = android.graphics.Matrix()
-        matrix.postScale(scale, scale)
-
-        val scaledPath = Path()
-        path.transform(matrix, scaledPath)
-
-        val finalMarkers = mutableListOf<PointF>()
-        val pathMeasure = PathMeasure(scaledPath, false)
-        for (i in 0 until numMarkers) {
-            val distance = pathMeasure.length * i / (numMarkers - 1)
-            val pos = floatArrayOf(0f, 0f)
-            pathMeasure.getPosTan(distance, pos, null)
-            finalMarkers.add(PointF(pos[0], pos[1]))
+        // 5. Distribute markers proportionally across the scaled contours
+        val pathMeasure = PathMeasure()
+        val contourPaths = contours.map { Path().apply { moveTo(it.first().x, it.first().y); it.drop(1).forEach { p -> lineTo(p.x, p.y) } } }
+        val contourLengths = contourPaths.map { path -> pathMeasure.setPath(path, false); pathMeasure.length }
+        val totalLength = contourLengths.sum()
+        if (totalLength == 0f) {
+            invalidate()
+            return
         }
 
         markers.clear()
-        markers.add(finalMarkers)
+        contourPaths.forEachIndexed { index, path ->
+            val contourLength = contourLengths[index]
+            val numContourMarkers = maxOf(2, (contourLength / totalLength * numMarkers).toInt())
+            val scaledContourPath = Path()
+            path.transform(matrix, scaledContourPath)
+            pathMeasure.setPath(scaledContourPath, false)
+            val scaledLength = pathMeasure.length
+            if (scaledLength > 0 && numContourMarkers > 1) {
+                val newMarkerContour = mutableListOf<PointF>()
+                for (i in 0 until numContourMarkers) {
+                    val distance = scaledLength * i / (numContourMarkers - 1)
+                    val pos = floatArrayOf(0f, 0f)
+                    pathMeasure.getPosTan(distance, pos, null)
+                    newMarkerContour.add(PointF(pos[0], pos[1]))
+                }
+                markers.add(newMarkerContour)
+            }
+        }
 
-
+        // 6. Final state update
         mode = Mode.EDIT
         regenerateSignature()
         invalidate()
