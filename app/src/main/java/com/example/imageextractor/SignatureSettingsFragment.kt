@@ -39,7 +39,8 @@ class SignatureSettingsFragment : Fragment() {
                     decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                     decoder.isMutableRequired = true
                 }
-                binding.signatureCanvasView.traceBitmapToMarkers(bitmap)
+                val threshold = binding.brightnessThresholdSlider.value.toInt()
+                binding.signatureCanvasView.traceBitmapToMarkers(bitmap, threshold)
                 saveMarkersAndUpdateChanges()
                 Toast.makeText(requireContext(), "Firma importada correctamente.", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {

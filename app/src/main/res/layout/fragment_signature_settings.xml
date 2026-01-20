@@ -158,6 +158,22 @@
             </LinearLayout>
 
             <TextView
+                android:id="@+id/brightness_threshold_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Umbral de Detección de Tinta"
+                style="@style/TextAppearance.Material3.LabelMedium"
+                android:layout_marginTop="16dp"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/brightness_threshold_slider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:valueFrom="0"
+                android:valueTo="255"
+                android:stepSize="1"
+                android:value="200" />
+
+            <TextView
                 android:id="@+id/signature_start_thickness_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

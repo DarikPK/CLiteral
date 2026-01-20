@@ -481,7 +481,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         signaturePoints = newSignaturePoints
     }
 
-    fun traceBitmapToMarkers(bitmap: android.graphics.Bitmap) {
+    fun traceBitmapToMarkers(bitmap: android.graphics.Bitmap, brightnessThreshold: Int) {
         markers.clear()
         drawingPath.reset()
 
@@ -500,7 +500,7 @@ class SignatureCanvasView @JvmOverloads constructor(
                     val g = Color.green(pixel)
                     val b = Color.blue(pixel)
                     val brightness = (r + g + b) / 3
-                    if (brightness < 200) { // A threshold to separate dark ink from a light background
+                    if (brightness < brightnessThreshold) {
                         opaquePoints.add(PointF(x.toFloat(), y.toFloat()))
                     }
                 }
