@@ -36,6 +36,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
     private var drawingPath = Path()
     private var basePathForMarkers = Path()
+    var hasBasePath: Boolean = false
     private var isDrawing = false
 
     enum class Mode {
@@ -262,6 +263,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         markers.clear()
         drawingPath.reset()
         basePathForMarkers.reset()
+        this.hasBasePath = false // Restablecer el flag
         previewBitmap?.recycle()
         previewBitmap = null
         previewBitmapBounds = null // Reset the bounds as well
@@ -600,6 +602,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         // 6. Set the high-fidelity path as the new drawingPath and switch to edit mode
         drawingPath = highFidelityPath
+        this.hasBasePath = true // Marcar que la firma proviene de una imagen
         switchToEditMode()
         markerListener?.invoke()
     }

@@ -76,6 +76,10 @@ class SignatureSettingsFragment : Fragment() {
         populateUi()
         setupListeners()
         setupBackButtonInterceptor()
+
+        binding.brightnessThresholdSlider.visibility = View.GONE
+        binding.brightnessThresholdLabel.visibility = View.GONE
+
         isLoading = false
     }
 
@@ -228,6 +232,8 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.importPngButton.setOnClickListener {
+            binding.brightnessThresholdSlider.visibility = View.VISIBLE
+            binding.brightnessThresholdLabel.visibility = View.VISIBLE
             pngPickerLauncher.launch("image/png")
         }
 
@@ -245,7 +251,11 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
-                binding.signatureCanvasView.recalculateMarkersFromBasePath()
+                if (binding.signatureCanvasView.hasBasePath) {
+                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
+                } else {
+                    binding.signatureCanvasView.regenerateSignature()
+                }
             }
             saveMarkersAndUpdateChanges()
         }
