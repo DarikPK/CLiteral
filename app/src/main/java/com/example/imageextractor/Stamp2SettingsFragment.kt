@@ -72,12 +72,13 @@ class Stamp2SettingsFragment : Fragment() {
         val dotCount = binding.stamp2DotCountEditText.text.toString().toIntOrNull() ?: 3
         val dotSize = binding.stamp2DotSizeEditText.text.toString().toFloatOrNull() ?: 13f
         val pointTextSeparation = binding.stamp2PointTextSeparationEditText.text.toString().toFloatOrNull() ?: 5f
+        val dotSpacing = binding.stamp2DotSpacingEditText.text.toString().toFloatOrNull() ?: ((binding.stamp2DotSizeEditText.text.toString().toFloatOrNull() ?: 13f) * 1.5f)
         val wearIntensity = binding.stamp2WearIntensitySlider.value
         val wearSize = binding.stamp2WearSizeSlider.value
         val brightness = binding.stamp2BrightnessEditText.text.toString().toFloatOrNull() ?: 50f
         val contrast = binding.stamp2ContrastEditText.text.toString().toFloatOrNull() ?: 50f
 
-        var previewBitmap = createStamp2Bitmap(name, position, area, fontSize, dotCount, dotSize, pointTextSeparation)
+        var previewBitmap = createStamp2Bitmap(name, position, area, fontSize, dotCount, dotSize, pointTextSeparation, dotSpacing)
         previewBitmap = applyStamp2Adjustments(previewBitmap, brightness, contrast)
 
         val normalizedIntensity = (wearIntensity / 100f) / 5f
@@ -88,7 +89,7 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2PreviewImageView.visibility = View.VISIBLE
     }
 
-    private fun createStamp2Bitmap(name: String, position: String, area: String, fontSize: Float, dotCount: Int, dotSize: Float, pointTextSeparation: Float): Bitmap {
+    private fun createStamp2Bitmap(name: String, position: String, area: String, fontSize: Float, dotCount: Int, dotSize: Float, pointTextSeparation: Float, dotSpacing: Float): Bitmap {
         val textPaint = Paint().apply {
             color = Color.parseColor("#00008B")
             textSize = fontSize
@@ -109,7 +110,7 @@ class Stamp2SettingsFragment : Fragment() {
         val totalTextHeight = textLines.size * lineHeight
         val maxTextWidth = textLines.maxOf { textPaint.measureText(it) }
         val radius = dotSize / 2f
-        val spacing = radius * 2.5f
+        val spacing = dotSpacing
         val totalDotsWidth = if (dotCount > 0) (dotCount - 1) * spacing + (radius * 2) else 0f
         val bitmapWidth = (kotlin.math.max(maxTextWidth, totalDotsWidth) + 40).toInt()
         val dotsHeight = if (dotCount > 0) (radius * 2) + 5f else 0f
@@ -187,6 +188,7 @@ class Stamp2SettingsFragment : Fragment() {
             binding.stamp2DotCountEditText.setText(it.stampRegistrarDotCount.toInt().toString())
             binding.stamp2DotSizeEditText.setText(it.stampRegistrarDotSize.toInt().toString())
             binding.stamp2PointTextSeparationEditText.setText(it.stampRegistrarPointTextSeparation.toInt().toString())
+            binding.stamp2DotSpacingEditText.setText(it.stampRegistrarDotSpacing.toInt().toString())
             binding.stamp2BrightnessEditText.setText(it.stampRegistrarBrightness.toInt().toString())
             binding.stamp2ContrastEditText.setText(it.stampRegistrarContrast.toInt().toString())
             binding.stamp2WearIntensitySlider.value = it.stampRegistrarWearIntensity
@@ -210,6 +212,7 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2DotCountEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarDotCount = text.toString().toFloatOrNull() ?: 3f; checkForChanges() }
         binding.stamp2DotSizeEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarDotSize = text.toString().toFloatOrNull() ?: 13f; checkForChanges() }
         binding.stamp2PointTextSeparationEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarPointTextSeparation = text.toString().toFloatOrNull() ?: 5f; checkForChanges() }
+        binding.stamp2DotSpacingEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarDotSpacing = text.toString().toFloatOrNull() ?: ((binding.stamp2DotSizeEditText.text.toString().toFloatOrNull() ?: 13f) * 1.5f); checkForChanges() }
         binding.stamp2BrightnessEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarBrightness = text.toString().toFloatOrNull() ?: 50f; checkForChanges() }
         binding.stamp2ContrastEditText.doOnTextChanged { text, _, _, _ -> currentRegistrador?.stampRegistrarContrast = text.toString().toFloatOrNull() ?: 50f; checkForChanges() }
 
@@ -241,6 +244,7 @@ class Stamp2SettingsFragment : Fragment() {
                 !i.stampRegistrarDotCount.isCloseTo(c.stampRegistrarDotCount) ||
                 !i.stampRegistrarDotSize.isCloseTo(c.stampRegistrarDotSize) ||
                 !i.stampRegistrarPointTextSeparation.isCloseTo(c.stampRegistrarPointTextSeparation) ||
+                !i.stampRegistrarDotSpacing.isCloseTo(c.stampRegistrarDotSpacing) ||
                 !i.stampRegistrarBrightness.isCloseTo(c.stampRegistrarBrightness) ||
                 !i.stampRegistrarContrast.isCloseTo(c.stampRegistrarContrast) ||
                 !i.stampRegistrarWearIntensity.isCloseTo(c.stampRegistrarWearIntensity) ||

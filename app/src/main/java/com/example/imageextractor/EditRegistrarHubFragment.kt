@@ -70,6 +70,11 @@ class EditRegistrarHubFragment : Fragment() {
         binding.editSignaturesButton.setOnClickListener { navigateTo(R.id.action_editRegistrarHubFragment_to_signatureSettingsFragment) }
     }
 
+    override fun onResume() {
+        super.onResume()
+        isNavigating = false
+    }
+
     private fun navigateTo(actionId: Int) {
         if (isNavigating) return
         isNavigating = true
@@ -89,11 +94,6 @@ class EditRegistrarHubFragment : Fragment() {
                     }
                 }
             }
-        }
-
-        lifecycleScope.launch {
-            delay(500)
-            isNavigating = false
         }
     }
 

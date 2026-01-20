@@ -69,6 +69,7 @@ class PdfPreviewFragment : Fragment() {
     private var stamp2DotCount: Int = 3
     private var stamp2DotSize: Float = 13f
     private var stamp2PointTextSeparation: Float = 5f
+    private var stamp2DotSpacing: Float = 13f
     private var stamp2Brightness: Float = 50f
     private var stamp2Contrast: Float = 50f
 
@@ -184,6 +185,7 @@ class PdfPreviewFragment : Fragment() {
                 stamp2DotCount = it.getFloat("stamp2DotCount", 3f).toInt()
                 stamp2DotSize = it.getFloat("stamp2DotSize", 13f)
                 stamp2PointTextSeparation = it.getFloat("stamp2PointTextSeparation", 5f)
+                stamp2DotSpacing = it.getFloat("stamp2DotSpacing", it.getFloat("stamp2DotSize", 13f) * 1.5f)
                 stamp2Brightness = it.getFloat("stamp2Brightness", 50f)
                 stamp2Contrast = it.getFloat("stamp2Contrast", 50f)
             }
@@ -990,7 +992,7 @@ class PdfPreviewFragment : Fragment() {
         val maxTextWidth = maxOf(nameWidth, posWidth, areaWidth)
 
         val radius = stamp2DotSize / 2f
-        val spacing = radius * 2.5f
+        val spacing = stamp2DotSpacing
         val totalDotsWidth = if (stamp2DotCount > 0) (stamp2DotCount - 1) * spacing + (radius * 2) else 0f
 
         val bitmapWidth = (maxOf(maxTextWidth, totalDotsWidth) + 40).toInt()

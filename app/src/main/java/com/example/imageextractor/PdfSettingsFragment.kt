@@ -329,6 +329,7 @@ class PdfSettingsFragment : Fragment() {
                     putFloat("stamp2DotCount", registradorActivo.stampRegistrarDotCount)
                     putFloat("stamp2DotSize", registradorActivo.stampRegistrarDotSize)
                     putFloat("stamp2PointTextSeparation", registradorActivo.stampRegistrarPointTextSeparation)
+                    putFloat("stamp2DotSpacing", registradorActivo.stampRegistrarDotSpacing)
                     putFloat("stamp2Brightness", registradorActivo.stampRegistrarBrightness)
                     putFloat("stamp2Contrast", registradorActivo.stampRegistrarContrast)
                 }

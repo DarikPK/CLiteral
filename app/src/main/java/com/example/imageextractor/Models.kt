@@ -59,6 +59,7 @@ data class Registrador(
     var stampRegistrarWearSize: Float = 50f,
     var stampRegistrarDotCount: Float = 3f,
     var stampRegistrarDotSize: Float = 13f,
+    var stampRegistrarDotSpacing: Float = 13f, // Nueva propiedad
     var stampRegistrarPointTextSeparation: Float = 5f,
     var stampRegistrarBrightness: Float = 50f,
     var stampRegistrarContrast: Float = 50f,
@@ -95,7 +96,7 @@ data class Registrador(
         stampRegistrarOffsetY = 0f, stampRegistrarVariableRotation = true, stampRegistrarRotation = 0f,
         stampRegistrarRotationTolerance = 5f, stampRegistrarWearIntensity = 30f,
         stampRegistrarWearSize = 50f, stampRegistrarDotCount = 3f, stampRegistrarDotSize = 13f,
-        stampRegistrarPointTextSeparation = 5f, stampRegistrarBrightness = 50f, stampRegistrarContrast = 50f,
+        stampRegistrarDotSpacing = 13f, stampRegistrarPointTextSeparation = 5f, stampRegistrarBrightness = 50f, stampRegistrarContrast = 50f,
         signatureEnabled = false, signatureImageUri = null, signatureOffsetX = 0f, signatureOffsetY = 0f,
         signatureScale = 100f, signatureRotation = 0f, signaturePoints = "", signatureWearIntensity = 30f, signatureWearSize = 50f,
         signature2Enabled = false, signature2ImageUri = null, signature2OffsetX = 0f, signature2OffsetY = 0f,
