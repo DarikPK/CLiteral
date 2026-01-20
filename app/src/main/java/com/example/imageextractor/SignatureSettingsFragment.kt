@@ -3,6 +3,7 @@ package com.example.imageextractor
 import android.graphics.ImageDecoder
 import android.graphics.PointF
 import android.net.Uri
+import com.example.imageextractor.SignatureCanvasView
 import android.os.Build
 import android.os.Bundle
 import android.view.*
