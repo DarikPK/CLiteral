@@ -1,5 +1,6 @@
 package com.example.imageextractor
 
+import android.graphics.ImageDecoder
 import android.graphics.PointF
 import android.net.Uri
 import android.os.Build
@@ -30,16 +31,20 @@ class SignatureSettingsFragment : Fragment() {
     private var saveMenuItem: MenuItem? = null
     private var isLoading = true
 
-    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    private val pngPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            if (isPrimarySignatureSelected) {
-                currentRegistrador?.signatureImageUri = it.toString()
-            } else {
-                currentRegistrador?.signature2ImageUri = it.toString()
+            try {
+                val source = ImageDecoder.createSource(requireActivity().contentResolver, it)
+                val bitmap = ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    decoder.isMutableRequired = true
+                }
+                binding.signatureCanvasView.traceBitmapToMarkers(bitmap)
+                saveMarkersAndUpdateChanges()
+                Toast.makeText(requireContext(), "Firma importada correctamente.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error al cargar la imagen: ${e.message}", Toast.LENGTH_LONG).show()
             }
-            binding.signatureCanvasView.clearCanvas(switchMode = true)
-            checkForChanges()
-            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -216,6 +221,10 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureMarkerSizeEditText.doOnTextChanged { text, _, _, _ ->
             val markerSize = text.toString().toFloatOrNull() ?: 10f
             binding.signatureCanvasView.setMarkerRadius(markerSize)
+        }
+
+        binding.importPngButton.setOnClickListener {
+            pngPickerLauncher.launch("image/png")
         }
 
         binding.secondaryActionButton.setOnClickListener {

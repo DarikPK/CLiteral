@@ -480,4 +480,70 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
         signaturePoints = newSignaturePoints
     }
+
+    fun traceBitmapToMarkers(bitmap: android.graphics.Bitmap) {
+        markers.clear()
+        drawingPath.reset()
+
+        val width = bitmap.width
+        val height = bitmap.height
+        val pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        val points = mutableListOf<PointF>()
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val pixel = pixels[y * width + x]
+                if (Color.alpha(pixel) > 128) { // Threshold for opacity
+                    points.add(PointF(x.toFloat(), y.toFloat()))
+                }
+            }
+        }
+
+        if (points.isEmpty()) {
+            invalidate()
+            return
+        }
+
+        // Extremely simplified contour tracing
+        // This is a placeholder for a more sophisticated algorithm
+        // For now, we treat all points as a single contour
+        markers.add(points.toMutableList())
+
+
+        // Scale the traced markers to fit the canvas view
+        val bounds = android.graphics.RectF()
+        val path = Path()
+        path.moveTo(markers[0][0].x, markers[0][0].y)
+        markers[0].forEach { path.lineTo(it.x, it.y) }
+        path.computeBounds(bounds, true)
+
+        val scaleX = this.width / bounds.width()
+        val scaleY = this.height / bounds.height()
+        val scale = minOf(scaleX, scaleY) * 0.9f // 90% of the smaller dimension
+
+        val matrix = android.graphics.Matrix()
+        matrix.postScale(scale, scale)
+
+        val scaledPath = Path()
+        path.transform(matrix, scaledPath)
+
+        val finalMarkers = mutableListOf<PointF>()
+        val pathMeasure = PathMeasure(scaledPath, false)
+        for (i in 0 until numMarkers) {
+            val distance = pathMeasure.length * i / (numMarkers - 1)
+            val pos = floatArrayOf(0f, 0f)
+            pathMeasure.getPosTan(distance, pos, null)
+            finalMarkers.add(PointF(pos[0], pos[1]))
+        }
+
+        markers.clear()
+        markers.add(finalMarkers)
+
+
+        mode = Mode.EDIT
+        regenerateSignature()
+        invalidate()
+        markerListener?.invoke()
+    }
 }

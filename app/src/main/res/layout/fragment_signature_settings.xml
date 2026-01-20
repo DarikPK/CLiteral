@@ -46,19 +46,27 @@
                 android:background="@drawable/dotted_border"
                  />
 
+            <Spinner
+                android:id="@+id/signature_selection_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_gravity="center_vertical"
+                />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="16dp">
+                android:layout_marginTop="8dp">
 
-                <Spinner
-                    android:id="@+id/signature_selection_spinner"
+                <Button
+                    android:id="@+id/importPngButton"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_gravity="center_vertical"
-                    />
+                    android:text="Importar PNG"/>
 
                 <Button
                     android:id="@+id/secondaryActionButton"
