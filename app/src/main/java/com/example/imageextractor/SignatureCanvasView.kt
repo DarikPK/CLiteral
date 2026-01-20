@@ -52,10 +52,12 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
     private var signaturePoints = listOf<List<PointF>>()
     private var markerRadius = 10f
-    private var randomizationRadius = 20f // Re-add randomization radius
     private var numMarkers = 15
     private var wearIntensity = 0f
     private var wearSize = 0f
+    private var startThickness = 5f
+    private var midThickness = 15f
+    private var endThickness = 5f
 
     fun getNumMarkers(): Int = numMarkers
     fun getMarkerRadius(): Float = markerRadius
@@ -84,11 +86,11 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
     }
 
-    fun setRandomizationRadius(radius: Float) {
-        if (radius >= 0) {
-            this.randomizationRadius = radius
-            regenerateSignature()
-        }
+    fun setThicknessParameters(start: Float, mid: Float, end: Float) {
+        this.startThickness = start
+        this.midThickness = mid
+        this.endThickness = end
+        regenerateSignature()
     }
 
     fun setWearParameters(intensity: Float, size: Float) {
@@ -126,10 +128,19 @@ class SignatureCanvasView @JvmOverloads constructor(
                     for (i in 0 until contour.size - 1) {
                         val p1 = contour[i]
                         val p2 = contour[i + 1]
-                        val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                        val taper = Math.min(progress, 1 - progress) * 2
-                        val strokeWidth = (2 + taper * 8).toFloat()
-                        signaturePaint.strokeWidth = strokeWidth
+                        val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat().coerceAtLeast(1f) else 0f
+
+                        val currentThickness = when {
+                            progress < 0.5 -> {
+                                val localProgress = progress * 2
+                                startThickness + (midThickness - startThickness) * localProgress
+                            }
+                            else -> {
+                                val localProgress = (progress - 0.5f) * 2
+                                midThickness + (endThickness - midThickness) * localProgress
+                            }
+                        }
+                        signaturePaint.strokeWidth = currentThickness
                         canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
                     }
                 }
@@ -372,10 +383,18 @@ class SignatureCanvasView @JvmOverloads constructor(
                 for (i in 0 until contour.size - 1) {
                     val p1 = contour[i]
                     val p2 = contour[i + 1]
-                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                    val taper = Math.min(progress, 1 - progress) * 2
-                    val strokeWidth = (2 + taper * 8).toFloat()
-                    signaturePaint.strokeWidth = strokeWidth
+                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat().coerceAtLeast(1f) else 0f
+                    val currentThickness = when {
+                        progress < 0.5 -> {
+                            val localProgress = progress * 2
+                            startThickness + (midThickness - startThickness) * localProgress
+                        }
+                        else -> {
+                            val localProgress = (progress - 0.5f) * 2
+                            midThickness + (endThickness - midThickness) * localProgress
+                        }
+                    }
+                    signaturePaint.strokeWidth = currentThickness
                     canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
                 }
             }
@@ -400,7 +419,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
 
         // Add padding to avoid clipping the stroke
-        val maxStrokeWidth = 10f // Corresponds to the max stroke width used in drawing
+        val maxStrokeWidth = Math.max(startThickness, Math.max(midThickness, endThickness))
         val padding = maxStrokeWidth / 2
         minX -= padding
         minY -= padding
@@ -421,30 +440,18 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
-                // Scale randomization by marker size. Assume 10f is a "normal" marker size.
-                val effectiveRandomization = randomizationRadius * (markerRadius / 10.0f)
-
-                val randomPoints = contour.map { marker ->
-                    val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * effectiveRandomization
-                    val x = marker.x + (radius * Math.cos(angle)).toFloat()
-                    val y = marker.y + (radius * Math.sin(angle)).toFloat()
-                    PointF(x, y)
-                }
-
                 val interpolatedPoints = mutableListOf<PointF>()
-                if (randomPoints.size < 2) return@forEach
 
                 // Add the first point
-                interpolatedPoints.add(randomPoints[0])
+                interpolatedPoints.add(contour[0])
 
                 val pointsPerSegment = 20 // Density of the curve
 
-                for (i in 0 until randomPoints.size - 1) {
-                    val p0 = if (i == 0) randomPoints[i] else randomPoints[i - 1]
-                    val p1 = randomPoints[i]
-                    val p2 = randomPoints[i + 1]
-                    val p3 = if (i + 2 < randomPoints.size) randomPoints[i + 2] else p2
+                for (i in 0 until contour.size - 1) {
+                    val p0 = if (i == 0) contour[i] else contour[i - 1]
+                    val p1 = contour[i]
+                    val p2 = contour[i + 1]
+                    val p3 = if (i + 2 < contour.size) contour[i + 2] else p2
 
                     for (j in 1..pointsPerSegment) {
                         val t = j.toFloat() / pointsPerSegment

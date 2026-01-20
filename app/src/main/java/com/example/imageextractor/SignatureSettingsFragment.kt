@@ -105,6 +105,9 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureOffsetYEditText.setText(reg.signatureOffsetY.toInt().toString())
                 binding.signatureWearIntensitySlider.value = reg.signatureWearIntensity
                 binding.signatureWearSizeSlider.value = reg.signatureWearSize
+                binding.signatureStartThicknessSlider.value = reg.signatureStartThickness
+                binding.signatureMidThicknessSlider.value = reg.signatureMidThickness
+                binding.signatureEndThicknessSlider.value = reg.signatureEndThickness
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signaturePoints))
             } else {
                 binding.signatureEnabledCheckbox.isChecked = reg.signature2Enabled
@@ -114,20 +117,28 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureOffsetYEditText.setText(reg.signature2OffsetY.toInt().toString())
                 binding.signatureWearIntensitySlider.value = reg.signature2WearIntensity
                 binding.signatureWearSizeSlider.value = reg.signature2WearSize
+                binding.signatureStartThicknessSlider.value = reg.signature2StartThickness
+                binding.signatureMidThicknessSlider.value = reg.signature2MidThickness
+                binding.signatureEndThicknessSlider.value = reg.signature2EndThickness
                 binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
             }
         // Poblar campos de configuración del canvas
         binding.signatureNumMarkersEditText.setText(binding.signatureCanvasView.getNumMarkers().toString())
         binding.signatureMarkerSizeEditText.setText(binding.signatureCanvasView.getMarkerRadius().toInt().toString())
             updateButtonLabels()
-            updateWearParameters()
+            updateSignatureParameters()
         }
     }
 
-    private fun updateWearParameters() {
+    private fun updateSignatureParameters() {
         val intensity = binding.signatureWearIntensitySlider.value
         val size = binding.signatureWearSizeSlider.value
         binding.signatureCanvasView.setWearParameters(intensity, size)
+
+        val startThickness = binding.signatureStartThicknessSlider.value
+        val midThickness = binding.signatureMidThicknessSlider.value
+        val endThickness = binding.signatureEndThicknessSlider.value
+        binding.signatureCanvasView.setThicknessParameters(startThickness, midThickness, endThickness)
     }
 
     private fun parsePoints(pointsString: String?): List<List<PointF>> {
@@ -166,13 +177,31 @@ class SignatureSettingsFragment : Fragment() {
 
         binding.signatureWearIntensitySlider.addOnChangeListener { _, value, _ ->
             if (isPrimarySignatureSelected) currentRegistrador?.signatureWearIntensity = value else currentRegistrador?.signature2WearIntensity = value
-            updateWearParameters()
+            updateSignatureParameters()
             checkForChanges()
         }
 
         binding.signatureWearSizeSlider.addOnChangeListener { _, value, _ ->
             if (isPrimarySignatureSelected) currentRegistrador?.signatureWearSize = value else currentRegistrador?.signature2WearSize = value
-            updateWearParameters()
+            updateSignatureParameters()
+            checkForChanges()
+        }
+
+        binding.signatureStartThicknessSlider.addOnChangeListener { _, value, _ ->
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureStartThickness = value else currentRegistrador?.signature2StartThickness = value
+            updateSignatureParameters()
+            checkForChanges()
+        }
+
+        binding.signatureMidThicknessSlider.addOnChangeListener { _, value, _ ->
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureMidThickness = value else currentRegistrador?.signature2MidThickness = value
+            updateSignatureParameters()
+            checkForChanges()
+        }
+
+        binding.signatureEndThicknessSlider.addOnChangeListener { _, value, _ ->
+            if (isPrimarySignatureSelected) currentRegistrador?.signatureEndThickness = value else currentRegistrador?.signature2EndThickness = value
+            updateSignatureParameters()
             checkForChanges()
         }
 
@@ -197,12 +226,16 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.primaryActionButton.setOnClickListener {
+            val numMarkers = binding.signatureNumMarkersEditText.text.toString().toIntOrNull()
+            if (numMarkers != null) {
+                binding.signatureCanvasView.setNumMarkers(numMarkers)
+            }
+
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
                 binding.signatureCanvasView.regenerateSignature()
             }
-            updateButtonLabels()
             saveMarkersAndUpdateChanges()
         }
 
@@ -220,15 +253,6 @@ class SignatureSettingsFragment : Fragment() {
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    private fun updateButtonLabels() {
-        if (_binding == null) return
-        if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
-            binding.primaryActionButton.text = "Generar Marcadores"
-        } else {
-            binding.primaryActionButton.text = "Refrescar Firma"
         }
     }
 
@@ -263,6 +287,9 @@ class SignatureSettingsFragment : Fragment() {
                 i.signaturePoints != c.signaturePoints ||
                 !i.signatureWearIntensity.isCloseTo(c.signatureWearIntensity) ||
                 !i.signatureWearSize.isCloseTo(c.signatureWearSize) ||
+                !i.signatureStartThickness.isCloseTo(c.signatureStartThickness) ||
+                !i.signatureMidThickness.isCloseTo(c.signatureMidThickness) ||
+                !i.signatureEndThickness.isCloseTo(c.signatureEndThickness) ||
                 i.signature2Enabled != c.signature2Enabled ||
                 i.signature2ImageUri != c.signature2ImageUri ||
                 !i.signature2OffsetX.isCloseTo(c.signature2OffsetX) ||
@@ -271,7 +298,10 @@ class SignatureSettingsFragment : Fragment() {
                 !i.signature2Rotation.isCloseTo(c.signature2Rotation) ||
                 i.signature2Points != c.signature2Points ||
                 !i.signature2WearIntensity.isCloseTo(c.signature2WearIntensity) ||
-                !i.signature2WearSize.isCloseTo(c.signature2WearSize)
+                !i.signature2WearSize.isCloseTo(c.signature2WearSize) ||
+                !i.signature2StartThickness.isCloseTo(c.signature2StartThickness) ||
+                !i.signature2MidThickness.isCloseTo(c.signature2MidThickness) ||
+                !i.signature2EndThickness.isCloseTo(c.signature2EndThickness)
 
         saveMenuItem?.isEnabled = hasChanges
         saveMenuItem?.icon?.alpha = if (hasChanges) 255 else 130
