@@ -75,18 +75,6 @@
                     android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Separación entre Puntos (pt)">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/stamp2_dot_spacing_edit_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:singleLine="true"/>
-            </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
@@ -157,6 +145,19 @@
                 android:hint="Separación Puntos-Texto (pt)">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/stamp2_point_text_separation_edit_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:singleLine="true"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="Separación entre Puntos (pt)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/stamp2_dot_spacing_edit_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"
