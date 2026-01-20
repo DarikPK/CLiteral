@@ -578,40 +578,23 @@ class SignatureCanvasView @JvmOverloads constructor(
             postTranslate(this@SignatureCanvasView.width / 2f, this@SignatureCanvasView.height / 2f)
         }
 
-        // 5. Distribute markers proportionally across the scaled contours
-        val pathMeasure = PathMeasure()
-        val contourPaths = contours.map { Path().apply { moveTo(it.first().x, it.first().y); it.drop(1).forEach { p -> lineTo(p.x, p.y) } } }
-        val contourLengths = contourPaths.map { path -> pathMeasure.setPath(path, false); pathMeasure.length }
-        val totalLength = contourLengths.sum()
-        if (totalLength == 0f) {
-            invalidate()
-            return
-        }
-
-        markers.clear()
-        contourPaths.forEachIndexed { index, path ->
-            val contourLength = contourLengths[index]
-            val numContourMarkers = maxOf(2, (contourLength / totalLength * numMarkers).toInt())
-            val scaledContourPath = Path()
-            path.transform(matrix, scaledContourPath)
-            pathMeasure.setPath(scaledContourPath, false)
-            val scaledLength = pathMeasure.length
-            if (scaledLength > 0 && numContourMarkers > 1) {
-                val newMarkerContour = mutableListOf<PointF>()
-                for (i in 0 until numContourMarkers) {
-                    val distance = scaledLength * i / (numContourMarkers - 1)
-                    val pos = floatArrayOf(0f, 0f)
-                    pathMeasure.getPosTan(distance, pos, null)
-                    newMarkerContour.add(PointF(pos[0], pos[1]))
+        // 5. Create a high-fidelity path from the scaled contours
+        val highFidelityPath = Path()
+        contours.forEach { contour ->
+            if (contour.isNotEmpty()) {
+                val scaledContour = contour.map { p ->
+                    val pointArray = floatArrayOf(p.x, p.y)
+                    matrix.mapPoints(pointArray)
+                    PointF(pointArray[0], pointArray[1])
                 }
-                markers.add(newMarkerContour)
+                highFidelityPath.moveTo(scaledContour.first().x, scaledContour.first().y)
+                scaledContour.drop(1).forEach { p -> highFidelityPath.lineTo(p.x, p.y) }
             }
         }
 
-        // 6. Final state update
-        mode = Mode.EDIT
-        regenerateSignature()
-        invalidate()
+        // 6. Set the high-fidelity path as the new drawingPath and switch to edit mode
+        drawingPath = highFidelityPath
+        switchToEditMode()
         markerListener?.invoke()
     }
 }
