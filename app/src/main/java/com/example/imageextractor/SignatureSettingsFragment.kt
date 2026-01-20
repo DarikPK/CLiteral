@@ -125,7 +125,6 @@ class SignatureSettingsFragment : Fragment() {
         // Poblar campos de configuración del canvas
         binding.signatureNumMarkersEditText.setText(binding.signatureCanvasView.getNumMarkers().toString())
         binding.signatureMarkerSizeEditText.setText(binding.signatureCanvasView.getMarkerRadius().toInt().toString())
-            updateButtonLabels()
             updateSignatureParameters()
         }
     }
@@ -222,7 +221,6 @@ class SignatureSettingsFragment : Fragment() {
         binding.secondaryActionButton.setOnClickListener {
             binding.signatureCanvasView.clearCanvas()
             saveMarkersAndUpdateChanges() // Guardar los puntos (ahora vacíos)
-            updateButtonLabels()
         }
 
         binding.primaryActionButton.setOnClickListener {
