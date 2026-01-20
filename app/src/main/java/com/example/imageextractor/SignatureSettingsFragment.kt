@@ -215,8 +215,13 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.signatureNumMarkersEditText.doOnTextChanged { text, _, _, _ ->
-            val numMarkers = text.toString().toIntOrNull() ?: 15
-            binding.signatureCanvasView.setNumMarkers(numMarkers)
+            val numMarkers = text.toString().toIntOrNull()
+            if (numMarkers != null) {
+                binding.signatureCanvasView.setNumMarkers(numMarkers)
+                if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.EDIT) {
+                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
+                }
+            }
         }
 
         binding.signatureMarkerSizeEditText.doOnTextChanged { text, _, _, _ ->

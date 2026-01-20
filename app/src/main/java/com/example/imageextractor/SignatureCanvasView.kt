@@ -34,6 +34,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
     private var drawingPath = Path()
+    private var basePathForMarkers = Path()
     private var isDrawing = false
 
     enum class Mode {
@@ -225,6 +226,9 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     fun switchToEditMode() {
+        if (!drawingPath.isEmpty) {
+            basePathForMarkers = Path(drawingPath)
+        }
         autoPlaceMarkers()
         drawingPath.reset()
         regenerateSignature()
@@ -256,6 +260,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun clearCanvas(switchMode: Boolean = false) {
         markers.clear()
         drawingPath.reset()
+        basePathForMarkers.reset()
         previewBitmap?.recycle()
         previewBitmap = null
         previewBitmapBounds = null // Reset the bounds as well
@@ -293,9 +298,9 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     private fun autoPlaceMarkers() {
         markers.clear()
-        if (drawingPath.isEmpty) return
+        if (basePathForMarkers.isEmpty) return
 
-        val pathMeasure = PathMeasure(drawingPath, false)
+        val pathMeasure = PathMeasure(basePathForMarkers, false)
         val contourLengths = mutableListOf<Float>()
         var totalLength = 0f
 
@@ -595,6 +600,13 @@ class SignatureCanvasView @JvmOverloads constructor(
         // 6. Set the high-fidelity path as the new drawingPath and switch to edit mode
         drawingPath = highFidelityPath
         switchToEditMode()
+        markerListener?.invoke()
+    }
+
+    fun recalculateMarkersFromBasePath() {
+        autoPlaceMarkers()
+        regenerateSignature()
+        invalidate()
         markerListener?.invoke()
     }
 }
