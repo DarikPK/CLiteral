@@ -240,6 +240,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.primaryActionButton.setOnClickListener {
+            // Siempre actualiza el número de marcadores desde la UI antes de cualquier acción.
             val numMarkers = binding.signatureNumMarkersEditText.text.toString().toIntOrNull()
             if (numMarkers != null) {
                 binding.signatureCanvasView.setNumMarkers(numMarkers)
@@ -248,6 +249,7 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
+                // Ahora que el número está actualizado, recalcula o regenera.
                 if (binding.signatureCanvasView.hasBasePath) {
                     binding.signatureCanvasView.recalculateMarkersFromBasePath()
                 } else {
