@@ -249,12 +249,9 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
-                // Ahora que el número está actualizado, recalcula o regenera.
-                if (binding.signatureCanvasView.hasBasePath) {
-                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
-                } else {
-                    binding.signatureCanvasView.regenerateSignature()
-                }
+                // Unificamos la lógica: si estamos en modo edición, siempre recalculamos.
+                // La función `recalculateMarkersFromBasePath` se encargará de la reducción de puntos.
+                binding.signatureCanvasView.recalculateMarkersFromBasePath()
             }
             saveMarkersAndUpdateChanges()
         }

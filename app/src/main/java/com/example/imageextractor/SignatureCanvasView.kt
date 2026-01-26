@@ -399,71 +399,67 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     private fun autoPlaceMarkers() {
-        if (markers.isEmpty()) return
-
-        val contoursByColor = markers.groupBy { it.color }
-        val newMarkers = mutableListOf<SignatureContour>()
-
         val totalCurrentMarkers = markers.sumOf { it.points.size }
-        if (totalCurrentMarkers == 0) return
-
         val targetTotalMarkers = numMarkers
 
-        // 1. Calcular cuántos marcadores le corresponden a cada grupo de color
-        val targetMarkersPerColor = mutableMapOf<Int, Int>()
-        var assignedMarkers = 0
-        contoursByColor.forEach { (color, contours) ->
-            val pointsInGroup = contours.sumOf { it.points.size }
-            val proportion = pointsInGroup.toFloat() / totalCurrentMarkers.toFloat()
-            val targetForGroup = (proportion * targetTotalMarkers).toInt().coerceAtLeast(2)
-            targetMarkersPerColor[color] = targetForGroup
-            assignedMarkers += targetForGroup
+        if (totalCurrentMarkers <= targetTotalMarkers || totalCurrentMarkers < 3) {
+            return // No need to simplify
         }
 
-        // 2. Ajustar la diferencia para que el total sea exacto
-        var diff = targetTotalMarkers - assignedMarkers
-        while (diff != 0) {
-            val colorToAdjust = targetMarkersPerColor.keys.random()
-            if (diff > 0) {
-                targetMarkersPerColor[colorToAdjust] = targetMarkersPerColor.getValue(colorToAdjust) + 1
-                diff--
-            } else {
-                if (targetMarkersPerColor.getValue(colorToAdjust) > 2) {
-                    targetMarkersPerColor[colorToAdjust] = targetMarkersPerColor.getValue(colorToAdjust) - 1
-                    diff++
+        // Data class to hold point info along with its importance
+        data class PointInfo(val point: PointF, val contour: SignatureContour, val index: Int, var importance: Float)
+
+        val pointInfos = mutableListOf<PointInfo>()
+
+        // 1. Calculate initial importance for all removable points
+        markers.forEach { contour ->
+            if (contour.points.size >= 3) {
+                for (i in 1 until contour.points.size - 1) {
+                    val pPrev = contour.points[i - 1]
+                    val pCurr = contour.points[i]
+                    val pNext = contour.points[i + 1]
+                    val importance = perpendicularDistance(pCurr, pPrev, pNext)
+                    pointInfos.add(PointInfo(pCurr, contour, i, importance))
                 }
             }
         }
 
-        // 3. Para cada grupo, unir todos sus trazos y re-muestrear
-        contoursByColor.forEach { (color, contours) ->
-            val unifiedPath = Path()
-            contours.forEach { contour ->
-                if (contour.points.isNotEmpty()) {
-                    unifiedPath.moveTo(contour.points.first().x, contour.points.first().y)
-                    contour.points.drop(1).forEach { unifiedPath.lineTo(it.x, it.y) }
-                }
+        // Sort by importance to easily find the least important
+        pointInfos.sortBy { it.importance }
+
+        // 2. Iteratively remove the least important points
+        var pointsToRemove = totalCurrentMarkers - targetTotalMarkers
+        val removedPoints = mutableSetOf<PointF>()
+
+        while (pointsToRemove > 0 && pointInfos.isNotEmpty()) {
+            val leastImportantInfo = pointInfos.firstOrNull { !removedPoints.contains(it.point) } ?: break
+
+            val contour = leastImportantInfo.contour
+            // Find the actual current index, as it might have shifted
+            val currentIndex = contour.points.indexOf(leastImportantInfo.point)
+
+            if (currentIndex > 0 && currentIndex < contour.points.size - 1) {
+                contour.points.removeAt(currentIndex)
+                removedPoints.add(leastImportantInfo.point)
+                pointsToRemove--
             }
 
-            val pathMeasure = PathMeasure(unifiedPath, false)
-            val totalLength = pathMeasure.length
-            val numPointsForGroup = targetMarkersPerColor[color] ?: 2
-
-            if (totalLength > 0 && numPointsForGroup >= 2) {
-                val newPoints = mutableListOf<PointF>()
-                val pos = FloatArray(2)
-                for (i in 0 until numPointsForGroup) {
-                    val distance = (totalLength / (numPointsForGroup - 1)) * i
-                    pathMeasure.getPosTan(distance, pos, null)
-                    newPoints.add(PointF(pos[0], pos[1]))
-                }
-                newMarkers.add(SignatureContour(newPoints, color))
-            }
+            // Remove from our list to avoid re-processing
+            pointInfos.remove(leastImportantInfo)
         }
 
-        markers.clear()
-        markers.addAll(newMarkers)
-        basePathForMarkers.reset()
+        // Clean up empty contours that might result from removal
+        markers.removeAll { it.points.size < 2 }
+    }
+
+    // Helper function to calculate perpendicular distance
+    private fun perpendicularDistance(point: PointF, lineStart: PointF, lineEnd: PointF): Float {
+        val dx = lineEnd.x - lineStart.x
+        val dy = lineEnd.y - lineStart.y
+        if (dx == 0f && dy == 0f) return 0f // Start and end are the same
+        val numerator = Math.abs(dy * point.x - dx * point.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x)
+        val denominator = Math.sqrt((dy * dy + dx * dx).toDouble()).toFloat()
+        return numerator / denominator
     }
 
     fun generateProceduralSignatureBitmap(refreshPoints: Boolean = true): android.graphics.Bitmap? {
