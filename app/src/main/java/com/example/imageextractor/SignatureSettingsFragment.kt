@@ -119,7 +119,7 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureStartThicknessSlider.value = reg.signatureStartThickness
                 binding.signatureMidThicknessSlider.value = reg.signatureMidThickness
                 binding.signatureEndThicknessSlider.value = reg.signatureEndThickness
-                binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signaturePoints))
+                binding.signatureCanvasView.setContoursFromString(reg.signaturePoints)
             } else {
                 binding.signatureEnabledCheckbox.isChecked = reg.signature2Enabled
                 binding.signatureScaleSlider.value = reg.signature2Scale
@@ -131,7 +131,7 @@ class SignatureSettingsFragment : Fragment() {
                 binding.signatureStartThicknessSlider.value = reg.signature2StartThickness
                 binding.signatureMidThicknessSlider.value = reg.signature2MidThickness
                 binding.signatureEndThicknessSlider.value = reg.signature2EndThickness
-                binding.signatureCanvasView.setMarkerContours(parsePoints(reg.signature2Points))
+                binding.signatureCanvasView.setContoursFromString(reg.signature2Points)
             }
         // Poblar campos de configuración del canvas
         binding.signatureNumMarkersEditText.setText(binding.signatureCanvasView.getNumMarkers().toString())
@@ -151,17 +151,13 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureCanvasView.setThicknessParameters(startThickness, midThickness, endThickness)
     }
 
-    private fun parsePoints(pointsString: String?): List<List<PointF>> {
-        if (pointsString.isNullOrEmpty()) return emptyList()
-        return pointsString.split("|").map { contourString ->
-            contourString.split(";").mapNotNull {
-                val parts = it.split(",")
-                if (parts.size == 2) PointF(parts[0].toFloat(), parts[1].toFloat()) else null
-            }
-        }
-    }
-
     private fun setupListeners() {
+        // Listeners para la paleta de colores
+        binding.colorBlue.setOnClickListener { binding.signatureCanvasView.setSelectedContourColor(ContextCompat.getColor(requireContext(), R.color.sig_color_blue)) }
+        binding.colorRed.setOnClickListener { binding.signatureCanvasView.setSelectedContourColor(ContextCompat.getColor(requireContext(), R.color.sig_color_red)) }
+        binding.colorGreen.setOnClickListener { binding.signatureCanvasView.setSelectedContourColor(ContextCompat.getColor(requireContext(), R.color.sig_color_green)) }
+        binding.colorBlack.setOnClickListener { binding.signatureCanvasView.setSelectedContourColor(ContextCompat.getColor(requireContext(), R.color.sig_color_black)) }
+
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked ->
             if (isPrimarySignatureSelected) currentRegistrador?.signatureEnabled = isChecked else currentRegistrador?.signature2Enabled = isChecked
             checkForChanges()
@@ -251,9 +247,11 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
-                // Para ambos casos (dibujado o importado), si estamos en modo edición,
-                // queremos recalcular los marcadores basados en el trazo original.
-                binding.signatureCanvasView.recalculateMarkersFromBasePath()
+                if (binding.signatureCanvasView.hasBasePath) {
+                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
+                } else {
+                    binding.signatureCanvasView.regenerateSignature()
+                }
             }
             saveMarkersAndUpdateChanges()
         }
@@ -277,8 +275,7 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun saveMarkersAndUpdateChanges() {
         if (_binding == null) return
-        val contours = binding.signatureCanvasView.getMarkerContours()
-        val markersString = contours.joinToString("|") { c -> c.joinToString(";") { "${it.x},${it.y}" } }
+        val markersString = binding.signatureCanvasView.getContoursAsString()
         if (isPrimarySignatureSelected) {
             currentRegistrador?.signaturePoints = markersString
         } else {

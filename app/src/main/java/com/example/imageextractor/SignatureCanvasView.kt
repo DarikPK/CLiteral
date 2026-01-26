@@ -13,17 +13,30 @@ import android.view.MotionEvent
 import android.view.View
 import java.util.Random
 
+// Nueva estructura de datos para cada trazo de la firma
+data class SignatureContour(
+    val points: MutableList<PointF>,
+    var color: Int
+)
+
 class SignatureCanvasView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
     private val random = Random()
 
-    // Cada lista interna representa un trazo continuo.
-    private val markers = mutableListOf<MutableList<PointF>>()
+    // La variable principal ahora es una lista de la nueva data class
+    private val markers = mutableListOf<SignatureContour>()
+    private var selectedContour: SignatureContour? = null
+
     private val markerPaint = Paint().apply {
-        color = Color.BLUE
         style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+    private val markerStrokePaint = Paint().apply {
+        style = Paint.Style.STROKE
+        color = Color.YELLOW
+        strokeWidth = 3f
         isAntiAlias = true
     }
     private val drawingPaint = Paint().apply {
@@ -152,8 +165,12 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         // Dibuja cada marcador
         markers.forEach { contour ->
-            contour.forEach { marker ->
+            markerPaint.color = contour.color
+            contour.points.forEach { marker ->
                 canvas.drawCircle(marker.x, marker.y, markerRadius, markerPaint)
+                if (contour == selectedContour) {
+                    canvas.drawCircle(marker.x, marker.y, markerRadius, markerStrokePaint)
+                }
             }
         }
     }
@@ -197,20 +214,28 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // Flatten the list of lists to find the closest marker across all contours
-                draggedMarker = markers.flatten().find {
+                draggedMarker = markers.flatMap { it.points }.find {
                     val dx = it.x - x
                     val dy = it.y - y
                     dx * dx + dy * dy < touchThreshold * touchThreshold
                 }
+
                 if (draggedMarker == null) {
-                    // Tapped on empty space in edit mode, clear everything and go back to draw mode
-                    switchToDrawMode()
+                    // Si no se arrastra un marcador, intentamos seleccionar un trazo.
+                    selectedContour = markers.minByOrNull { contour ->
+                        contour.points.map {
+                            val dx = it.x - x
+                            val dy = it.y - y
+                            dx * dx + dy * dy
+                        }.minOrNull() ?: Float.MAX_VALUE
+                    }
+                    invalidate() // Redibujar para mostrar la selección
                 }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (draggedMarker != null) {
+                    selectedContour = null // Anula la selección si se empieza a arrastrar
                     draggedMarker?.set(x, y)
                     regenerateSignature()
                 }
@@ -227,10 +252,40 @@ class SignatureCanvasView @JvmOverloads constructor(
         return true
     }
 
+    // Nueva función pública para cambiar el color del trazo seleccionado
+    fun setSelectedContourColor(color: Int) {
+        selectedContour?.let {
+            it.color = color
+            invalidate() // Redibujar para mostrar el nuevo color
+            markerListener?.invoke() // Notificar que ha habido un cambio
+        }
+    }
+
     fun switchToEditMode() {
         if (!drawingPath.isEmpty) {
             basePathForMarkers = Path(drawingPath)
+
+            // Cuando se crea desde un dibujo, no hay marcadores aún.
+            // Necesitamos crearlos aquí por primera vez.
+            if (markers.isEmpty()) {
+                val pathMeasure = PathMeasure(basePathForMarkers, false)
+                do {
+                    val contourPoints = mutableListOf<PointF>()
+                    val length = pathMeasure.length
+                    val num = (length / 50).toInt().coerceAtLeast(10).coerceAtMost(50) // Heurística
+                    val pos = FloatArray(2)
+                    for (i in 0 until num) {
+                        val distance = (length / (num - 1)) * i
+                        pathMeasure.getPosTan(distance, pos, null)
+                        contourPoints.add(PointF(pos[0], pos[1]))
+                    }
+                    if (contourPoints.isNotEmpty()) {
+                        markers.add(SignatureContour(contourPoints, Color.BLUE))
+                    }
+                } while (pathMeasure.nextContour())
+            }
         }
+
         autoPlaceMarkers()
         drawingPath.reset()
         regenerateSignature()
@@ -246,15 +301,48 @@ class SignatureCanvasView @JvmOverloads constructor(
         return drawingPath
     }
 
-    fun getMarkerContours(): List<List<PointF>> {
-        return markers.toList()
+    // Nueva función para obtener los datos como string con color
+    fun getContoursAsString(): String {
+        return markers.joinToString("|") { contour ->
+            val pointsString = contour.points.joinToString(";") { "${it.x},${it.y}" }
+            "${contour.color}:$pointsString"
+        }
     }
 
-    fun setMarkerContours(newMarkers: List<List<PointF>>) {
+    // Nueva función para establecer los datos desde un string con color
+    fun setContoursFromString(pointsString: String?) {
         markers.clear()
-        newMarkers.forEach { contour ->
-            markers.add(contour.toMutableList())
+        if (pointsString.isNullOrEmpty()) {
+            mode = Mode.DRAW
+            regenerateSignature()
+            return
         }
+
+        val contoursStrings = pointsString.split("|")
+        contoursStrings.forEach { contourString ->
+            val parts = contourString.split(":", limit = 2)
+            val color: Int
+            val pointsData: String
+
+            if (parts.size == 2) {
+                color = parts[0].toIntOrNull() ?: Color.BLUE
+                pointsData = parts[1]
+            } else {
+                // Para compatibilidad con el formato antiguo sin color
+                color = Color.BLUE
+                pointsData = parts[0]
+            }
+
+            val points = pointsData.split(";").mapNotNull {
+                val pointParts = it.split(",")
+                if (pointParts.size == 2) PointF(pointParts[0].toFloat(), pointParts[1].toFloat()) else null
+            }.toMutableList()
+
+            if (points.isNotEmpty()) {
+                markers.add(SignatureContour(points, color))
+            }
+        }
+
         mode = if (markers.isEmpty()) Mode.DRAW else Mode.EDIT
         regenerateSignature()
     }
@@ -300,69 +388,81 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     private fun autoPlaceMarkers() {
-        markers.clear()
-        if (basePathForMarkers.isEmpty) return
+        if (basePathForMarkers.isEmpty) {
+            if (markers.isEmpty()) return
+            // Si no hay un path base, significa que estamos ajustando una firma existente.
+            // Creamos un path a partir de los marcadores actuales.
+            basePathForMarkers = Path()
+            markers.forEach { contour ->
+                if (contour.points.isNotEmpty()) {
+                    basePathForMarkers.moveTo(contour.points.first().x, contour.points.first().y)
+                    contour.points.drop(1).forEach { basePathForMarkers.lineTo(it.x, it.y) }
+                }
+            }
+        }
 
         val pathMeasure = PathMeasure(basePathForMarkers, false)
-        val contourLengths = mutableListOf<Float>()
-        var totalLength = 0f
+        val contoursByColor = markers.groupBy { it.color }
+        val newMarkers = mutableListOf<SignatureContour>()
 
-        // Primero, medimos la longitud de cada trazo (contorno)
-        do {
-            val length = pathMeasure.length
-            contourLengths.add(length)
-            totalLength += length
-        } while (pathMeasure.nextContour())
+        val totalCurrentMarkers = markers.sumOf { it.points.size }
+        val targetTotalMarkers = numMarkers
 
-        if (totalLength == 0f || numMarkers < 2) return
+        // Procesar cada grupo de color de forma independiente
+        contoursByColor.forEach { (color, contours) ->
+            val totalPointsInColorGroup = contours.sumOf { it.points.size }
+            val proportion = if (totalCurrentMarkers > 0) totalPointsInColorGroup.toFloat() / totalCurrentMarkers.toFloat() else 0f
+            val targetPointsForColorGroup = (proportion * targetTotalMarkers).toInt()
 
-        // Reiniciamos el pathMeasure para empezar desde el primer contorno de nuevo
-        pathMeasure.setPath(basePathForMarkers, false)
-
-        // Distribuimos los marcadores proporcionalmente a la longitud de cada trazo
-        var markersPlaced = 0
-        for (contourLength in contourLengths) {
-            val contourMarkers = if (totalLength > 0) {
-                // Asigna al menos 2 marcadores a trazos muy pequeños para que sean visibles
-                Math.max(2, (contourLength / totalLength * numMarkers).toInt())
-            } else {
-                0
-            }
-
-            if (contourMarkers > 1) {
-                val newContour = mutableListOf<PointF>()
-                val pos = FloatArray(2)
-                val tan = FloatArray(2)
-                for (i in 0 until contourMarkers) {
-                    val distance = (contourLength / (contourMarkers - 1)) * i
-                    pathMeasure.getPosTan(distance, pos, tan)
-                    newContour.add(PointF(pos[0], pos[1]))
+            val pathsInGroup = contours.map { contour ->
+                val path = Path()
+                if (contour.points.isNotEmpty()) {
+                    path.moveTo(contour.points.first().x, contour.points.first().y)
+                    contour.points.drop(1).forEach { path.lineTo(it.x, it.y) }
                 }
-                markers.add(newContour)
-                markersPlaced += contourMarkers
+                path
             }
-            pathMeasure.nextContour()
+
+            val totalLengthInGroup = pathsInGroup.sumOf { PathMeasure(it, false).length.toDouble() }.toFloat()
+
+            var assignedPointsInGroup = 0
+
+            // Distribuir los puntos dentro del grupo de color
+            pathsInGroup.forEachIndexed { index, path ->
+                val pm = PathMeasure(path, false)
+                val length = pm.length
+                val contourProportion = if (totalLengthInGroup > 0) length / totalLengthInGroup else 0f
+                var targetPointsForContour = (contourProportion * targetPointsForColorGroup).toInt().coerceAtLeast(2)
+
+                // Ajuste para el último contorno del grupo
+                if (index == pathsInGroup.size - 1) {
+                    targetPointsForContour = targetPointsForColorGroup - assignedPointsInGroup
+                }
+
+                val newPoints = mutableListOf<PointF>()
+                if (targetPointsForContour >= 2) {
+                    val pos = FloatArray(2)
+                    for (i in 0 until targetPointsForContour) {
+                        val distance = (length / (targetPointsForContour - 1)) * i
+                        pm.getPosTan(distance, pos, null)
+                        newPoints.add(PointF(pos[0], pos[1]))
+                    }
+                }
+
+                if (newPoints.isNotEmpty()) {
+                    newMarkers.add(SignatureContour(newPoints, color))
+                    assignedPointsInGroup += newPoints.size
+                }
+            }
         }
 
-        // Asegurarse de que al menos el número mínimo de marcadores se coloquen si algo falla
-        if (markers.isEmpty() && totalLength > 0 && numMarkers > 1) {
-            pathMeasure.setPath(basePathForMarkers, false)
-            val fallbackContour = mutableListOf<PointF>()
-            val pos = FloatArray(2)
-            val tan = FloatArray(2)
-            for (i in 0 until numMarkers) {
-                val distance = (totalLength / (numMarkers - 1)) * i
-                pathMeasure.getPosTan(distance, pos, tan)
-                fallbackContour.add(PointF(pos[0], pos[1]))
-            }
-            if (fallbackContour.isNotEmpty()) {
-                markers.add(fallbackContour)
-            }
-        }
+        markers.clear()
+        markers.addAll(newMarkers)
+        basePathForMarkers.reset() // Limpiar para la próxima vez
     }
 
     fun generateProceduralSignatureBitmap(refreshPoints: Boolean = true): android.graphics.Bitmap? {
-        val allPoints = markers.flatten()
+        val allPoints = markers.flatMap { it.points }
         if (allPoints.isEmpty()) return null
 
         if (refreshPoints) {
@@ -447,11 +547,11 @@ class SignatureCanvasView @JvmOverloads constructor(
         val newSignaturePoints = mutableListOf<List<PointF>>()
 
         markers.forEach { contour ->
-            if (contour.size >= 2) {
+            if (contour.points.size >= 2) {
                 // The randomization radius is now directly controlled by the marker size.
                 val effectiveRandomization = markerRadius
 
-                val randomPoints = contour.map { marker ->
+                val randomPoints = contour.points.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
                     val radius = random.nextDouble() * effectiveRandomization
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
@@ -600,10 +700,22 @@ class SignatureCanvasView @JvmOverloads constructor(
             }
         }
 
-        // 6. Set the high-fidelity path as the new drawingPath and switch to edit mode
-        drawingPath = highFidelityPath
-        this.hasBasePath = true // Marcar que la firma proviene de una imagen
-        switchToEditMode()
+        // 6. Construir los SignatureContour directamente
+        contours.forEach { contour ->
+            if (contour.isNotEmpty()) {
+                val scaledContour = contour.map { p ->
+                    floatArrayOf(p.x, p.y).also { matrix.mapPoints(it) }.let { PointF(it[0], it[1]) }
+                }
+                if (scaledContour.isNotEmpty()) {
+                    markers.add(SignatureContour(scaledContour.toMutableList(), Color.BLUE))
+                }
+            }
+        }
+
+        this.hasBasePath = true
+        mode = Mode.EDIT
+        regenerateSignature()
+        invalidate()
         markerListener?.invoke()
     }
 
