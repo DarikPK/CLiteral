@@ -221,15 +221,26 @@ class SignatureCanvasView @JvmOverloads constructor(
                 }
 
                 if (draggedMarker == null) {
-                    // Si no se arrastra un marcador, intentamos seleccionar un trazo.
-                    selectedContour = markers.minByOrNull { contour ->
-                        contour.points.map {
+                    // Si no se arrastra un marcador, intentamos seleccionar un trazo o limpiar.
+                    val closestContourInfo = markers.map { contour ->
+                        val minDistanceSq = contour.points.map {
                             val dx = it.x - x
                             val dy = it.y - y
                             dx * dx + dy * dy
                         }.minOrNull() ?: Float.MAX_VALUE
+                        Pair(contour, minDistanceSq)
+                    }.minByOrNull { it.second }
+
+                    // Define a threshold for selection, e.g., 2 times the drag threshold.
+                    val selectionThresholdSq = (touchThreshold * 2) * (touchThreshold * 2)
+
+                    if (closestContourInfo != null && closestContourInfo.second < selectionThresholdSq) {
+                        selectedContour = closestContourInfo.first
+                    } else {
+                        // Tapped on empty space, clear everything and go back to draw mode
+                        switchToDrawMode()
                     }
-                    invalidate() // Redibujar para mostrar la selección
+                    invalidate() // Redibujar para mostrar la selección o el lienzo limpio.
                 }
                 return true
             }
@@ -596,22 +607,15 @@ class SignatureCanvasView @JvmOverloads constructor(
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val pixel = pixels[y * width + x]
-                // Consider a pixel as "ink" if it's not transparent and dark enough
                 if (Color.alpha(pixel) > 128) {
-                    val r = Color.red(pixel)
-                    val g = Color.green(pixel)
-                    val b = Color.blue(pixel)
-                    val brightness = (r + g + b) / 3
-                    if (brightness < brightnessThreshold) {
+                    val r = Color.red(pixel); val g = Color.green(pixel); val b = Color.blue(pixel)
+                    if ((r + g + b) / 3 < brightnessThreshold) {
                         opaquePoints.add(PointF(x.toFloat(), y.toFloat()))
                     }
                 }
             }
         }
-        if (opaquePoints.isEmpty()) {
-            invalidate()
-            return
-        }
+        if (opaquePoints.isEmpty()) { invalidate(); return }
 
         // 2. Point simplification using a grid
         val gridSize = 10
@@ -622,44 +626,79 @@ class SignatureCanvasView @JvmOverloads constructor(
             grid.computeIfAbsent(Pair(gridX, gridY)) { mutableListOf() }.add(point)
         }
         val simplifiedPoints = grid.values.map { pointsInCell ->
-            val centerX = pointsInCell.sumOf { it.x.toDouble() } / pointsInCell.size
-            val centerY = pointsInCell.sumOf { it.y.toDouble() } / pointsInCell.size
-            PointF(centerX.toFloat(), centerY.toFloat())
-        }.toMutableList()
-
-        // 3. Path tracing using nearest-neighbor algorithm
-        val contours = mutableListOf<MutableList<PointF>>()
-        val distThresholdSq = (gridSize * 3.5) * (gridSize * 3.5)
-        while (simplifiedPoints.isNotEmpty()) {
-            val newContour = mutableListOf<PointF>()
-            var currentPoint = simplifiedPoints.minWithOrNull(compareBy({ it.y }, { it.x }))!!
-            newContour.add(currentPoint)
-            simplifiedPoints.remove(currentPoint)
-
-            while (true) {
-                val closestPoint = simplifiedPoints.minByOrNull { p ->
-                    val dx = p.x - currentPoint.x
-                    val dy = p.y - currentPoint.y
-                    dx * dx + dy * dy
-                }
-                if (closestPoint != null) {
-                    val dx = closestPoint.x - currentPoint.x
-                    val dy = closestPoint.y - currentPoint.y
-                    if (dx * dx + dy * dy < distThresholdSq) {
-                        currentPoint = closestPoint
-                        newContour.add(currentPoint)
-                        simplifiedPoints.remove(currentPoint)
-                    } else {
-                        break
-                    }
-                } else {
-                    break
-                }
-            }
-            contours.add(newContour)
+            PointF(
+                pointsInCell.sumByDouble { it.x.toDouble() }.toFloat() / pointsInCell.size,
+                pointsInCell.sumByDouble { it.y.toDouble() }.toFloat() / pointsInCell.size
+            )
         }
 
-        // 4. Scale all contours to fit the canvas view
+        // 3. Build adjacency graph
+        val pointMap = simplifiedPoints.associateWith { mutableListOf<PointF>() }
+        val distThresholdSq = (gridSize * 2.5f) * (gridSize * 2.5f)
+        for (i in simplifiedPoints.indices) {
+            for (j in i + 1 until simplifiedPoints.size) {
+                val p1 = simplifiedPoints[i]
+                val p2 = simplifiedPoints[j]
+                val dx = p1.x - p2.x
+                val dy = p1.y - p2.y
+                if (dx * dx + dy * dy < distThresholdSq) {
+                    pointMap[p1]?.add(p2)
+                    pointMap[p2]?.add(p1)
+                }
+            }
+        }
+
+        // 4. Trace paths from endpoints
+        val contours = mutableListOf<MutableList<PointF>>()
+        val visited = mutableSetOf<PointF>()
+        val endpoints = pointMap.filter { it.value.size == 1 }.keys.toMutableList()
+
+        fun tracePath(startNode: PointF): MutableList<PointF> {
+            val path = mutableListOf<PointF>()
+            var currentNode = startNode
+            var previousNode: PointF? = null
+
+            while (true) {
+                if (currentNode in visited) break
+                visited.add(currentNode)
+                path.add(currentNode)
+
+                val neighbors = pointMap[currentNode]!!.filter { it !in visited }
+                if (neighbors.isEmpty()) break
+
+                val nextNode = if (neighbors.size == 1) {
+                    neighbors.first()
+                } else {
+                    // Junction: pick the one that continues the path most smoothly
+                    val incomingVec = if (previousNode != null) PointF(currentNode.x - previousNode.x, currentNode.y - previousNode.y) else null
+                    neighbors.maxByOrNull { neighbor ->
+                        if (incomingVec == null) return@maxByOrNull 0f
+                        val outgoingVec = PointF(neighbor.x - currentNode.x, neighbor.y - currentNode.y)
+                        // Dot product to find smallest angle
+                        (incomingVec.x * outgoingVec.x + incomingVec.y * outgoingVec.y) / (incomingVec.length() * outgoingVec.length())
+                    }!!
+                }
+                previousNode = currentNode
+                currentNode = nextNode
+            }
+            return path
+        }
+
+        // Start tracing from endpoints first
+        endpoints.forEach { startPoint ->
+            if (startPoint !in visited) {
+                contours.add(tracePath(startPoint))
+            }
+        }
+
+        // Trace any remaining loops or disconnected components
+        simplifiedPoints.forEach { startPoint ->
+            if (startPoint !in visited) {
+                contours.add(tracePath(startPoint))
+            }
+        }
+
+        // 5. Scale contours to fit the view
         val combinedPath = Path()
         contours.forEach { contour ->
             if (contour.isNotEmpty()) {
@@ -667,10 +706,7 @@ class SignatureCanvasView @JvmOverloads constructor(
                 contour.drop(1).forEach { p -> combinedPath.lineTo(p.x, p.y) }
             }
         }
-        if (combinedPath.isEmpty) {
-            invalidate()
-            return
-        }
+        if (combinedPath.isEmpty) { invalidate(); return }
         val bounds = android.graphics.RectF()
         combinedPath.computeBounds(bounds, true)
         val scale = minOf(this.width / bounds.width(), this.height / bounds.height()) * 0.9f
@@ -680,29 +716,13 @@ class SignatureCanvasView @JvmOverloads constructor(
             postTranslate(this@SignatureCanvasView.width / 2f, this@SignatureCanvasView.height / 2f)
         }
 
-        // 5. Create a high-fidelity path from the scaled contours
-        val highFidelityPath = Path()
+        // 6. Create SignatureContour objects
         contours.forEach { contour ->
-            if (contour.isNotEmpty()) {
-                val scaledContour = contour.map { p ->
-                    val pointArray = floatArrayOf(p.x, p.y)
-                    matrix.mapPoints(pointArray)
-                    PointF(pointArray[0], pointArray[1])
-                }
-                highFidelityPath.moveTo(scaledContour.first().x, scaledContour.first().y)
-                scaledContour.drop(1).forEach { p -> highFidelityPath.lineTo(p.x, p.y) }
-            }
-        }
-
-        // 6. Construir los SignatureContour directamente
-        contours.forEach { contour ->
-            if (contour.isNotEmpty()) {
+            if (contour.size > 1) { // Only add contours with at least 2 points
                 val scaledContour = contour.map { p ->
                     floatArrayOf(p.x, p.y).also { matrix.mapPoints(it) }.let { PointF(it[0], it[1]) }
                 }
-                if (scaledContour.isNotEmpty()) {
-                    markers.add(SignatureContour(scaledContour.toMutableList(), Color.BLUE))
-                }
+                markers.add(SignatureContour(scaledContour.toMutableList(), Color.BLUE))
             }
         }
 
