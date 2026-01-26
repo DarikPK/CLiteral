@@ -251,11 +251,9 @@ class SignatureSettingsFragment : Fragment() {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
                 binding.signatureCanvasView.switchToEditMode()
             } else {
-                if (binding.signatureCanvasView.hasBasePath) {
-                    binding.signatureCanvasView.recalculateMarkersFromBasePath()
-                } else {
-                    binding.signatureCanvasView.regenerateSignature()
-                }
+                // Para ambos casos (dibujado o importado), si estamos en modo edición,
+                // queremos recalcular los marcadores basados en el trazo original.
+                binding.signatureCanvasView.recalculateMarkersFromBasePath()
             }
             saveMarkersAndUpdateChanges()
         }
