@@ -6,36 +6,17 @@
     android:layout_height="match_parent"
     tools:context=".MainMenuFragment">
 
-    <ImageView
-        android:id="@+id/logoImageView"
-        android:layout_width="0dp"
-        android:layout_height="150dp"
-        android:src="@drawable/logo"
-        android:scaleType="fitCenter"
-        android:contentDescription="Logo de la aplicación"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/buttonsLayout"
-        app:layout_constraintVertical_chainStyle="packed"
-        android:layout_marginStart="64dp"
-        android:layout_marginEnd="64dp"
-        android:layout_marginTop="64dp"
-        />
-
     <LinearLayout
-        android:id="@+id/buttonsLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal"
-        app:layout_constraintTop_toBottomOf="@id/logoImageView"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:layout_marginTop="32dp">
+        android:paddingEnd="32dp">
 
         <Button
             android:id="@+id/button_to_extraction"
