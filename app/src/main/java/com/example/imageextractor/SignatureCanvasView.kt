@@ -262,35 +262,35 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     fun switchToEditMode() {
-        if (!drawingPath.isEmpty) {
-            basePathForMarkers = Path(drawingPath)
+        if (drawingPath.isEmpty) return
 
-            // Cuando se crea desde un dibujo, no hay marcadores aún.
-            // Necesitamos crearlos aquí por primera vez.
-            if (markers.isEmpty()) {
-                val pathMeasure = PathMeasure(basePathForMarkers, false)
-                do {
-                    val contourPoints = mutableListOf<PointF>()
-                    val length = pathMeasure.length
-                    val num = (length / 50).toInt().coerceAtLeast(10).coerceAtMost(50) // Heurística
-                    val pos = FloatArray(2)
-                    for (i in 0 until num) {
-                        val distance = (length / (num - 1)) * i
-                        pathMeasure.getPosTan(distance, pos, null)
-                        contourPoints.add(PointF(pos[0], pos[1]))
-                    }
-                    if (contourPoints.isNotEmpty()) {
-                        markers.add(SignatureContour(contourPoints, Color.BLUE))
-                    }
-                } while (pathMeasure.nextContour())
+        basePathForMarkers = Path(drawingPath)
+        markers.clear()
+
+        val pathMeasure = PathMeasure(basePathForMarkers, false)
+        do {
+            val contourPoints = mutableListOf<PointF>()
+            val length = pathMeasure.length
+            // Aumentar la densidad de puntos para un trazado inicial fiel
+            val numPoints = (length / 15f).toInt().coerceAtLeast(20)
+
+            val pos = FloatArray(2)
+            for (i in 0 until numPoints) {
+                val distance = if (numPoints > 1) (length / (numPoints - 1)) * i else 0f
+                pathMeasure.getPosTan(distance, pos, null)
+                contourPoints.add(PointF(pos[0], pos[1]))
             }
-        }
 
-        autoPlaceMarkers()
+            if (contourPoints.isNotEmpty()) {
+                markers.add(SignatureContour(contourPoints, Color.BLUE))
+            }
+        } while (pathMeasure.nextContour())
+
         drawingPath.reset()
         regenerateSignature()
         mode = Mode.EDIT
         invalidate()
+        markerListener?.invoke()
     }
 
     private fun switchToDrawMode() {
@@ -388,77 +388,71 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     private fun autoPlaceMarkers() {
-        if (basePathForMarkers.isEmpty) {
-            if (markers.isEmpty()) return
-            // Si no hay un path base, significa que estamos ajustando una firma existente.
-            // Creamos un path a partir de los marcadores actuales.
-            basePathForMarkers = Path()
-            markers.forEach { contour ->
-                if (contour.points.isNotEmpty()) {
-                    basePathForMarkers.moveTo(contour.points.first().x, contour.points.first().y)
-                    contour.points.drop(1).forEach { basePathForMarkers.lineTo(it.x, it.y) }
-                }
-            }
-        }
+        if (markers.isEmpty()) return
 
-        val pathMeasure = PathMeasure(basePathForMarkers, false)
         val contoursByColor = markers.groupBy { it.color }
         val newMarkers = mutableListOf<SignatureContour>()
 
         val totalCurrentMarkers = markers.sumOf { it.points.size }
+        if (totalCurrentMarkers == 0) return
+
         val targetTotalMarkers = numMarkers
 
-        // Procesar cada grupo de color de forma independiente
+        // 1. Calcular cuántos marcadores le corresponden a cada grupo de color
+        val targetMarkersPerColor = mutableMapOf<Int, Int>()
+        var assignedMarkers = 0
         contoursByColor.forEach { (color, contours) ->
-            val totalPointsInColorGroup = contours.sumOf { it.points.size }
-            val proportion = if (totalCurrentMarkers > 0) totalPointsInColorGroup.toFloat() / totalCurrentMarkers.toFloat() else 0f
-            val targetPointsForColorGroup = (proportion * targetTotalMarkers).toInt()
+            val pointsInGroup = contours.sumOf { it.points.size }
+            val proportion = pointsInGroup.toFloat() / totalCurrentMarkers.toFloat()
+            val targetForGroup = (proportion * targetTotalMarkers).toInt().coerceAtLeast(2)
+            targetMarkersPerColor[color] = targetForGroup
+            assignedMarkers += targetForGroup
+        }
 
-            val pathsInGroup = contours.map { contour ->
-                val path = Path()
-                if (contour.points.isNotEmpty()) {
-                    path.moveTo(contour.points.first().x, contour.points.first().y)
-                    contour.points.drop(1).forEach { path.lineTo(it.x, it.y) }
+        // 2. Ajustar la diferencia para que el total sea exacto
+        var diff = targetTotalMarkers - assignedMarkers
+        while (diff != 0) {
+            val colorToAdjust = targetMarkersPerColor.keys.random()
+            if (diff > 0) {
+                targetMarkersPerColor[colorToAdjust] = targetMarkersPerColor.getValue(colorToAdjust) + 1
+                diff--
+            } else {
+                if (targetMarkersPerColor.getValue(colorToAdjust) > 2) {
+                    targetMarkersPerColor[colorToAdjust] = targetMarkersPerColor.getValue(colorToAdjust) - 1
+                    diff++
                 }
-                path
+            }
+        }
+
+        // 3. Para cada grupo, unir todos sus trazos y re-muestrear
+        contoursByColor.forEach { (color, contours) ->
+            val unifiedPath = Path()
+            contours.forEach { contour ->
+                if (contour.points.isNotEmpty()) {
+                    unifiedPath.moveTo(contour.points.first().x, contour.points.first().y)
+                    contour.points.drop(1).forEach { unifiedPath.lineTo(it.x, it.y) }
+                }
             }
 
-            val totalLengthInGroup = pathsInGroup.sumOf { PathMeasure(it, false).length.toDouble() }.toFloat()
+            val pathMeasure = PathMeasure(unifiedPath, false)
+            val totalLength = pathMeasure.length
+            val numPointsForGroup = targetMarkersPerColor[color] ?: 2
 
-            var assignedPointsInGroup = 0
-
-            // Distribuir los puntos dentro del grupo de color
-            pathsInGroup.forEachIndexed { index, path ->
-                val pm = PathMeasure(path, false)
-                val length = pm.length
-                val contourProportion = if (totalLengthInGroup > 0) length / totalLengthInGroup else 0f
-                var targetPointsForContour = (contourProportion * targetPointsForColorGroup).toInt().coerceAtLeast(2)
-
-                // Ajuste para el último contorno del grupo
-                if (index == pathsInGroup.size - 1) {
-                    targetPointsForContour = targetPointsForColorGroup - assignedPointsInGroup
-                }
-
+            if (totalLength > 0 && numPointsForGroup >= 2) {
                 val newPoints = mutableListOf<PointF>()
-                if (targetPointsForContour >= 2) {
-                    val pos = FloatArray(2)
-                    for (i in 0 until targetPointsForContour) {
-                        val distance = (length / (targetPointsForContour - 1)) * i
-                        pm.getPosTan(distance, pos, null)
-                        newPoints.add(PointF(pos[0], pos[1]))
-                    }
+                val pos = FloatArray(2)
+                for (i in 0 until numPointsForGroup) {
+                    val distance = (totalLength / (numPointsForGroup - 1)) * i
+                    pathMeasure.getPosTan(distance, pos, null)
+                    newPoints.add(PointF(pos[0], pos[1]))
                 }
-
-                if (newPoints.isNotEmpty()) {
-                    newMarkers.add(SignatureContour(newPoints, color))
-                    assignedPointsInGroup += newPoints.size
-                }
+                newMarkers.add(SignatureContour(newPoints, color))
             }
         }
 
         markers.clear()
         markers.addAll(newMarkers)
-        basePathForMarkers.reset() // Limpiar para la próxima vez
+        basePathForMarkers.reset()
     }
 
     fun generateProceduralSignatureBitmap(refreshPoints: Boolean = true): android.graphics.Bitmap? {
