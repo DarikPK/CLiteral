@@ -7,5 +7,8 @@
 
     <style name="Theme.ImageExtractor.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark" />
+    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:background">#1A237E</item>
+    </style>
 </resources>

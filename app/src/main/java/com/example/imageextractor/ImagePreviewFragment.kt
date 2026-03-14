@@ -77,7 +77,9 @@ class ImagePreviewFragment : Fragment() {
     }
 
     private fun setupCarousel() {
-        val adapter = ImageCarouselAdapter(imageUrls)
+        val adapter = ImageCarouselAdapter(imageUrls) { isZoomed ->
+            binding.viewPager.isUserInputEnabled = !isZoomed
+        }
         binding.viewPager.adapter = adapter
         binding.viewPager.setCurrentItem(initialIndex, false)
 
