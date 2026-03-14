@@ -9,6 +9,8 @@
 
     <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark">
         <item name="android:textColor">#FFFFFF</item>
-        <item name="android:background">#311B92</item>
+        <item name="android:colorBackground">?attr/colorPrimary</item>
+        <item name="android:popupBackground">@drawable/popup_background</item>
+        <item name="android:listDivider">#FFFFFF</item>
     </style>
 </resources>
