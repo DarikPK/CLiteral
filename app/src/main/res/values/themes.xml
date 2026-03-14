@@ -9,6 +9,6 @@
 
     <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark">
         <item name="android:textColor">#FFFFFF</item>
-        <item name="android:background">#1A237E</item>
+        <item name="android:background">#311B92</item>
     </style>
 </resources>
