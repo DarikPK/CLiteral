@@ -501,12 +501,18 @@ class ExtractionFragment : Fragment() {
                     async function waitForCanvas(timeout = 7000) {
                         const startTime = Date.now();
                         while (Date.now() - startTime < timeout) {
+                            // Sunarp usa un contenedor de carga. Esperamos a que no haya spinners visibles.
+                            const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask');
                             const canvas = document.querySelector('canvas:not([style*="display: none"])');
-                            if (canvas && canvas.toDataURL().length > 100) { // Comprobación básica de que no está vacío
-                                await sleep(250); // Un respiro extra para el renderizado final
-                                return canvas;
+
+                            if (!loading && canvas) {
+                                // Comprobación rápida de que el canvas tiene dimensiones
+                                if (canvas.width > 0 && canvas.height > 0) {
+                                    await sleep(300); // Pequeño respiro para que el renderizado de la imagen termine
+                                    return canvas;
+                                }
                             }
-                            await sleep(250);
+                            await sleep(100);
                         }
                         return null;
                     }
@@ -543,45 +549,58 @@ class ExtractionFragment : Fragment() {
                         const item = items[i];
 
                         const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
+
                         if (!await robustClick(item)) {
                             console.warn(`No se pudo hacer clic en la hoja ${'$'}{N - i}`);
                             continue;
                         }
 
+                        // ESPERA DINÁMICA: Esperamos a que el botón se marque como seleccionado Y que el subtítulo cambie.
                         const pollStart = Date.now();
-                        let subtitleChanged = false;
-                        while(Date.now() - pollStart < 5000) {
-                            const newSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
-                            if(newSubtitle && newSubtitle !== originalSubtitle) {
-                                subtitleChanged = true;
+                        let isPageReady = false;
+                        while(Date.now() - pollStart < 6000) {
+                            const isSelected = item.classList.contains('boton-pagina-seleccionado') ||
+                                             item.parentElement.classList.contains('boton-pagina-seleccionado') ||
+                                             item.querySelector('.boton-pagina-seleccionado');
+
+                            const currentSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
+                            const hasSubtitleChanged = currentSubtitle && currentSubtitle !== originalSubtitle;
+
+                            if(isSelected && hasSubtitleChanged) {
+                                isPageReady = true;
                                 break;
                             }
-                            await sleep(200);
-                        }
-                        if(!subtitleChanged) {
-                           console.warn("No se confirmó el cambio de página, se continuará por timeout.");
+                            await sleep(100);
                         }
 
-                        await sleep(2000);
+                        if(!isPageReady) {
+                           console.warn("Aviso: La página tardó mucho en marcarse como lista, se intentará capturar igual.");
+                        }
 
+                        // Esperamos a que el canvas esté cargado (sin spinners)
                         const canvas = await waitForCanvas();
+
                         if (canvas) {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
                                 const hojaNumero = N - i;
                                 const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
                                 }
-                                await sleep(100); // Pausa para evitar condición de carrera con el listener.
+
+                                await sleep(50); // Mínima pausa para asegurar que el Bridge procese el nombre
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-                                await sleep(3000);
+
+                                // Pausa técnica mínima entre hojas para no saturar el canal de descarga
+                                await sleep(400);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
                         } else {
-                            console.warn(`No se encontró un canvas válido para la hoja ${'$'}{N - i}`);
+                            console.warn(`No se encontró un canvas válido o cargado para la hoja ${'$'}{N - i}`);
                         }
                     }
                     if (typeof AndroidBridge !== 'undefined') {
