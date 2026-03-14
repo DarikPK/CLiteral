@@ -10,12 +10,15 @@ import com.bumptech.glide.Glide
 import com.example.imageextractor.databinding.GalleryItemBinding
 import java.io.File
 
-class ImageIconAdapter(private val onImageClick: (String) -> Unit) :
-    ListAdapter<String, ImageIconAdapter.IconViewHolder>(DiffUtilCallback()) {
+class ImageIconAdapter(
+    private val onImageClick: (String) -> Unit,
+    private val onImageLongClick: (String) -> Unit
+) : ListAdapter<String, ImageIconAdapter.IconViewHolder>(DiffUtilCallback()) {
 
     class IconViewHolder(
         private val binding: GalleryItemBinding,
-        private val onImageClick: (String) -> Unit
+        private val onImageClick: (String) -> Unit,
+        private val onImageLongClick: (String) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(imagePath: String) {
@@ -32,12 +35,17 @@ class ImageIconAdapter(private val onImageClick: (String) -> Unit) :
             itemView.setOnClickListener {
                 onImageClick(imagePath)
             }
+
+            itemView.setOnLongClickListener {
+                onImageLongClick(imagePath)
+                true
+            }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IconViewHolder {
         val binding = GalleryItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return IconViewHolder(binding, onImageClick)
+        return IconViewHolder(binding, onImageClick, onImageLongClick)
     }
 
     override fun onBindViewHolder(holder: IconViewHolder, position: Int) {

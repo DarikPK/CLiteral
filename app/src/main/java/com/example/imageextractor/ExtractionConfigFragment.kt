@@ -22,6 +22,10 @@ class ExtractionConfigFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
+    private val extractionPrefs by lazy {
+        requireActivity().getSharedPreferences("ExtractionSettings", android.content.Context.MODE_PRIVATE)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -35,6 +39,7 @@ class ExtractionConfigFragment : Fragment() {
         setupAutofillHighlight()
         setupDropdowns()
         setupLoginModeSelector()
+        loadSavedSettings()
         setupContinueButton()
         setupVisibilitySwitch()
         setupManualStartButtonSwitch()
@@ -104,11 +109,41 @@ class ExtractionConfigFragment : Fragment() {
 
         val oficinaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, oficinas)
         binding.oficinaDropdown.setAdapter(oficinaAdapter)
-        binding.oficinaDropdown.setText("LIMA", false)
 
         val areaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
         binding.areaDropdown.setAdapter(areaAdapter)
-        binding.areaDropdown.setText("PROPIEDAD INMUEBLE PREDIAL", false)
+    }
+
+    private fun loadSavedSettings() {
+        binding.dniEditText.setText(extractionPrefs.getString("dni", ""))
+        binding.digitoEditText.setText(extractionPrefs.getString("digito", ""))
+        binding.fechaEmisionEditText.setText(extractionPrefs.getString("fecha_emision", ""))
+        binding.oficinaDropdown.setText(extractionPrefs.getString("oficina", "LIMA"), false)
+        binding.areaDropdown.setText(extractionPrefs.getString("area", "PROPIEDAD INMUEBLE PREDIAL"), false)
+        binding.partidaEditText.setText(extractionPrefs.getString("partida", ""))
+        binding.prefixPCheckbox.isChecked = extractionPrefs.getBoolean("prefix_p", false)
+
+        val isManual = extractionPrefs.getBoolean("is_manual_login", false)
+        if (isManual) {
+            binding.radioManual.isChecked = true
+        } else {
+            binding.radioRandom.isChecked = true
+        }
+        binding.manualLoginFields.isVisible = isManual
+    }
+
+    private fun saveCurrentSettings() {
+        with(extractionPrefs.edit()) {
+            putString("dni", binding.dniEditText.text.toString())
+            putString("digito", binding.digitoEditText.text.toString())
+            putString("fecha_emision", binding.fechaEmisionEditText.text.toString())
+            putString("oficina", binding.oficinaDropdown.text.toString())
+            putString("area", binding.areaDropdown.text.toString())
+            putString("partida", binding.partidaEditText.text.toString())
+            putBoolean("prefix_p", binding.prefixPCheckbox.isChecked)
+            putBoolean("is_manual_login", binding.radioManual.isChecked)
+            apply()
+        }
     }
 
     private fun setupLoginModeSelector() {
@@ -128,6 +163,8 @@ class ExtractionConfigFragment : Fragment() {
                 Toast.makeText(context, "Por favor, ingrese el número de partida", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
+            saveCurrentSettings()
 
             val loginData = if (binding.radioManual.isChecked) {
                 val dni = binding.dniEditText.text.toString()

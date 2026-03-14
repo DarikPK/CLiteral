@@ -19,32 +19,10 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <com.example.imageextractor.ZoomableImageView
-        android:id="@+id/preview_image_view"
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:contentDescription="Vista previa de la imagen"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_zoom_in"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="88dp"
-        android:src="@android:drawable/ic_menu_zoom"
-        app:tint="@android:color/white"
-        android:contentDescription="Aumentar zoom" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_zoom_reset"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:src="@android:drawable/ic_menu_revert"
-        app:tint="@android:color/white"
-        android:contentDescription="Restaurar zoom" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -13,12 +13,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class ImageDetailAdapter(private val onImageClick: (String) -> Unit) :
-    ListAdapter<String, ImageDetailAdapter.DetailViewHolder>(DiffUtilCallback()) {
+class ImageDetailAdapter(
+    private val onImageClick: (String) -> Unit,
+    private val onImageLongClick: (String) -> Unit
+) : ListAdapter<String, ImageDetailAdapter.DetailViewHolder>(DiffUtilCallback()) {
 
     class DetailViewHolder(
         private val binding: ImageDetailItemBinding,
-        private val onImageClick: (String) -> Unit
+        private val onImageClick: (String) -> Unit,
+        private val onImageLongClick: (String) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(imagePath: String) {
@@ -44,12 +47,17 @@ class ImageDetailAdapter(private val onImageClick: (String) -> Unit) :
             itemView.setOnClickListener {
                 onImageClick(imagePath)
             }
+
+            itemView.setOnLongClickListener {
+                onImageLongClick(imagePath)
+                true
+            }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DetailViewHolder {
         val binding = ImageDetailItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return DetailViewHolder(binding, onImageClick)
+        return DetailViewHolder(binding, onImageClick, onImageLongClick)
     }
 
     override fun onBindViewHolder(holder: DetailViewHolder, position: Int) {

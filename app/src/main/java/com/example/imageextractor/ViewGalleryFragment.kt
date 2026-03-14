@@ -18,7 +18,7 @@ class ViewGalleryFragment : Fragment() {
 
     private lateinit var detailAdapter: ImageDetailAdapter
     private lateinit var iconAdapter: ImageIconAdapter
-    private var imageUrls: List<String> = emptyList()
+    private var imageUrls: MutableList<String> = mutableListOf()
     private var partidaId: String? = null
 
     private var currentViewMode = ViewMode.ICON
@@ -61,12 +61,41 @@ class ViewGalleryFragment : Fragment() {
     private fun setupAdapters() {
         val onImageClick: (String) -> Unit = { imagePath ->
             val bundle = Bundle().apply {
-                putString("imagePath", imagePath)
+                putStringArray("imageUrls", imageUrls.toTypedArray())
+                putInt("initialIndex", imageUrls.indexOf(imagePath))
             }
             findNavController().navigate(R.id.action_viewGalleryFragment_to_imagePreviewFragment, bundle)
         }
-        detailAdapter = ImageDetailAdapter(onImageClick)
-        iconAdapter = ImageIconAdapter(onImageClick)
+
+        val onImageLongClick: (String) -> Unit = { imagePath ->
+            showDeleteConfirmation(imagePath)
+        }
+
+        detailAdapter = ImageDetailAdapter(onImageClick, onImageLongClick)
+        iconAdapter = ImageIconAdapter(onImageClick, onImageLongClick)
+    }
+
+    private fun showDeleteConfirmation(imagePath: String) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Eliminar Imagen")
+            .setMessage("¿Estás seguro de que deseas eliminar esta imagen?")
+            .setPositiveButton("Eliminar") { _, _ ->
+                deleteImage(imagePath)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun deleteImage(imagePath: String) {
+        val file = java.io.File(imagePath)
+        if (file.exists() && file.delete()) {
+            imageUrls.remove(imagePath)
+            detailAdapter.submitList(ArrayList(imageUrls))
+            iconAdapter.submitList(ArrayList(imageUrls))
+            android.widget.Toast.makeText(context, "Imagen eliminada", android.widget.Toast.LENGTH_SHORT).show()
+        } else {
+            android.widget.Toast.makeText(context, "No se pudo eliminar la imagen", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setupRecyclerView() {

@@ -1,6 +1,5 @@
 package com.example.imageextractor
 
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,21 +7,22 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.bumptech.glide.Glide
+import androidx.viewpager2.widget.ViewPager2
 import com.example.imageextractor.databinding.FragmentImagePreviewBinding
-import java.io.File
 
 class ImagePreviewFragment : Fragment() {
 
     private var _binding: FragmentImagePreviewBinding? = null
     private val binding get() = _binding!!
 
-    private var imagePath: String? = null
+    private var imageUrls: List<String> = emptyList()
+    private var initialIndex: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            imagePath = it.getString("imagePath")
+            imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
+            initialIndex = it.getInt("initialIndex", 0)
         }
     }
 
@@ -37,35 +37,34 @@ class ImagePreviewFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
-        loadImage()
-        setupZoomButtons()
+        setupCarousel()
     }
 
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
-        (activity as? AppCompatActivity)?.supportActionBar?.title = imagePath?.substringAfterLast("/") ?: "Vista Previa"
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
         }
+        updateToolbarTitle(initialIndex)
     }
 
-    private fun loadImage() {
-        imagePath?.let {
-            Glide.with(this)
-                .load(Uri.fromFile(File(it)))
-                .into(binding.previewImageView)
-        }
+    private fun updateToolbarTitle(index: Int) {
+        val fileName = imageUrls.getOrNull(index)?.substringAfterLast("/") ?: "Vista Previa"
+        (activity as? AppCompatActivity)?.supportActionBar?.title = fileName
     }
 
-    private fun setupZoomButtons() {
-        binding.fabZoomIn.setOnClickListener {
-            binding.previewImageView.zoomIn()
-        }
+    private fun setupCarousel() {
+        val adapter = ImageCarouselAdapter(imageUrls)
+        binding.viewPager.adapter = adapter
+        binding.viewPager.setCurrentItem(initialIndex, false)
 
-        binding.fabZoomReset.setOnClickListener {
-            binding.previewImageView.resetZoom()
-        }
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                updateToolbarTitle(position)
+            }
+        })
     }
 
     override fun onDestroyView() {

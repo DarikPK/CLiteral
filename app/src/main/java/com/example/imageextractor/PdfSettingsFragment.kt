@@ -40,6 +40,8 @@ class PdfSettingsFragment : Fragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
+    private var currentSortMode = "alphanumeric" // or "temporal"
+
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
         if (isGranted) {
             // This launcher is now only used for permission requests in this fragment.
@@ -79,6 +81,7 @@ class PdfSettingsFragment : Fragment() {
         setupDynamicFields()
         loadSettings()
         setupListeners()
+        currentSortMode = sharedPrefs.getString("partida_sort_mode", "alphanumeric") ?: "alphanumeric"
     }
 
     private fun setupToolbar() {
@@ -189,7 +192,7 @@ class PdfSettingsFragment : Fragment() {
         // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
-        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "5"))
+        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "8"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
         binding.stampBrightnessEditText.setText(sharedPrefs.getString("stamp_brightness", "50"))
         binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
@@ -365,7 +368,7 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
                 putFloat("stampWearSize", binding.stampWearSizeSlider.value)
-                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
+                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 8f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
                 putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
@@ -493,10 +496,13 @@ class PdfSettingsFragment : Fragment() {
 
     private fun getCapturedFolders(): List<ImageFolder> {
         val folders = mutableMapOf<String, MutableList<ImageFile>>()
+        val folderLastModified = mutableMapOf<String, Long>()
+
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.DATA
+            MediaStore.Images.Media.DATA,
+            MediaStore.Images.Media.DATE_MODIFIED
         )
         val selection = "${MediaStore.Images.Media.DATA} like ? and ${MediaStore.Images.Media.DATA} like ?"
         val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %")
@@ -513,24 +519,37 @@ class PdfSettingsFragment : Fragment() {
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
             val nameColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
             val pathColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+            val dateColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
 
             while (it.moveToNext()) {
                 val id = it.getLong(idColumn)
                 val name = it.getString(nameColumn)
                 val path = it.getString(pathColumn)
+                val date = it.getLong(dateColumn)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
                 val partidaId = name.substringBefore("-Hoja").trim()
                 if (partidaId.isNotEmpty()) {
                     val imageFile = ImageFile(uri, path, name)
                     folders.getOrPut(partidaId) { mutableListOf() }.add(imageFile)
+
+                    val currentMaxDate = folderLastModified[partidaId] ?: 0L
+                    if (date > currentMaxDate) {
+                        folderLastModified[partidaId] = date
+                    }
                 }
             }
         }
 
-        return folders.map { (partidaId, files) ->
+        val result = folders.map { (partidaId, files) ->
             val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
             ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
+        }
+
+        return if (currentSortMode == "temporal") {
+            result.sortedByDescending { folderLastModified[it.partidaId] ?: 0L }
+        } else {
+            result.sortedBy { it.partidaId }
         }
     }
 
@@ -541,12 +560,23 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_sort -> {
+                toggleSortMode()
+                true
+            }
             R.id.action_preview -> {
                 validateAndProceed()
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun toggleSortMode() {
+        currentSortMode = if (currentSortMode == "alphanumeric") "temporal" else "alphanumeric"
+        sharedPrefs.edit().putString("partida_sort_mode", currentSortMode).apply()
+        val message = if (currentSortMode == "alphanumeric") "Orden Alfanumérico" else "Orden Temporal (Reciente primero)"
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {
