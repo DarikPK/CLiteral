@@ -29,7 +29,7 @@ class ViewGalleryFragment : Fragment() {
         // Use arguments? to safely access arguments, which might be null
         // when the fragment is first created by the ViewPager.
         arguments?.let {
-            imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
+            imageUrls = it.getStringArray("imageUrls")?.toMutableList() ?: mutableListOf()
             partidaId = it.getString("partidaId")
         }
     }
