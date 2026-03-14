@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_zoom_in"
+        android:icon="@android:drawable/ic_menu_zoom"
+        android:title="Aumentar Zoom"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_zoom_reset"
+        android:icon="@android:drawable/ic_menu_revert"
+        android:title="Restaurar Zoom"
+        app:showAsAction="always" />
+</menu>

@@ -20,6 +20,7 @@ class ImagePreviewFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
         arguments?.let {
             imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
             initialIndex = it.getInt("initialIndex", 0)
@@ -38,6 +39,28 @@ class ImagePreviewFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar()
         setupCarousel()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.image_preview_menu, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val currentPosition = binding.viewPager.currentItem
+        val currentViewHolder = (binding.viewPager.getChildAt(0) as? RecyclerView)?.findViewHolderForAdapterPosition(currentPosition) as? ImageCarouselAdapter.CarouselViewHolder
+
+        return when (item.itemId) {
+            R.id.action_zoom_in -> {
+                currentViewHolder?.binding?.zoomableImageView?.zoomIn()
+                true
+            }
+            R.id.action_zoom_reset -> {
+                currentViewHolder?.binding?.zoomableImageView?.resetZoom()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun setupToolbar() {

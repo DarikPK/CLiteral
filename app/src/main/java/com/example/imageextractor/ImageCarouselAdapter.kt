@@ -10,13 +10,11 @@ import java.io.File
 class ImageCarouselAdapter(private val imageUrls: List<String>) :
     RecyclerView.Adapter<ImageCarouselAdapter.CarouselViewHolder>() {
 
-    class CarouselViewHolder(private val binding: ImageCarouselItemBinding) :
+    class CarouselViewHolder(val binding: ImageCarouselItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(imagePath: String) {
             binding.zoomableImageView.setImageURI(Uri.fromFile(File(imagePath)))
-            binding.fabZoomIn.setOnClickListener { binding.zoomableImageView.zoomIn() }
-            binding.fabZoomReset.setOnClickListener { binding.zoomableImageView.resetZoom() }
         }
     }
 

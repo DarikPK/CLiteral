@@ -7,5 +7,5 @@
 
     <style name="Theme.ImageExtractor.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark" />
 </resources>
