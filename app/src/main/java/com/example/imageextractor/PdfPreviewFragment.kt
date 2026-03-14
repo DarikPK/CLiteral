@@ -149,7 +149,7 @@ class PdfPreviewFragment : Fragment() {
                 stampFontSize = it.getFloat("stampFontSize", 220f)
                 stampWearIntensity = it.getFloat("stampWearIntensity", 0f)
                 stampWearSize = it.getFloat("stampWearSize", 0f)
-                stampSizePercent = it.getFloat("stampSizePercent", 10f)
+                stampSizePercent = it.getFloat("stampSizePercent", 5f)
                 stampMaxRotation = it.getFloat("stampMaxRotation", 5f)
                 stampBrightness = it.getFloat("stampBrightness", 50f)
                 stampContrast = it.getFloat("stampContrast", 50f)
