@@ -132,7 +132,7 @@ class WatermarkSettingsFragment : Fragment() {
         }
         val defaultAngle = when (index) {
             1 -> "-55"
-            2 -> "55"
+            2 -> "-55"
             3 -> "0"
             4 -> "-90"
             else -> "0"

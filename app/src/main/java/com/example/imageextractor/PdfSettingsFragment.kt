@@ -189,7 +189,7 @@ class PdfSettingsFragment : Fragment() {
         // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
-        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "20"))
+        binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "10"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
         binding.stampBrightnessEditText.setText(sharedPrefs.getString("stamp_brightness", "50"))
         binding.stampContrastEditText.setText(sharedPrefs.getString("stamp_contrast", "50"))
@@ -365,7 +365,7 @@ class PdfSettingsFragment : Fragment() {
                 putFloat("stampFontSize", binding.stampFontSizeEditText.text.toString().toFloatOrNull() ?: 220f)
                 putFloat("stampWearIntensity", binding.stampWearIntensitySlider.value)
                 putFloat("stampWearSize", binding.stampWearSizeSlider.value)
-                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 5f)
+                putFloat("stampSizePercent", binding.stampSizeEditText.text.toString().toFloatOrNull() ?: 10f)
                 putFloat("stampMaxRotation", binding.stampRotationEditText.text.toString().toFloatOrNull() ?: 5f)
                 putFloat("stampBrightness", binding.stampBrightnessEditText.text.toString().toFloatOrNull() ?: 50f)
                 putFloat("stampContrast", binding.stampContrastEditText.text.toString().toFloatOrNull() ?: 50f)
@@ -445,7 +445,7 @@ class PdfSettingsFragment : Fragment() {
                 }
                 val defaultAngle = when (i) {
                     1 -> "-55"
-                    2 -> "55"
+                    2 -> "-55"
                     4 -> "-90"
                     else -> "0"
                 }
