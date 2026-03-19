@@ -488,31 +488,44 @@ class ExtractionFragment : Fragment() {
                             try {
                                 if (!element || !document.body.contains(element)) return false;
                                 element.scrollIntoView({ block: 'center' });
-                                await sleep(150);
+                                await sleep(200);
+                                element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+                                await sleep(50);
+                                element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+                                await sleep(50);
                                 element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                                 return true;
                             } catch (e) {
                                 console.warn(`Intento de clic ${'$'}{i + 1} fallido`, e);
-                                await sleep(200);
+                                await sleep(300);
                             }
                         }
                         return false;
                     }
-                    async function waitForCanvas(timeout = 7000) {
+                    async function waitForCanvas(timeout = 12000) {
                         const startTime = Date.now();
-                        while (Date.now() - startTime < timeout) {
-                            // Sunarp usa un contenedor de carga. Esperamos a que no haya spinners visibles.
-                            const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask');
-                            const canvas = document.querySelector('canvas:not([style*="display: none"])');
+                        let loadingStarted = false;
 
-                            if (!loading && canvas) {
-                                // Comprobación rápida de que el canvas tiene dimensiones
-                                if (canvas.width > 0 && canvas.height > 0) {
-                                    await sleep(300); // Pequeño respiro para que el renderizado de la imagen termine
-                                    return canvas;
-                                }
+                        // Pequeña espera inicial para detectar si aparece el spinner inmediatamente
+                        for(let j=0; j<10; j++) {
+                            if (document.querySelector('.ant-spin-spinning, .ant-loading-mask')) {
+                                loadingStarted = true;
+                                break;
                             }
                             await sleep(100);
+                        }
+
+                        while (Date.now() - startTime < timeout) {
+                            const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask');
+                            if (loading) loadingStarted = true;
+                            const canvas = document.querySelector('canvas:not([style*="display: none"])');
+
+                            if (!loading && canvas && canvas.width > 0 && canvas.height > 0) {
+                                // Si hubo carga, esperamos un poco más para asegurar que el canvas se actualizó
+                                await sleep(loadingStarted ? 1000 : 600);
+                                return canvas;
+                            }
+                            await sleep(250);
                         }
                         return null;
                     }
@@ -555,10 +568,12 @@ class ExtractionFragment : Fragment() {
                             continue;
                         }
 
+                        await sleep(500); // Pausa tras el clic para que el sitio procese
+
                         // ESPERA DINÁMICA: Esperamos a que el botón se marque como seleccionado Y que el subtítulo cambie.
                         const pollStart = Date.now();
                         let isPageReady = false;
-                        while(Date.now() - pollStart < 6000) {
+                        while(Date.now() - pollStart < 12000) {
                             const isSelected = item.classList.contains('boton-pagina-seleccionado') ||
                                              item.parentElement.classList.contains('boton-pagina-seleccionado') ||
                                              item.querySelector('.boton-pagina-seleccionado');
@@ -570,7 +585,12 @@ class ExtractionFragment : Fragment() {
                                 isPageReady = true;
                                 break;
                             }
-                            await sleep(100);
+
+                            // Reintento de clic si tarda mucho en seleccionarse
+                            if (Date.now() - pollStart > 4000 && !isSelected) {
+                                await robustClick(item);
+                            }
+                            await sleep(300);
                         }
 
                         if(!isPageReady) {
@@ -595,7 +615,7 @@ class ExtractionFragment : Fragment() {
                                 captureCount++;
 
                                 // Pausa técnica mínima entre hojas para no saturar el canal de descarga
-                                await sleep(400);
+                                await sleep(1000);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
