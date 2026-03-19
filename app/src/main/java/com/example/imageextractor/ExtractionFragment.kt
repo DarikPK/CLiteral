@@ -489,6 +489,7 @@ class ExtractionFragment : Fragment() {
                                 if (!element || !document.body.contains(element)) return false;
                                 element.scrollIntoView({ block: 'center' });
                                 await sleep(200);
+                                // Secuencia completa de eventos de ratón para asegurar que la web lo detecte
                                 element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
                                 await sleep(50);
                                 element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
@@ -502,11 +503,11 @@ class ExtractionFragment : Fragment() {
                         }
                         return false;
                     }
-                    async function waitForCanvas(timeout = 12000) {
+                    async function waitForCanvas(timeout = 15000) {
                         const startTime = Date.now();
                         let loadingStarted = false;
 
-                        // Pequeña espera inicial para detectar si aparece el spinner inmediatamente
+                        // Monitoreo inicial para detectar si aparece un spinner de carga tras el clic
                         for(let j=0; j<10; j++) {
                             if (document.querySelector('.ant-spin-spinning, .ant-loading-mask')) {
                                 loadingStarted = true;
@@ -521,8 +522,8 @@ class ExtractionFragment : Fragment() {
                             const canvas = document.querySelector('canvas:not([style*="display: none"])');
 
                             if (!loading && canvas && canvas.width > 0 && canvas.height > 0) {
-                                // Si hubo carga, esperamos un poco más para asegurar que el canvas se actualizó
-                                await sleep(loadingStarted ? 1000 : 600);
+                                // Pausa adaptativa: si hubo carga, esperamos más para que el renderizado finalice
+                                await sleep(loadingStarted ? 1000 : 500);
                                 return canvas;
                             }
                             await sleep(250);
@@ -568,12 +569,10 @@ class ExtractionFragment : Fragment() {
                             continue;
                         }
 
-                        await sleep(500); // Pausa tras el clic para que el sitio procese
-
                         // ESPERA DINÁMICA: Esperamos a que el botón se marque como seleccionado Y que el subtítulo cambie.
                         const pollStart = Date.now();
                         let isPageReady = false;
-                        while(Date.now() - pollStart < 12000) {
+                        while(Date.now() - pollStart < 15000) {
                             const isSelected = item.classList.contains('boton-pagina-seleccionado') ||
                                              item.parentElement.classList.contains('boton-pagina-seleccionado') ||
                                              item.querySelector('.boton-pagina-seleccionado');
@@ -586,11 +585,11 @@ class ExtractionFragment : Fragment() {
                                 break;
                             }
 
-                            // Reintento de clic si tarda mucho en seleccionarse
+                            // Si tras 4 segundos no se ha seleccionado, reintentamos el clic agresivamente
                             if (Date.now() - pollStart > 4000 && !isSelected) {
                                 await robustClick(item);
                             }
-                            await sleep(300);
+                            await sleep(350);
                         }
 
                         if(!isPageReady) {
@@ -614,8 +613,8 @@ class ExtractionFragment : Fragment() {
                                 downloadDataUrl(dataUrl, filename);
                                 captureCount++;
 
-                                // Pausa técnica mínima entre hojas para no saturar el canal de descarga
-                                await sleep(1000);
+                                // Pausa técnica para asegurar estabilidad en descargas y escritura de archivos
+                                await sleep(1200);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
