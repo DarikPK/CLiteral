@@ -521,45 +521,60 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO Y APERTURA TOTAL ---
-                    console.log("🔍 Iniciando Apertura Total de Asientos/Tomos...");
+                    // --- FASE 1: ESCANEO RECURSIVO POR BLOQUE ---
+                    console.log("🔍 Iniciando Escaneo Profundo por Asientos...");
                     const allPages = [];
-                    const container = document.querySelector('.columna-lista');
-                    if (!container) throw new Error("No se encontró la columna lateral.");
 
-                    // 1. Abrir TODOS los bloques existentes para que todo sea visible
-                    const allBlocks = Array.from(container.querySelectorAll('.ant-collapse-item'));
-                    for (const block of allBlocks) {
-                        const header = block.querySelector('.ant-collapse-header');
-                        if (header && !block.classList.contains('ant-collapse-item-active')) {
+                    // 1. Obtener todos los bloques de asientos y tomos
+                    const sections = Array.from(document.querySelectorAll('.ant-collapse-item'));
+
+                    // 2. Invertir las secciones: empezamos por la de más abajo (más antigua)
+                    const reversedSections = sections.reverse();
+
+                    for (let sIdx = 0; sIdx < reversedSections.length; sIdx++) {
+                        const section = reversedSections[sIdx];
+                        const header = section.querySelector('.ant-collapse-header');
+
+                        // Aseguramos que el bloque esté abierto para leer sus hojas
+                        if (header && !section.classList.contains('ant-collapse-item-active')) {
                             await robustClick(header);
-                            await sleep(400);
+                            await sleep(500);
+                        }
+
+                        // 3. Obtener las hojas de ESTE asiento/bloque
+                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+
+                        // Invertimos las hojas: empezamos por la última del asiento
+                        const reversedButtons = pageButtons.reverse();
+
+                        for (let pIdx = 0; pIdx < reversedButtons.length; pIdx++) {
+                            const btn = reversedButtons[pIdx];
+                            const uniqueId = "page-uid-" + sIdx + "-" + pIdx;
+
+                            // MARCADO DIGITAL
+                            btn.setAttribute('data-scan-id', uniqueId);
+
+                            allPages.push({
+                                element: btn,
+                                header: header,
+                                scanId: uniqueId,
+                                id: "S" + sIdx + "P" + pIdx
+                            });
                         }
                     }
 
-                    // 2. Realizar un inventario de todos los botones ahora que todo está abierto
-                    // Buscamos todos los botones de página en toda la lista lateral
-                    const rawButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-
-                    // 3. INVERTIR EL ORDEN TOTAL: El usuario quiere recorrer la partida de forma inversa (desde lo más antiguo abajo hasta lo más reciente arriba)
-                    // Nota: Si solo quieres invertir las hojas de cada asiento pero mantener el orden de los asientos, dímelo.
-                    // Pero para "tomos en orden inverso" lo más robusto es invertir la lista completa de lo detectado.
-                    const reversedList = rawButtons.reverse();
-
-                    for (let idx = 0; idx < reversedList.length; idx++) {
-                        const btn = reversedList[idx];
-                        const uniqueId = "page-uid-" + idx;
-                        const block = btn.closest('.ant-collapse-item');
-                        const header = block ? block.querySelector('.ant-collapse-header') : null;
-
-                        // MARCADO DIGITAL
-                        btn.setAttribute('data-scan-id', uniqueId);
-
-                        allPages.push({
-                            element: btn,
-                            header: header,
-                            scanId: uniqueId,
-                            id: "P-" + idx
+                    // ESCANEO DE EMERGENCIA: Si no se detectaron bloques, buscar botones sueltos
+                    if (allPages.length === 0) {
+                        const rawButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        rawButtons.reverse().forEach((btn, idx) => {
+                            const uniqueId = "emergency-uid-" + idx;
+                            btn.setAttribute('data-scan-id', uniqueId);
+                            allPages.push({
+                                element: btn,
+                                header: null,
+                                scanId: uniqueId,
+                                id: "E-" + idx
+                            });
                         });
                     }
 
