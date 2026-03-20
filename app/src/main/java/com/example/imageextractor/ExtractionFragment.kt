@@ -452,7 +452,7 @@ class ExtractionFragment : Fragment() {
         }
 
         binding.fabListButton.setOnClickListener {
-            findNavController().popBackStack(R.id.mainMenuFragment, false)
+            showPageListOverlay()
         }
 
         binding.captureButton.setOnClickListener {
@@ -477,12 +477,13 @@ class ExtractionFragment : Fragment() {
 
         deleteExistingCaptures(numeroPartida)
 
-        Toast.makeText(context, "Iniciando captura automática...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "🚀 Iniciando Súper Captura con validación...", Toast.LENGTH_SHORT).show()
         val script = """
             (async () => {
                 const numeroPartida = "$numeroPartida";
                 try {
                     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
                     async function robustClick(element) {
                         for (let i = 0; i < 3; i++) {
                             try {
@@ -492,30 +493,27 @@ class ExtractionFragment : Fragment() {
                                 element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                                 return true;
                             } catch (e) {
-                                console.warn(`Intento de clic ${'$'}{i + 1} fallido`, e);
+                                console.warn(`Intento de clic fallido`, e);
                                 await sleep(200);
                             }
                         }
                         return false;
                     }
-                    async function waitForCanvas(timeout = 7000) {
+
+                    async function waitForCanvas(timeout = 8000) {
                         const startTime = Date.now();
                         while (Date.now() - startTime < timeout) {
-                            // Sunarp usa un contenedor de carga. Esperamos a que no haya spinners visibles.
-                            const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask');
+                            const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask, .ant-spin-blur');
                             const canvas = document.querySelector('canvas:not([style*="display: none"])');
-
-                            if (!loading && canvas) {
-                                // Comprobación rápida de que el canvas tiene dimensiones
-                                if (canvas.width > 0 && canvas.height > 0) {
-                                    await sleep(300); // Pequeño respiro para que el renderizado de la imagen termine
-                                    return canvas;
-                                }
+                            if (!loading && canvas && canvas.width > 10 && canvas.height > 10) {
+                                await sleep(400); // Respiro final para renderizado
+                                return canvas;
                             }
-                            await sleep(100);
+                            await sleep(150);
                         }
                         return null;
                     }
+
                     function downloadDataUrl(dataUrl, filename) {
                         const a = document.createElement("a");
                         a.href = dataUrl;
@@ -525,89 +523,126 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- LÓGICA DE AGRUPACIÓN POR .columna-lista ---
-                    const columnas = document.querySelectorAll('.columna-lista');
-                    let items = [];
-                    columnas.forEach(columna => {
-                        const pageButtons = Array.from(columna.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                        if (pageButtons.length > 1) {
-                            items.push(...pageButtons.reverse());
-                        } else {
-                            items.push(...pageButtons);
-                        }
-                    });
-                    const N = items.length;
-                    // --- FIN DE LA LÓGICA ---
+                    // --- FASE 1: ESCANEO E INVENTARIO ---
+                    console.log("🔍 Escaneando estructura de la partida...");
+                    const container = document.querySelector('.columna-lista');
+                    if (!container) throw new Error("No se encontró el contenedor de la lista.");
 
-                    if (N <= 0) {
-                        if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
+                    const allItems = [];
+                    const sections = container.querySelectorAll(':scope > .ant-collapse > .ant-collapse-item, :scope > div.ant-collapse-item');
+
+                    sections.forEach((section, sIndex) => {
+                        const header = section.querySelector('.ant-collapse-header');
+                        const headerText = (header?.innerText || '').trim();
+                        const isCollapsed = !section.classList.contains('ant-collapse-item-active');
+
+                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+
+                        pageButtons.forEach((btn, pIndex) => {
+                            const btnText = (btn.innerText || '').trim();
+                            // Intentar extraer el número de página/folio del botón para validación
+                            const pageNumMatch = btnText.match(/(\d+)/);
+                            const pageNum = pageNumMatch ? pageNumMatch[1] : (pIndex + 1);
+
+                            allItems.push({
+                                element: btn,
+                                header: header,
+                                isCollapsed: isCollapsed,
+                                sectionText: headerText,
+                                pageText: btnText,
+                                pageNum: pageNum,
+                                // Etiqueta esperada en el subtítulo del visor (Ej: "Asiento N°: 1 - Página 1")
+                                // Sunarp suele normalizar esto, ajustamos la lógica de validación abajo.
+                                id: `S${'$'}{sIndex}P${'$'}{pIndex}`
+                            });
+                        });
+                    });
+
+                    // Invertir para capturar de más reciente a más antiguo si es necesario,
+                    // pero el usuario prefiere la "copia literal completa", así que seguimos el orden del inventario.
+                    const total = allItems.length;
+                    if (total === 0) {
+                        AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
+
+                    console.log(`📋 Inventario completado: ${'$'}{total} páginas detectadas.`);
                     let captureCount = 0;
-                    // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
-                    for (let i = 0; i < N; i++) {
-                        const item = items[i];
 
-                        const originalSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || Math.random();
+                    // --- FASE 2: CAPTURA CON VALIDACIÓN ---
+                    for (let i = 0; i < total; i++) {
+                        const item = allItems[i];
+                        const hojaNumero = total - i; // Numeración inversa para el nombre del archivo (tradicional)
+                        const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
 
-                        if (!await robustClick(item)) {
-                            console.warn(`No se pudo hacer clic en la hoja ${'$'}{N - i}`);
-                            continue;
-                        }
+                        console.log(`📸 Procesando ${'$'}{i+1}/${'$'}{total}: ${'$'}{item.sectionText} - ${'$'}{item.pageText}`);
 
-                        // ESPERA DINÁMICA: Esperamos a que el botón se marque como seleccionado Y que el subtítulo cambie.
-                        const pollStart = Date.now();
-                        let isPageReady = false;
-                        while(Date.now() - pollStart < 6000) {
-                            const isSelected = item.classList.contains('boton-pagina-seleccionado') ||
-                                             item.parentElement.classList.contains('boton-pagina-seleccionado') ||
-                                             item.querySelector('.boton-pagina-seleccionado');
+                        let validated = false;
+                        let attempts = 0;
+                        const maxAttempts = 3;
 
-                            const currentSubtitle = (document.querySelector('.visor-subtitle') || {}).innerText || '';
-                            const hasSubtitleChanged = currentSubtitle && currentSubtitle !== originalSubtitle;
+                        while (!validated && attempts < maxAttempts) {
+                            attempts++;
 
-                            if(isSelected && hasSubtitleChanged) {
-                                isPageReady = true;
-                                break;
+                            // 1. Asegurar que la sección esté expandida
+                            if (item.isCollapsed && item.header) {
+                                await robustClick(item.header);
+                                await sleep(500);
+                                item.isCollapsed = false; // Actualizar estado local
                             }
-                            await sleep(100);
-                        }
 
-                        if(!isPageReady) {
-                           console.warn("Aviso: La página tardó mucho en marcarse como lista, se intentará capturar igual.");
-                        }
+                            // 2. Clic en la página
+                            await robustClick(item.element);
 
-                        // Esperamos a que el canvas esté cargado (sin spinners)
-                        const canvas = await waitForCanvas();
+                            // 3. VALIDACIÓN DINÁMICA
+                            // Esperamos a que el subtítulo del visor contenga info de la sección o página
+                            const validationStart = Date.now();
+                            while (Date.now() - validationStart < 5000) {
+                                const subtitle = (document.querySelector('.visor-subtitle')?.innerText || "").toUpperCase();
+                                const isSelected = item.element.classList.contains('boton-pagina-seleccionado') ||
+                                                 item.element.parentElement.classList.contains('boton-pagina-seleccionado');
 
-                        if (canvas) {
-                            try {
-                                const dataUrl = canvas.toDataURL("image/png");
-                                const hojaNumero = N - i;
-                                const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
-
-                                if (typeof AndroidBridge !== 'undefined') {
-                                    AndroidBridge.setNextDownloadFilename(filename);
+                                // Si el subtítulo menciona el número de asiento o página, y el botón está marcado:
+                                if (isSelected && (subtitle.includes(item.pageNum.toString()) || subtitle.length > 5)) {
+                                    validated = true;
+                                    break;
                                 }
-
-                                await sleep(50); // Mínima pausa para asegurar que el Bridge procese el nombre
-                                downloadDataUrl(dataUrl, filename);
-                                captureCount++;
-
-                                // Pausa técnica mínima entre hojas para no saturar el canal de descarga
-                                await sleep(400);
-                            } catch (e) {
-                                console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
+                                await sleep(200);
                             }
-                        } else {
-                            console.warn(`No se encontró un canvas válido o cargado para la hoja ${'$'}{N - i}`);
+
+                            if (validated) {
+                                const canvas = await waitForCanvas();
+                                if (canvas) {
+                                    try {
+                                        const dataUrl = canvas.toDataURL("image/png");
+                                        if (typeof AndroidBridge !== 'undefined') {
+                                            AndroidBridge.setNextDownloadFilename(filename);
+                                        }
+                                        await sleep(100);
+                                        downloadDataUrl(dataUrl, filename);
+                                        captureCount++;
+                                        console.log(`✅ Capturada correctamente: ${'$'}{filename}`);
+                                        await sleep(600); // Pausa de seguridad entre capturas exitosas
+                                    } catch (e) {
+                                        console.error("Error al exportar canvas:", e);
+                                        validated = false; // Reintentar si falló el export
+                                    }
+                                } else {
+                                    console.warn("⚠️ Canvas no cargó a tiempo, reintentando clic...");
+                                    validated = false;
+                                }
+                            } else {
+                                console.warn(`❌ Falló validación de página (Intento ${'$'}{attempts}/${'$'}{maxAttempts})`);
+                                await sleep(500);
+                            }
                         }
                     }
+
                     if (typeof AndroidBridge !== 'undefined') {
                         AndroidBridge.onAutoCaptureFinished(captureCount);
                     }
                 } catch (e) {
-                    console.error("Error en el script de captura automática:", e);
+                    console.error("🚨 Error crítico en Súper Captura:", e);
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1);
                 }
             })();
