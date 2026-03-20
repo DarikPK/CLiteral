@@ -477,7 +477,7 @@ class ExtractionFragment : Fragment() {
 
         deleteExistingCaptures(numeroPartida)
 
-        Toast.makeText(context, "🚀 Iniciando Súper Captura con validación...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "🚀 Iniciando Escaneo y Captura Completa...", Toast.LENGTH_SHORT).show()
         val script = """
             (async () => {
                 const numeroPartida = "$numeroPartida";
@@ -485,17 +485,15 @@ class ExtractionFragment : Fragment() {
                     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
                     async function robustClick(element) {
+                        if (!element) return false;
                         for (let i = 0; i < 3; i++) {
                             try {
-                                if (!element || !document.body.contains(element)) return false;
+                                if (!document.body.contains(element)) return false;
                                 element.scrollIntoView({ block: 'center' });
                                 await sleep(150);
                                 element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                                 return true;
-                            } catch (e) {
-                                console.warn(`Intento de clic fallido`, e);
-                                await sleep(200);
-                            }
+                            } catch (e) { await sleep(200); }
                         }
                         return false;
                     }
@@ -506,7 +504,7 @@ class ExtractionFragment : Fragment() {
                             const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask, .ant-spin-blur');
                             const canvas = document.querySelector('canvas:not([style*="display: none"])');
                             if (!loading && canvas && canvas.width > 10 && canvas.height > 10) {
-                                await sleep(400); // Respiro final para renderizado
+                                await sleep(400);
                                 return canvas;
                             }
                             await sleep(150);
@@ -523,116 +521,71 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO E INVENTARIO ULTRA-ROBUSTO ---
-                    console.log("🔍 Escaneando estructura completa de la partida...");
+                    // --- LÓGICA DE ESCANEO ORIGINAL RECUPERADA Y MEJORADA ---
+                    console.log("🔍 Iniciando Escaneo Exhaustivo...");
                     const container = document.querySelector('.columna-lista');
-                    if (!container) {
-                        AndroidBridge.showToast("⚠️ No se encontró la lista lateral.");
-                        throw new Error("No se encontró el contenedor de la lista.");
-                    }
+                    if (!container) throw new Error("No se encontró la lista lateral.");
 
-                    const allItems = [];
-                    // 1. Obtener TODOS los botones de página primero, sin importar la sección
-                    const rawButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
-
-                    // Si no encontramos botones, forzamos un intento de abrir todas las secciones primero
-                    if (rawButtons.length === 0) {
-                        const closedHeaders = Array.from(container.querySelectorAll('.ant-collapse-item:not(.ant-collapse-item-active) .ant-collapse-header'));
-                        for (const h of closedHeaders) {
+                    // 1. Abrir TODOS los asientos primero para que todos los botones sean visibles
+                    const headers = Array.from(container.querySelectorAll('.ant-collapse-header'));
+                    console.log("Abriendo " + headers.length + " bloques...");
+                    for (const h of headers) {
+                        const item = h.closest('.ant-collapse-item');
+                        if (item && !item.classList.contains('ant-collapse-item-active')) {
                             await robustClick(h);
-                            await sleep(400);
+                            await sleep(350);
                         }
                     }
 
-                    // 2. Agruparlos por su asiento correspondiente
-                    const seatsMap = new Map();
-                    rawButtons.forEach(btn => {
-                        // Buscar el ancestro que representa el asiento/bloque
-                        const section = btn.closest('.ant-collapse-item, [class*="collapse-item"]');
-                        const header = section ? section.querySelector('.ant-collapse-header, [class*="header"]') : null;
-                        const headerText = header ? header.innerText.trim() : "General";
-                        const sectionId = section ? section.innerText.split('\n')[0] : "root"; // ID basado en el primer texto del bloque
+                    // 2. Obtener la lista agrupada (mismo estilo que showPageListOverlay)
+                    const allPages = [];
+                    const sections = Array.from(container.querySelectorAll('.ant-collapse-item'));
 
-                        if (!seatsMap.has(sectionId)) {
-                            seatsMap.set(sectionId, {
-                                header: header,
-                                section: section,
-                                name: headerText,
-                                buttons: []
-                            });
-                        }
-                        seatsMap.get(sectionId).buttons.push(btn);
-                    });
+                    sections.forEach((section, sIdx) => {
+                        const header = section.querySelector('.ant-collapse-header');
+                        const headerText = header ? header.innerText.trim() : "Sección " + sIdx;
 
-                    // 3. Procesar los asientos en el orden en que aparecen y sus botones de forma inversa
-                    let seatIndex = 0;
-                    seatsMap.forEach((seat, id) => {
-                        const reversedButtons = seat.buttons.reverse();
-                        reversedButtons.forEach((btn, bIdx) => {
-                            const btnText = btn.innerText.trim();
-                            const pageNumMatch = btnText.match(/(\d+)/);
-                            allItems.push({
+                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+
+                        // Captura inversa dentro del asiento (como pidió el usuario)
+                        const reversedButtons = pageButtons.reverse();
+
+                        reversedButtons.forEach((btn, pIdx) => {
+                            allPages.push({
                                 element: btn,
-                                header: seat.header,
-                                isCollapsed: seat.section ? !seat.section.classList.contains('ant-collapse-item-active') : false,
-                                sectionText: seat.name,
-                                pageText: btnText,
-                                pageNum: pageNumMatch ? pageNumMatch[1] : (bIdx + 1),
-                                id: "B-" + seatIndex + "-" + bIdx
+                                header: header,
+                                sectionName: headerText,
+                                id: "S" + sIdx + "P" + pIdx
                             });
                         });
-                        seatIndex++;
                     });
 
-                    const total = allItems.length;
+                    const total = allPages.length;
                     if (total === 0) {
-                        AndroidBridge.showToast("⚠️ No se detectaron botones de página.");
+                        AndroidBridge.showToast("⚠️ No se encontraron páginas después del escaneo.");
                         AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
 
-                    AndroidBridge.showToast("📋 Escaneado: " + seatsMap.size + " asientos, " + total + " hojas.");
+                    AndroidBridge.showToast("✅ Escaneo completo: " + total + " hojas detectadas.");
                     let captureCount = 0;
 
-                    // --- FASE 2: CAPTURA CON VALIDACIÓN ---
+                    // --- FASE DE CAPTURA ---
                     for (let i = 0; i < total; i++) {
-                        const item = allItems[i];
-                        const hojaNumero = total - i; // Numeración inversa para el nombre del archivo (tradicional)
+                        const page = allPages[i];
+                        const hojaNumero = total - i;
                         const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
 
-                        let validated = false;
                         let attempts = 0;
-                        const maxAttempts = 3;
+                        let captured = false;
 
-                        while (!validated && attempts < maxAttempts) {
+                        while (!captured && attempts < 3) {
                             attempts++;
+                            await robustClick(page.element);
 
-                            // 1. Asegurar que la sección esté expandida
-                            if (item.isCollapsed && item.header) {
-                                await robustClick(item.header);
-                                await sleep(600);
-                                item.isCollapsed = false; // Actualizar estado local
-                            }
-
-                            // 2. Clic en la página
-                            await robustClick(item.element);
-
-                            // 3. VALIDACIÓN DINÁMICA
-                            const validationStart = Date.now();
-                            while (Date.now() - validationStart < 5000) {
-                                const isSelected = item.element.classList.contains('boton-pagina-seleccionado') ||
-                                                 item.element.parentElement.classList.contains('boton-pagina-seleccionado') ||
-                                                 item.element.querySelector('.boton-pagina-seleccionado');
-
-                                if (isSelected) {
-                                    validated = true;
-                                    break;
-                                }
-                                await sleep(250);
-                            }
-
-                            // 4. ESPERA DE CANVAS
-                            const canvas = await waitForCanvas(attempts === maxAttempts ? 4000 : 7000);
+                            // Validación simple: ¿está marcado?
+                            await sleep(500);
+                            const canvas = await waitForCanvas(7000);
 
                             if (canvas) {
                                 try {
@@ -643,15 +596,9 @@ class ExtractionFragment : Fragment() {
                                     await sleep(100);
                                     downloadDataUrl(dataUrl, filename);
                                     captureCount++;
-                                    validated = true; // Forzamos validado para salir del bucle de intentos
-                                    await sleep(500);
-                                } catch (e) {
-                                    console.error("Error exportando canvas:", e);
-                                }
-                            } else {
-                                if (attempts < maxAttempts) {
-                                    await sleep(400); // Pequeña pausa antes de reintentar el clic
-                                }
+                                    captured = true;
+                                    await sleep(400);
+                                } catch (e) { console.error(e); }
                             }
                         }
                     }
@@ -660,7 +607,7 @@ class ExtractionFragment : Fragment() {
                         AndroidBridge.onAutoCaptureFinished(captureCount);
                     }
                 } catch (e) {
-                    console.error("🚨 Error crítico en Súper Captura:", e);
+                    console.error(e);
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(-1);
                 }
             })();
