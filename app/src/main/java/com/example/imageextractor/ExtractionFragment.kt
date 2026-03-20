@@ -523,8 +523,8 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO E INVENTARIO ---
-                    console.log("🔍 Escaneando estructura de la partida...");
+                    // --- FASE 1: ESCANEO E INVENTARIO (RECURSIVO COMPLETO) ---
+                    console.log("🔍 Escaneando estructura completa de la partida...");
                     const container = document.querySelector('.columna-lista');
                     if (!container) {
                         AndroidBridge.showToast("⚠️ No se encontró la lista lateral (.columna-lista)");
@@ -532,20 +532,24 @@ class ExtractionFragment : Fragment() {
                     }
 
                     const allItems = [];
-                    // Selector más amplio para secciones
-                    const sections = container.querySelectorAll('.ant-collapse-item, [class*="collapse-item"]');
-                    console.log(`Secciones encontradas: ${'$'}{sections.length}`);
+                    // Selector de secciones anidables (ant-collapse puede estar anidado)
+                    const sections = Array.from(container.querySelectorAll('.ant-collapse-item'));
+                    console.log(`Secciones (Asientos/Tomos) encontradas: ${'$'}{sections.length}`);
 
                     sections.forEach((section, sIndex) => {
-                        const header = section.querySelector('.ant-collapse-header, [class*="header"]');
+                        const header = section.querySelector('.ant-collapse-header');
                         const headerText = (header?.innerText || '').trim();
-                        const isCollapsed = !section.classList.contains('ant-collapse-item-active') &&
-                                          !section.querySelector('.ant-collapse-content-active');
 
-                        // Selector más amplio para botones de página
-                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
+                        // Buscamos los botones de página EXCLUSIVOS de esta sección (no de sub-secciones)
+                        const content = section.querySelector('.ant-collapse-content');
+                        if (!content) return;
 
-                        pageButtons.forEach((btn, pIndex) => {
+                        const pageButtons = Array.from(content.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+
+                        // El usuario solicita que dentro de un asiento la captura se haga de forma INVERSA (de la última a la primera)
+                        const reversedButtons = pageButtons.reverse();
+
+                        reversedButtons.forEach((btn, pIndex) => {
                             const btnText = (btn.innerText || '').trim();
                             const pageNumMatch = btnText.match(/(\d+)/);
                             const pageNum = pageNumMatch ? pageNumMatch[1] : (pIndex + 1);
@@ -553,7 +557,7 @@ class ExtractionFragment : Fragment() {
                             allItems.push({
                                 element: btn,
                                 header: header,
-                                isCollapsed: isCollapsed,
+                                isCollapsed: !section.classList.contains('ant-collapse-item-active'),
                                 sectionText: headerText,
                                 pageText: btnText,
                                 pageNum: pageNum,
@@ -562,10 +566,10 @@ class ExtractionFragment : Fragment() {
                         });
                     });
 
-                    // Si no hay secciones o botones dentro de secciones, intentar buscar botones directos
+                    // Si no hay secciones, buscar botones directos (Fallback)
                     if (allItems.length === 0) {
-                        const directButtons = container.querySelectorAll('.pagina .boton-pagina, a.boton-pagina, [class*="boton-pagina"]');
-                        directButtons.forEach((btn, idx) => {
+                        const directButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, a.boton-pagina'));
+                        directButtons.reverse().forEach((btn, idx) => {
                              allItems.push({
                                 element: btn,
                                 header: null,
