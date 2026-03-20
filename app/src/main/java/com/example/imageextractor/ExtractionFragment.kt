@@ -521,48 +521,63 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- LÓGICA DE ESCANEO ORIGINAL RECUPERADA Y MEJORADA ---
-                    console.log("🔍 Iniciando Escaneo Exhaustivo...");
-                    const container = document.querySelector('.columna-lista');
-                    if (!container) throw new Error("No se encontró la lista lateral.");
+                    // --- FASE 1: ESCANEO PROFUNDO E INFALIBLE ---
+                    console.log("🔍 Iniciando Escaneo Profundo...");
+                    const allPages = [];
 
-                    // 1. Abrir TODOS los asientos primero para que todos los botones sean visibles
-                    const headers = Array.from(container.querySelectorAll('.ant-collapse-header'));
-                    console.log("Abriendo " + headers.length + " bloques...");
-                    for (const h of headers) {
-                        const item = h.closest('.ant-collapse-item');
-                        if (item && !item.classList.contains('ant-collapse-item-active')) {
-                            await robustClick(h);
-                            await sleep(350);
+                    // Intentamos localizar todos los bloques de asientos primero
+                    const sections = Array.from(document.querySelectorAll('.ant-collapse-item, [class*="collapse-item"]'));
+                    console.log("Bloques detectados: " + sections.length);
+
+                    if (sections.length > 0) {
+                        // RECORRIDO POR BLOQUES: Abrimos y escaneamos uno por uno
+                        for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+                            const section = sections[sIdx];
+                            const header = section.querySelector('.ant-collapse-header, [class*="header"]');
+                            const headerText = header ? header.innerText.trim() : ("Asiento " + (sIdx + 1));
+
+                            // 1. Asegurar que este bloque está abierto
+                            const isActive = section.classList.contains('ant-collapse-item-active') ||
+                                           section.querySelector('.ant-collapse-content-active');
+
+                            if (!isActive && header) {
+                                await robustClick(header);
+                                await sleep(600); // Tiempo extra para renderizado de AntD
+                            }
+
+                            // 2. Buscar botones de página SOLO dentro de este bloque
+                            const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
+                            console.log("Hojas en " + headerText + ": " + pageButtons.length);
+
+                            // Invertimos las hojas de este asiento
+                            pageButtons.reverse().forEach((btn, pIdx) => {
+                                allPages.push({
+                                    element: btn,
+                                    header: header,
+                                    sectionName: headerText,
+                                    id: "S" + sIdx + "P" + pIdx
+                                });
+                            });
                         }
                     }
 
-                    // 2. Obtener la lista agrupada (mismo estilo que showPageListOverlay)
-                    const allPages = [];
-                    const sections = Array.from(container.querySelectorAll('.ant-collapse-item'));
-
-                    sections.forEach((section, sIdx) => {
-                        const header = section.querySelector('.ant-collapse-header');
-                        const headerText = header ? header.innerText.trim() : "Sección " + sIdx;
-
-                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-
-                        // Captura inversa dentro del asiento (como pidió el usuario)
-                        const reversedButtons = pageButtons.reverse();
-
-                        reversedButtons.forEach((btn, pIdx) => {
-                            allPages.push({
+                    // ESCANEO DE EMERGENCIA: Si no hay bloques o no encontramos páginas en bloques, buscar todo
+                    if (allPages.length === 0) {
+                        console.log("Ejecutando escaneo de emergencia...");
+                        const directButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
+                        directButtons.reverse().forEach((btn, idx) => {
+                             allPages.push({
                                 element: btn,
-                                header: header,
-                                sectionName: headerText,
-                                id: "S" + sIdx + "P" + pIdx
+                                header: null,
+                                sectionName: "General",
+                                id: "E" + idx
                             });
                         });
-                    });
+                    }
 
                     const total = allPages.length;
                     if (total === 0) {
-                        AndroidBridge.showToast("⚠️ No se encontraron páginas después del escaneo.");
+                        AndroidBridge.showToast("⚠️ No se detectó ninguna hoja en la página.");
                         AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
