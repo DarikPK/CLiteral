@@ -549,15 +549,23 @@ class ExtractionFragment : Fragment() {
                             const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
                             console.log("Hojas en " + headerText + ": " + pageButtons.length);
 
-                            // Invertimos las hojas de este asiento
-                            pageButtons.reverse().forEach((btn, pIdx) => {
+                            // Invertimos las hojas de este asiento para el orden solicitado
+                            const reversedButtons = pageButtons.reverse();
+                            for (let pIdx = 0; pIdx < reversedButtons.length; pIdx++) {
+                                const btn = reversedButtons[pIdx];
+                                const uniqueId = "page-target-" + sIdx + "-" + pIdx;
+
+                                // MARCAMOS EL BOTÓN: Le asignamos un ID único en el navegador
+                                btn.setAttribute('data-scan-id', uniqueId);
+
                                 allPages.push({
                                     element: btn,
                                     header: header,
                                     sectionName: headerText,
+                                    scanId: uniqueId,
                                     id: "S" + sIdx + "P" + pIdx
                                 });
-                            });
+                            }
                         }
                     }
 
@@ -565,14 +573,20 @@ class ExtractionFragment : Fragment() {
                     if (allPages.length === 0) {
                         console.log("Ejecutando escaneo de emergencia...");
                         const directButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
-                        directButtons.reverse().forEach((btn, idx) => {
-                             allPages.push({
+                        const reversedDirect = directButtons.reverse();
+                        for (let idx = 0; idx < reversedDirect.length; idx++) {
+                            const btn = reversedDirect[idx];
+                            const uniqueId = "page-target-emergency-" + idx;
+                            btn.setAttribute('data-scan-id', uniqueId);
+
+                            allPages.push({
                                 element: btn,
                                 header: null,
                                 sectionName: "General",
+                                scanId: uniqueId,
                                 id: "E" + idx
                             });
-                        });
+                        }
                     }
 
                     const total = allPages.length;
@@ -585,7 +599,7 @@ class ExtractionFragment : Fragment() {
                     AndroidBridge.showToast("✅ Escaneo completo: " + total + " hojas detectadas.");
                     let captureCount = 0;
 
-                    // --- FASE DE CAPTURA ---
+                    // --- FASE DE CAPTURA CON VALIDACIÓN POR MARCADO ---
                     for (let i = 0; i < total; i++) {
                         const page = allPages[i];
                         const hojaNumero = total - i;
@@ -596,10 +610,38 @@ class ExtractionFragment : Fragment() {
 
                         while (!captured && attempts < 3) {
                             attempts++;
+
+                            // 1. Si el bloque está cerrado, lo abrimos
+                            if (page.header) {
+                                const parentSection = page.header.closest('.ant-collapse-item');
+                                if (parentSection && !parentSection.classList.contains('ant-collapse-item-active')) {
+                                    await robustClick(page.header);
+                                    await sleep(400);
+                                }
+                            }
+
+                            // 2. Hacemos clic en el botón marcado
                             await robustClick(page.element);
 
-                            // Validación simple: ¿está marcado?
-                            await sleep(500);
+                            // 3. VALIDACIÓN POR MARCADO: Esperamos a que EL BOTÓN ESPECÍFICO sea el seleccionado
+                            let isTargetSelected = false;
+                            const selectStart = Date.now();
+                            while (Date.now() - selectStart < 4000) {
+                                // Buscamos quién tiene la clase de seleccionado y verificamos si es nuestro ID marcado
+                                const activeBtn = document.querySelector('.boton-pagina-seleccionado, [class*="seleccionado"]');
+                                if (activeBtn && activeBtn.getAttribute('data-scan-id') === page.scanId) {
+                                    isTargetSelected = true;
+                                    break;
+                                }
+                                await sleep(200);
+                            }
+
+                            if (!isTargetSelected && attempts < 3) {
+                                console.warn("Validación de selección fallida para " + page.scanId + ". Reintentando clic...");
+                                continue;
+                            }
+
+                            // 4. Captura del canvas (con el botón ya validado)
                             const canvas = await waitForCanvas(7000);
 
                             if (canvas) {
