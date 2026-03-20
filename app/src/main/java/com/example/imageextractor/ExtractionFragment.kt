@@ -477,21 +477,21 @@ class ExtractionFragment : Fragment() {
 
         deleteExistingCaptures(numeroPartida)
 
-        Toast.makeText(context, "🚀 Iniciando Escaneo y Captura Completa...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "🚀 Iniciando Captura Validada...", Toast.LENGTH_SHORT).show()
         val script = """
             (async () => {
-                const numeroPartida = "$numeroPartida";
+                const nPartida = "$numeroPartida";
                 try {
                     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-                    async function robustClick(element) {
-                        if (!element) return false;
+                    async function robustClick(el) {
+                        if (!el) return false;
                         for (let i = 0; i < 3; i++) {
                             try {
-                                if (!document.body.contains(element)) return false;
-                                element.scrollIntoView({ block: 'center' });
+                                if (!document.body.contains(el)) return false;
+                                el.scrollIntoView({ block: 'center' });
                                 await sleep(150);
-                                element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                                el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                                 return true;
                             } catch (e) { await sleep(200); }
                         }
@@ -499,8 +499,8 @@ class ExtractionFragment : Fragment() {
                     }
 
                     async function waitForCanvas(timeout = 8000) {
-                        const startTime = Date.now();
-                        while (Date.now() - startTime < timeout) {
+                        const start = Date.now();
+                        while (Date.now() - start < timeout) {
                             const loading = document.querySelector('.ant-spin-spinning, .ant-loading-mask, .ant-spin-blur');
                             const canvas = document.querySelector('canvas:not([style*="display: none"])');
                             if (!loading && canvas && canvas.width > 10 && canvas.height > 10) {
@@ -521,78 +521,62 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO RECURSIVO POR BLOQUE ---
-                    console.log("🔍 Iniciando Escaneo Profundo por Asientos...");
+                    // --- FASE 1: ESCANEO Y APERTURA ---
+                    console.log("🔍 Escaneando bloques...");
                     const allPages = [];
+                    const blocks = Array.from(document.querySelectorAll('.ant-collapse-item'));
 
-                    // 1. Obtener todos los bloques de asientos y tomos
-                    const sections = Array.from(document.querySelectorAll('.ant-collapse-item'));
+                    for (let bIdx = 0; bIdx < blocks.length; bIdx++) {
+                        const block = blocks[bIdx];
+                        const header = block.querySelector('.ant-collapse-header');
 
-                    // 2. Invertir las secciones: empezamos por la de más abajo (más antigua)
-                    const reversedSections = sections.reverse();
-
-                    for (let sIdx = 0; sIdx < reversedSections.length; sIdx++) {
-                        const section = reversedSections[sIdx];
-                        const header = section.querySelector('.ant-collapse-header');
-
-                        // Aseguramos que el bloque esté abierto para leer sus hojas
-                        if (header && !section.classList.contains('ant-collapse-item-active')) {
+                        if (header && !block.classList.contains('ant-collapse-item-active')) {
                             await robustClick(header);
-                            await sleep(500);
+                            await sleep(600);
                         }
 
-                        // 3. Obtener las hojas de ESTE asiento/bloque
-                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        const pageButtons = Array.from(block.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
 
-                        // Invertimos las hojas: empezamos por la última del asiento
-                        const reversedButtons = pageButtons.reverse();
+                        // INVERSIÓN: Capturamos de la última a la primera hoja de este asiento
+                        const reversedInBlock = pageButtons.reverse();
 
-                        for (let pIdx = 0; pIdx < reversedButtons.length; pIdx++) {
-                            const btn = reversedButtons[pIdx];
-                            const uniqueId = "page-uid-" + sIdx + "-" + pIdx;
-
-                            // MARCADO DIGITAL
-                            btn.setAttribute('data-scan-id', uniqueId);
+                        for (let pIdx = 0; pIdx < reversedInBlock.length; pIdx++) {
+                            const btn = reversedInBlock[pIdx];
+                            const uid = "uid-" + bIdx + "-" + pIdx;
+                            btn.setAttribute('data-scan-id', uid);
 
                             allPages.push({
                                 element: btn,
                                 header: header,
-                                scanId: uniqueId,
-                                id: "S" + sIdx + "P" + pIdx
+                                scanId: uid,
+                                label: btn.innerText.trim()
                             });
                         }
                     }
 
-                    // ESCANEO DE EMERGENCIA: Si no se detectaron bloques, buscar botones sueltos
                     if (allPages.length === 0) {
-                        const rawButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                        rawButtons.reverse().forEach((btn, idx) => {
-                            const uniqueId = "emergency-uid-" + idx;
-                            btn.setAttribute('data-scan-id', uniqueId);
-                            allPages.push({
-                                element: btn,
-                                header: null,
-                                scanId: uniqueId,
-                                id: "E-" + idx
-                            });
+                        const raw = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        raw.reverse().forEach((btn, idx) => {
+                            const uid = "e-uid-" + idx;
+                            btn.setAttribute('data-scan-id', uid);
+                            allPages.push({ element: btn, header: null, scanId: uid, label: btn.innerText.trim() });
                         });
                     }
 
                     const total = allPages.length;
                     if (total === 0) {
-                        AndroidBridge.showToast("⚠️ No se detectó ninguna hoja en la página.");
+                        AndroidBridge.showToast("⚠️ No se encontraron páginas.");
                         AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
 
-                    AndroidBridge.showToast("✅ Escaneo completo: " + total + " hojas detectadas.");
-                    let captureCount = 0;
+                    AndroidBridge.showToast("✅ Escaneo: " + total + " hojas detectadas.");
+                    let count = 0;
 
-                    // --- FASE DE CAPTURA CON VALIDACIÓN POR MARCADO ---
+                    // --- FASE 2: CAPTURA ---
                     for (let i = 0; i < total; i++) {
                         const page = allPages[i];
-                        const hojaNumero = total - i;
-                        const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                        const filename = nPartida + "-Hoja " + (i + 1) + ".png";
 
                         let attempts = 0;
                         let captured = false;
@@ -600,38 +584,38 @@ class ExtractionFragment : Fragment() {
                         while (!captured && attempts < 3) {
                             attempts++;
 
-                            // 1. Si el bloque está cerrado, lo abrimos
                             if (page.header) {
-                                const parentSection = page.header.closest('.ant-collapse-item');
-                                if (parentSection && !parentSection.classList.contains('ant-collapse-item-active')) {
+                                const block = page.header.closest('.ant-collapse-item');
+                                if (block && !block.classList.contains('ant-collapse-item-active')) {
                                     await robustClick(page.header);
-                                    await sleep(400);
+                                    await sleep(500);
                                 }
                             }
 
-                            // 2. Hacemos clic en el botón marcado
                             await robustClick(page.element);
 
-                            // 3. VALIDACIÓN POR MARCADO: Esperamos a que EL BOTÓN ESPECÍFICO sea el seleccionado
-                            let isTargetSelected = false;
-                            const selectStart = Date.now();
-                            while (Date.now() - selectStart < 4000) {
-                                // Buscamos quién tiene la clase de seleccionado y verificamos si es nuestro ID marcado
+                            // VALIDACIÓN: Identidad + Texto + Carga
+                            let isSync = false;
+                            const syncStart = Date.now();
+                            const targetText = page.label.toUpperCase();
+
+                            while (Date.now() - syncStart < 5000) {
                                 const activeBtn = document.querySelector('.boton-pagina-seleccionado, [class*="seleccionado"]');
-                                if (activeBtn && activeBtn.getAttribute('data-scan-id') === page.scanId) {
-                                    isTargetSelected = true;
+                                const subtitle = (document.querySelector('.visor-subtitle')?.innerText || "").toUpperCase();
+                                const spinner = document.querySelector('.ant-spin-spinning, .ant-loading-mask');
+
+                                const idOK = activeBtn && activeBtn.getAttribute('data-scan-id') === page.scanId;
+                                const textOK = subtitle.includes(targetText) || subtitle.length > 15;
+
+                                if (idOK && textOK && !spinner) {
+                                    isSync = true;
                                     break;
                                 }
-                                await sleep(200);
+                                await sleep(250);
                             }
 
-                            if (!isTargetSelected && attempts < 3) {
-                                console.warn("Validación de selección fallida para " + page.scanId + ". Reintentando clic...");
-                                continue;
-                            }
-
-                            // 4. Captura del canvas (con el botón ya validado)
-                            const canvas = await waitForCanvas(7000);
+                            await sleep(500); // Asentamiento
+                            const canvas = await waitForCanvas(8000);
 
                             if (canvas) {
                                 try {
@@ -641,7 +625,7 @@ class ExtractionFragment : Fragment() {
                                     }
                                     await sleep(100);
                                     downloadDataUrl(dataUrl, filename);
-                                    captureCount++;
+                                    count++;
                                     captured = true;
                                     await sleep(400);
                                 } catch (e) { console.error(e); }
@@ -650,7 +634,7 @@ class ExtractionFragment : Fragment() {
                     }
 
                     if (typeof AndroidBridge !== 'undefined') {
-                        AndroidBridge.onAutoCaptureFinished(captureCount);
+                        AndroidBridge.onAutoCaptureFinished(count);
                     }
                 } catch (e) {
                     console.error(e);
