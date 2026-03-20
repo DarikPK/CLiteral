@@ -526,21 +526,27 @@ class ExtractionFragment : Fragment() {
                     // --- FASE 1: ESCANEO E INVENTARIO ---
                     console.log("🔍 Escaneando estructura de la partida...");
                     const container = document.querySelector('.columna-lista');
-                    if (!container) throw new Error("No se encontró el contenedor de la lista.");
+                    if (!container) {
+                        AndroidBridge.showToast("⚠️ No se encontró la lista lateral (.columna-lista)");
+                        throw new Error("No se encontró el contenedor de la lista.");
+                    }
 
                     const allItems = [];
-                    const sections = container.querySelectorAll(':scope > .ant-collapse > .ant-collapse-item, :scope > div.ant-collapse-item');
+                    // Selector más amplio para secciones
+                    const sections = container.querySelectorAll('.ant-collapse-item, [class*="collapse-item"]');
+                    console.log(`Secciones encontradas: ${'$'}{sections.length}`);
 
                     sections.forEach((section, sIndex) => {
-                        const header = section.querySelector('.ant-collapse-header');
+                        const header = section.querySelector('.ant-collapse-header, [class*="header"]');
                         const headerText = (header?.innerText || '').trim();
-                        const isCollapsed = !section.classList.contains('ant-collapse-item-active');
+                        const isCollapsed = !section.classList.contains('ant-collapse-item-active') &&
+                                          !section.querySelector('.ant-collapse-content-active');
 
-                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                        // Selector más amplio para botones de página
+                        const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
 
                         pageButtons.forEach((btn, pIndex) => {
                             const btnText = (btn.innerText || '').trim();
-                            // Intentar extraer el número de página/folio del botón para validación
                             const pageNumMatch = btnText.match(/(\d+)/);
                             const pageNum = pageNumMatch ? pageNumMatch[1] : (pIndex + 1);
 
@@ -551,21 +557,35 @@ class ExtractionFragment : Fragment() {
                                 sectionText: headerText,
                                 pageText: btnText,
                                 pageNum: pageNum,
-                                // Etiqueta esperada en el subtítulo del visor (Ej: "Asiento N°: 1 - Página 1")
-                                // Sunarp suele normalizar esto, ajustamos la lógica de validación abajo.
                                 id: `S${'$'}{sIndex}P${'$'}{pIndex}`
                             });
                         });
                     });
 
-                    // Invertir para capturar de más reciente a más antiguo si es necesario,
-                    // pero el usuario prefiere la "copia literal completa", así que seguimos el orden del inventario.
+                    // Si no hay secciones o botones dentro de secciones, intentar buscar botones directos
+                    if (allItems.length === 0) {
+                        const directButtons = container.querySelectorAll('.pagina .boton-pagina, a.boton-pagina, [class*="boton-pagina"]');
+                        directButtons.forEach((btn, idx) => {
+                             allItems.push({
+                                element: btn,
+                                header: null,
+                                isCollapsed: false,
+                                sectionText: "General",
+                                pageText: btn.innerText.trim(),
+                                pageNum: (idx + 1),
+                                id: `D${'$'}{idx}`
+                            });
+                        });
+                    }
+
                     const total = allItems.length;
                     if (total === 0) {
+                        AndroidBridge.showToast("⚠️ No se detectaron botones de página.");
                         AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
 
+                    AndroidBridge.showToast(`📋 Partida escaneada: ${'$'}{total} páginas encontradas.`);
                     console.log(`📋 Inventario completado: ${'$'}{total} páginas detectadas.`);
                     let captureCount = 0;
 
@@ -595,19 +615,22 @@ class ExtractionFragment : Fragment() {
                             await robustClick(item.element);
 
                             // 3. VALIDACIÓN DINÁMICA
-                            // Esperamos a que el subtítulo del visor contenga info de la sección o página
                             const validationStart = Date.now();
-                            while (Date.now() - validationStart < 5000) {
-                                const subtitle = (document.querySelector('.visor-subtitle')?.innerText || "").toUpperCase();
+                            while (Date.now() - validationStart < 6000) {
+                                const subtitleEl = document.querySelector('.visor-subtitle');
+                                const subtitleText = (subtitleEl?.innerText || "").toUpperCase();
+
+                                // Un botón se considera seleccionado si tiene la clase o su padre la tiene
                                 const isSelected = item.element.classList.contains('boton-pagina-seleccionado') ||
                                                  item.element.parentElement.classList.contains('boton-pagina-seleccionado');
 
-                                // Si el subtítulo menciona el número de asiento o página, y el botón está marcado:
-                                if (isSelected && (subtitle.includes(item.pageNum.toString()) || subtitle.length > 5)) {
+                                // Consideramos validado si el botón está marcado Y el subtítulo tiene contenido
+                                // (A veces el subtítulo no tiene el número exacto sino el texto completo del asiento)
+                                if (isSelected && subtitleText.length > 3) {
                                     validated = true;
                                     break;
                                 }
-                                await sleep(200);
+                                await sleep(300);
                             }
 
                             if (validated) {
