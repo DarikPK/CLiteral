@@ -523,64 +523,55 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO E INVENTARIO (RECURSIVO COMPLETO) ---
+                    // --- FASE 1: ESCANEO E INVENTARIO ULTRA-ROBUSTO ---
                     console.log("🔍 Escaneando estructura completa de la partida...");
                     const container = document.querySelector('.columna-lista');
                     if (!container) {
-                        AndroidBridge.showToast("⚠️ No se encontró la lista lateral (.columna-lista)");
+                        AndroidBridge.showToast("⚠️ No se encontró la lista lateral.");
                         throw new Error("No se encontró el contenedor de la lista.");
                     }
 
                     const allItems = [];
-                    // Selector de secciones anidables (ant-collapse puede estar anidado)
-                    const sections = Array.from(container.querySelectorAll('.ant-collapse-item'));
-                    console.log(`Secciones (Asientos/Tomos) encontradas: ${'$'}{sections.length}`);
+                    // 1. Obtener TODOS los botones de página primero, sin importar la sección
+                    const rawButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
 
-                    sections.forEach((section, sIndex) => {
-                        const header = section.querySelector('.ant-collapse-header');
-                        const headerText = (header?.innerText || '').trim();
+                    // 2. Agruparlos por su asiento correspondiente
+                    const seatsMap = new Map();
+                    rawButtons.forEach(btn => {
+                        // Buscar el ancestro que representa el asiento/bloque
+                        const section = btn.closest('.ant-collapse-item, [class*="collapse-item"]');
+                        const header = section ? section.querySelector('.ant-collapse-header, [class*="header"]') : null;
+                        const headerText = header ? header.innerText.trim() : "General";
+                        const sectionId = section ? section.innerText.split('\n')[0] : "root"; // ID basado en el primer texto del bloque
 
-                        // Buscamos los botones de página EXCLUSIVOS de esta sección (no de sub-secciones)
-                        const content = section.querySelector('.ant-collapse-content');
-                        if (!content) return;
+                        if (!seatsMap.has(sectionId)) {
+                            seatsMap.set(sectionId, {
+                                header: header,
+                                section: section,
+                                name: headerText,
+                                buttons: []
+                            });
+                        }
+                        seatsMap.get(sectionId).buttons.push(btn);
+                    });
 
-                        const pageButtons = Array.from(content.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-
-                        // El usuario solicita que dentro de un asiento la captura se haga de forma INVERSA (de la última a la primera)
-                        const reversedButtons = pageButtons.reverse();
-
-                        reversedButtons.forEach((btn, pIndex) => {
-                            const btnText = (btn.innerText || '').trim();
+                    // 3. Procesar los asientos en el orden en que aparecen y sus botones de forma inversa
+                    seatsMap.forEach((seat, id) => {
+                        const reversedButtons = seat.buttons.reverse();
+                        reversedButtons.forEach((btn, bIndex) => {
+                            const btnText = btn.innerText.trim();
                             const pageNumMatch = btnText.match(/(\d+)/);
-                            const pageNum = pageNumMatch ? pageNumMatch[1] : (pIndex + 1);
-
                             allItems.push({
                                 element: btn,
-                                header: header,
-                                isCollapsed: !section.classList.contains('ant-collapse-item-active'),
-                                sectionText: headerText,
+                                header: seat.header,
+                                isCollapsed: seat.section ? !seat.section.classList.contains('ant-collapse-item-active') : false,
+                                sectionText: seat.name,
                                 pageText: btnText,
-                                pageNum: pageNum,
-                                id: `S${'$'}{sIndex}P${'$'}{pIndex}`
+                                pageNum: pageNumMatch ? pageNumMatch[1] : (bIndex + 1),
+                                id: `B-${id}-${bIndex}`
                             });
                         });
                     });
-
-                    // Si no hay secciones, buscar botones directos (Fallback)
-                    if (allItems.length === 0) {
-                        const directButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, a.boton-pagina'));
-                        directButtons.reverse().forEach((btn, idx) => {
-                             allItems.push({
-                                element: btn,
-                                header: null,
-                                isCollapsed: false,
-                                sectionText: "General",
-                                pageText: btn.innerText.trim(),
-                                pageNum: (idx + 1),
-                                id: `D${'$'}{idx}`
-                            });
-                        });
-                    }
 
                     const total = allItems.length;
                     if (total === 0) {
@@ -589,8 +580,8 @@ class ExtractionFragment : Fragment() {
                         return;
                     }
 
-                    AndroidBridge.showToast(`📋 Partida escaneada: ${'$'}{total} páginas encontradas.`);
-                    console.log(`📋 Inventario completado: ${'$'}{total} páginas detectadas.`);
+                    AndroidBridge.showToast(`📋 Escaneado: ${'$'}{seatsMap.size} asientos, ${'$'}{total} hojas.`);
+                    console.log(`📋 Inventario: ${'$'}{seatsMap.size} bloques, ${'$'}{total} páginas totales.`);
                     let captureCount = 0;
 
                     // --- FASE 2: CAPTURA CON VALIDACIÓN ---
