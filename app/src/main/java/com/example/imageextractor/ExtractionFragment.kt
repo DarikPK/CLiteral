@@ -521,47 +521,32 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO Y APERTURA ---
-                    console.log("🔍 Escaneando bloques...");
-                    const allPages = [];
+                    // --- FASE 1: ESCANEO Y APERTURA TOTAL ---
+                    console.log("🔍 Iniciando Escaneo y Apertura...");
                     const blocks = Array.from(document.querySelectorAll('.ant-collapse-item'));
-
-                    for (let bIdx = 0; bIdx < blocks.length; bIdx++) {
-                        const block = blocks[bIdx];
+                    for (const block of blocks) {
                         const header = block.querySelector('.ant-collapse-header');
-
                         if (header && !block.classList.contains('ant-collapse-item-active')) {
                             await robustClick(header);
-                            await sleep(600);
-                        }
-
-                        const pageButtons = Array.from(block.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-
-                        // INVERSIÓN: Capturamos de la última a la primera hoja de este asiento
-                        const reversedInBlock = pageButtons.reverse();
-
-                        for (let pIdx = 0; pIdx < reversedInBlock.length; pIdx++) {
-                            const btn = reversedInBlock[pIdx];
-                            const uid = "uid-" + bIdx + "-" + pIdx;
-                            btn.setAttribute('data-scan-id', uid);
-
-                            allPages.push({
-                                element: btn,
-                                header: header,
-                                scanId: uid,
-                                label: btn.innerText.trim()
-                            });
+                            await sleep(500);
                         }
                     }
 
-                    if (allPages.length === 0) {
-                        const raw = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
-                        raw.reverse().forEach((btn, idx) => {
-                            const uid = "e-uid-" + idx;
-                            btn.setAttribute('data-scan-id', uid);
-                            allPages.push({ element: btn, header: null, scanId: uid, label: btn.innerText.trim() });
-                        });
-                    }
+                    // --- FASE 2: INVENTARIO E INVERSIÓN (Orden Inicial) ---
+                    // Obtenemos todos los botones en orden DOM (de arriba a abajo)
+                    const rawButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+
+                    // Invertimos la lista completa para capturar desde abajo hacia arriba (más antiguo a más reciente)
+                    const allPages = rawButtons.reverse().map((btn, idx) => {
+                        const uid = "scan-idx-" + idx;
+                        btn.setAttribute('data-scan-id', uid);
+                        return {
+                            element: btn,
+                            header: btn.closest('.ant-collapse-item')?.querySelector('.ant-collapse-header'),
+                            scanId: uid,
+                            label: btn.innerText.trim()
+                        };
+                    });
 
                     const total = allPages.length;
                     if (total === 0) {
@@ -570,13 +555,14 @@ class ExtractionFragment : Fragment() {
                         return;
                     }
 
-                    AndroidBridge.showToast("✅ Escaneo: " + total + " hojas detectadas.");
+                    AndroidBridge.showToast("✅ Escaneo Completo: " + total + " hojas.");
                     let count = 0;
 
-                    // --- FASE 2: CAPTURA ---
+                    // --- FASE 3: CAPTURA CON NOMENCLATURA ORIGINAL (total - i) ---
                     for (let i = 0; i < total; i++) {
                         const page = allPages[i];
-                        const filename = nPartida + "-Hoja " + (i + 1) + ".png";
+                        // i=0 (fondo) -> total | i=total-1 (cima) -> 1
+                        const filename = nPartida + "-Hoja " + (total - i) + ".png";
 
                         let attempts = 0;
                         let captured = false;
