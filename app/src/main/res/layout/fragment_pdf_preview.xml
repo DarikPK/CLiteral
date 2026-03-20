@@ -79,7 +79,7 @@
             android:id="@+id/pdf_page_zoomable_image_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#CCCCCC" />
+            android:background="@color/preview_background" />
 
         <com.example.imageextractor.StampOverlayView
             android:id="@+id/stamp_overlay_view"
