@@ -521,72 +521,46 @@ class ExtractionFragment : Fragment() {
                         document.body.removeChild(a);
                     }
 
-                    // --- FASE 1: ESCANEO PROFUNDO E INFALIBLE ---
-                    console.log("🔍 Iniciando Escaneo Profundo...");
+                    // --- FASE 1: ESCANEO Y APERTURA TOTAL ---
+                    console.log("🔍 Iniciando Apertura Total de Asientos/Tomos...");
                     const allPages = [];
+                    const container = document.querySelector('.columna-lista');
+                    if (!container) throw new Error("No se encontró la columna lateral.");
 
-                    // Intentamos localizar todos los bloques de asientos primero
-                    const sections = Array.from(document.querySelectorAll('.ant-collapse-item, [class*="collapse-item"]'));
-                    console.log("Bloques detectados: " + sections.length);
-
-                    if (sections.length > 0) {
-                        // RECORRIDO POR BLOQUES: Abrimos y escaneamos uno por uno
-                        for (let sIdx = 0; sIdx < sections.length; sIdx++) {
-                            const section = sections[sIdx];
-                            const header = section.querySelector('.ant-collapse-header, [class*="header"]');
-                            const headerText = header ? header.innerText.trim() : ("Asiento " + (sIdx + 1));
-
-                            // 1. Asegurar que este bloque está abierto
-                            const isActive = section.classList.contains('ant-collapse-item-active') ||
-                                           section.querySelector('.ant-collapse-content-active');
-
-                            if (!isActive && header) {
-                                await robustClick(header);
-                                await sleep(600); // Tiempo extra para renderizado de AntD
-                            }
-
-                            // 2. Buscar botones de página SOLO dentro de este bloque
-                            const pageButtons = Array.from(section.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
-                            console.log("Hojas en " + headerText + ": " + pageButtons.length);
-
-                            // Invertimos las hojas de este asiento para el orden solicitado
-                            const reversedButtons = pageButtons.reverse();
-                            for (let pIdx = 0; pIdx < reversedButtons.length; pIdx++) {
-                                const btn = reversedButtons[pIdx];
-                                const uniqueId = "page-target-" + sIdx + "-" + pIdx;
-
-                                // MARCAMOS EL BOTÓN: Le asignamos un ID único en el navegador
-                                btn.setAttribute('data-scan-id', uniqueId);
-
-                                allPages.push({
-                                    element: btn,
-                                    header: header,
-                                    sectionName: headerText,
-                                    scanId: uniqueId,
-                                    id: "S" + sIdx + "P" + pIdx
-                                });
-                            }
+                    // 1. Abrir TODOS los bloques existentes para que todo sea visible
+                    const allBlocks = Array.from(container.querySelectorAll('.ant-collapse-item'));
+                    for (const block of allBlocks) {
+                        const header = block.querySelector('.ant-collapse-header');
+                        if (header && !block.classList.contains('ant-collapse-item-active')) {
+                            await robustClick(header);
+                            await sleep(400);
                         }
                     }
 
-                    // ESCANEO DE EMERGENCIA: Si no hay bloques o no encontramos páginas en bloques, buscar todo
-                    if (allPages.length === 0) {
-                        console.log("Ejecutando escaneo de emergencia...");
-                        const directButtons = Array.from(document.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
-                        const reversedDirect = directButtons.reverse();
-                        for (let idx = 0; idx < reversedDirect.length; idx++) {
-                            const btn = reversedDirect[idx];
-                            const uniqueId = "page-target-emergency-" + idx;
-                            btn.setAttribute('data-scan-id', uniqueId);
+                    // 2. Realizar un inventario de todos los botones ahora que todo está abierto
+                    // Buscamos todos los botones de página en toda la lista lateral
+                    const rawButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
 
-                            allPages.push({
-                                element: btn,
-                                header: null,
-                                sectionName: "General",
-                                scanId: uniqueId,
-                                id: "E" + idx
-                            });
-                        }
+                    // 3. INVERTIR EL ORDEN TOTAL: El usuario quiere recorrer la partida de forma inversa (desde lo más antiguo abajo hasta lo más reciente arriba)
+                    // Nota: Si solo quieres invertir las hojas de cada asiento pero mantener el orden de los asientos, dímelo.
+                    // Pero para "tomos en orden inverso" lo más robusto es invertir la lista completa de lo detectado.
+                    const reversedList = rawButtons.reverse();
+
+                    for (let idx = 0; idx < reversedList.length; idx++) {
+                        const btn = reversedList[idx];
+                        const uniqueId = "page-uid-" + idx;
+                        const block = btn.closest('.ant-collapse-item');
+                        const header = block ? block.querySelector('.ant-collapse-header') : null;
+
+                        // MARCADO DIGITAL
+                        btn.setAttribute('data-scan-id', uniqueId);
+
+                        allPages.push({
+                            element: btn,
+                            header: header,
+                            scanId: uniqueId,
+                            id: "P-" + idx
+                        });
                     }
 
                     const total = allPages.length;
