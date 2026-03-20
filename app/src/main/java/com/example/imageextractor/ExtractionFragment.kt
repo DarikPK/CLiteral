@@ -535,6 +535,15 @@ class ExtractionFragment : Fragment() {
                     // 1. Obtener TODOS los botones de página primero, sin importar la sección
                     const rawButtons = Array.from(container.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina, [class*="boton-pagina"]'));
 
+                    // Si no encontramos botones, forzamos un intento de abrir todas las secciones primero
+                    if (rawButtons.length === 0) {
+                        const closedHeaders = Array.from(container.querySelectorAll('.ant-collapse-item:not(.ant-collapse-item-active) .ant-collapse-header'));
+                        for (const h of closedHeaders) {
+                            await robustClick(h);
+                            await sleep(400);
+                        }
+                    }
+
                     // 2. Agruparlos por su asiento correspondiente
                     const seatsMap = new Map();
                     rawButtons.forEach(btn => {
@@ -556,9 +565,10 @@ class ExtractionFragment : Fragment() {
                     });
 
                     // 3. Procesar los asientos en el orden en que aparecen y sus botones de forma inversa
+                    let seatIndex = 0;
                     seatsMap.forEach((seat, id) => {
                         const reversedButtons = seat.buttons.reverse();
-                        reversedButtons.forEach((btn, bIndex) => {
+                        reversedButtons.forEach((btn, bIdx) => {
                             const btnText = btn.innerText.trim();
                             const pageNumMatch = btnText.match(/(\d+)/);
                             allItems.push({
@@ -567,10 +577,11 @@ class ExtractionFragment : Fragment() {
                                 isCollapsed: seat.section ? !seat.section.classList.contains('ant-collapse-item-active') : false,
                                 sectionText: seat.name,
                                 pageText: btnText,
-                                pageNum: pageNumMatch ? pageNumMatch[1] : (bIndex + 1),
-                                id: `B-${id}-${bIndex}`
+                                pageNum: pageNumMatch ? pageNumMatch[1] : (bIdx + 1),
+                                id: "B-" + seatIndex + "-" + bIdx
                             });
                         });
+                        seatIndex++;
                     });
 
                     const total = allItems.length;
@@ -580,17 +591,14 @@ class ExtractionFragment : Fragment() {
                         return;
                     }
 
-                    AndroidBridge.showToast(`📋 Escaneado: ${'$'}{seatsMap.size} asientos, ${'$'}{total} hojas.`);
-                    console.log(`📋 Inventario: ${'$'}{seatsMap.size} bloques, ${'$'}{total} páginas totales.`);
+                    AndroidBridge.showToast("📋 Escaneado: " + seatsMap.size + " asientos, " + total + " hojas.");
                     let captureCount = 0;
 
                     // --- FASE 2: CAPTURA CON VALIDACIÓN ---
                     for (let i = 0; i < total; i++) {
                         const item = allItems[i];
                         const hojaNumero = total - i; // Numeración inversa para el nombre del archivo (tradicional)
-                        const filename = `${'$'}{numeroPartida}-Hoja ${'$'}{hojaNumero}.png`;
-
-                        console.log(`📸 Procesando ${'$'}{i+1}/${'$'}{total}: ${'$'}{item.sectionText} - ${'$'}{item.pageText}`);
+                        const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
 
                         let validated = false;
                         let attempts = 0;
@@ -602,7 +610,7 @@ class ExtractionFragment : Fragment() {
                             // 1. Asegurar que la sección esté expandida
                             if (item.isCollapsed && item.header) {
                                 await robustClick(item.header);
-                                await sleep(500);
+                                await sleep(600);
                                 item.isCollapsed = false; // Actualizar estado local
                             }
 
@@ -623,7 +631,7 @@ class ExtractionFragment : Fragment() {
                                 await sleep(250);
                             }
 
-                            // 4. ESPERA DE CANVAS (Incluso si la validación de selección falló, intentamos ver si el canvas está listo)
+                            // 4. ESPERA DE CANVAS
                             const canvas = await waitForCanvas(attempts === maxAttempts ? 4000 : 7000);
 
                             if (canvas) {
@@ -635,14 +643,12 @@ class ExtractionFragment : Fragment() {
                                     await sleep(100);
                                     downloadDataUrl(dataUrl, filename);
                                     captureCount++;
-                                    console.log(`✅ Capturada: ${'$'}{filename}`);
                                     validated = true; // Forzamos validado para salir del bucle de intentos
                                     await sleep(500);
                                 } catch (e) {
                                     console.error("Error exportando canvas:", e);
                                 }
                             } else {
-                                console.warn(`⚠️ Intento ${'$'}{attempts}/${'$'}{maxAttempts} fallido para ${'$'}{filename}`);
                                 if (attempts < maxAttempts) {
                                     await sleep(400); // Pequeña pausa antes de reintentar el clic
                                 }
