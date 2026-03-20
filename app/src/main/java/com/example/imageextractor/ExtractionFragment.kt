@@ -616,47 +616,41 @@ class ExtractionFragment : Fragment() {
 
                             // 3. VALIDACIÓN DINÁMICA
                             const validationStart = Date.now();
-                            while (Date.now() - validationStart < 6000) {
-                                const subtitleEl = document.querySelector('.visor-subtitle');
-                                const subtitleText = (subtitleEl?.innerText || "").toUpperCase();
-
-                                // Un botón se considera seleccionado si tiene la clase o su padre la tiene
+                            while (Date.now() - validationStart < 5000) {
                                 const isSelected = item.element.classList.contains('boton-pagina-seleccionado') ||
-                                                 item.element.parentElement.classList.contains('boton-pagina-seleccionado');
+                                                 item.element.parentElement.classList.contains('boton-pagina-seleccionado') ||
+                                                 item.element.querySelector('.boton-pagina-seleccionado');
 
-                                // Consideramos validado si el botón está marcado Y el subtítulo tiene contenido
-                                // (A veces el subtítulo no tiene el número exacto sino el texto completo del asiento)
-                                if (isSelected && subtitleText.length > 3) {
+                                if (isSelected) {
                                     validated = true;
                                     break;
                                 }
-                                await sleep(300);
+                                await sleep(250);
                             }
 
-                            if (validated) {
-                                const canvas = await waitForCanvas();
-                                if (canvas) {
-                                    try {
-                                        const dataUrl = canvas.toDataURL("image/png");
-                                        if (typeof AndroidBridge !== 'undefined') {
-                                            AndroidBridge.setNextDownloadFilename(filename);
-                                        }
-                                        await sleep(100);
-                                        downloadDataUrl(dataUrl, filename);
-                                        captureCount++;
-                                        console.log(`✅ Capturada correctamente: ${'$'}{filename}`);
-                                        await sleep(600); // Pausa de seguridad entre capturas exitosas
-                                    } catch (e) {
-                                        console.error("Error al exportar canvas:", e);
-                                        validated = false; // Reintentar si falló el export
+                            // 4. ESPERA DE CANVAS (Incluso si la validación de selección falló, intentamos ver si el canvas está listo)
+                            const canvas = await waitForCanvas(attempts === maxAttempts ? 4000 : 7000);
+
+                            if (canvas) {
+                                try {
+                                    const dataUrl = canvas.toDataURL("image/png");
+                                    if (typeof AndroidBridge !== 'undefined') {
+                                        AndroidBridge.setNextDownloadFilename(filename);
                                     }
-                                } else {
-                                    console.warn("⚠️ Canvas no cargó a tiempo, reintentando clic...");
-                                    validated = false;
+                                    await sleep(100);
+                                    downloadDataUrl(dataUrl, filename);
+                                    captureCount++;
+                                    console.log(`✅ Capturada: ${'$'}{filename}`);
+                                    validated = true; // Forzamos validado para salir del bucle de intentos
+                                    await sleep(500);
+                                } catch (e) {
+                                    console.error("Error exportando canvas:", e);
                                 }
                             } else {
-                                console.warn(`❌ Falló validación de página (Intento ${'$'}{attempts}/${'$'}{maxAttempts})`);
-                                await sleep(500);
+                                console.warn(`⚠️ Intento ${'$'}{attempts}/${'$'}{maxAttempts} fallido para ${'$'}{filename}`);
+                                if (attempts < maxAttempts) {
+                                    await sleep(400); // Pequeña pausa antes de reintentar el clic
+                                }
                             }
                         }
                     }
