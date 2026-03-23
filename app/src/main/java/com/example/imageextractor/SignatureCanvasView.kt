@@ -332,6 +332,12 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         if (allTracedContours.isEmpty()) return
 
+        // 2.5 Filter and Sort contours
+        // Sort by point count (proxy for length) and take only significant ones (max 7)
+        val sortedContours = allTracedContours
+            .sortedByDescending { it.size }
+            .take(7)
+
         // 3. Normalize and scale to fit our 500x200 canvas
         val contentW = maxX - minX
         val contentH = maxY - minY
@@ -344,7 +350,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         val offsetX = margin + (targetW - contentW * scale) / 2f - minX * scale
         val offsetY = margin + (targetH - contentH * scale) / 2f - minY * scale
 
-        allTracedContours.forEach { contour ->
+        sortedContours.forEach { contour ->
             val path = Path()
             var first = true
             contour.forEach { p ->
@@ -378,30 +384,36 @@ class SignatureCanvasView @JvmOverloads constructor(
         var foundNext = true
         while (foundNext) {
             foundNext = false
-            // Look in 8 directions for next stroke pixel, prioritizing immediate neighbors
-            outer@for (dy in -1..1) {
-                for (dx in -1..1) {
-                    if (dx == 0 && dy == 0) continue
-                    val nx = cx + dx
-                    val ny = cy + dy
-                    if (nx in 0 until w && ny in 0 until h) {
-                        val nIdx = ny * w + nx
-                        val lum = (Color.red(pixels[nIdx]) + Color.green(pixels[nIdx]) + Color.blue(pixels[nIdx])) / 3
-                        if (lum < threshold && !visited[nIdx]) {
-                            visited[nIdx] = true
-                            cx = nx
-                            cy = ny
-                            // Only add point if it's not too close to the last one (subsampling)
-                            if (distSq(contour.last(), PointF(cx.toFloat(), cy.toFloat())) > 16f) {
-                                contour.add(PointF(cx.toFloat(), cy.toFloat()))
+            // Look in a wider range (radius 3) for next stroke pixel to jump gaps
+            outer@for (r in 1..3) {
+                for (dy in -r..r) {
+                    for (dx in -r..r) {
+                        if (Math.abs(dx) < r && Math.abs(dy) < r) continue // Skip inner already checked
+                        val nx = cx + dx
+                        val ny = cy + dy
+                        if (nx in 0 until w && ny in 0 until h) {
+                            val nIdx = ny * w + nx
+                            val lum = (Color.red(pixels[nIdx]) + Color.green(pixels[nIdx]) + Color.blue(pixels[nIdx])) / 3
+                            if (lum < threshold && !visited[nIdx]) {
+                                // Mark all intermediate pixels as visited to avoid double tracing
+                                for (iy in Math.min(cy, ny)..Math.max(cy, ny)) {
+                                    for (ix in Math.min(cx, nx)..Math.max(cx, nx)) {
+                                        visited[iy * w + ix] = true
+                                    }
+                                }
+                                cx = nx
+                                cy = ny
+                                if (distSq(contour.last(), PointF(cx.toFloat(), cy.toFloat())) > 25f) {
+                                    contour.add(PointF(cx.toFloat(), cy.toFloat()))
+                                }
+                                foundNext = true
+                                break@outer
                             }
-                            foundNext = true
-                            break@outer
                         }
                     }
                 }
             }
-            if (contour.size > 500) break
+            if (contour.size > 800) break
         }
     }
 
