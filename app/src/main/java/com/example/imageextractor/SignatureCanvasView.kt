@@ -43,8 +43,12 @@ class SignatureCanvasView @JvmOverloads constructor(
     var mode = Mode.DRAW
         private set
 
-    // Zoom properties
+    // Zoom & Pan properties
     private var scaleFactor = 1.0f
+    private var translateX = 0f
+    private var translateY = 0f
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
     private val matrix = Matrix()
     private val inverseMatrix = Matrix()
 
@@ -52,6 +56,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     private val history = mutableListOf<List<List<PointF>>>()
 
     var isDeleteMode = false
+    private var isFirstGeneration = true
 
     private val signaturePaint = Paint().apply {
         color = Color.parseColor("#2557A8")
@@ -171,6 +176,8 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                lastTouchX = event.x
+                lastTouchY = event.y
                 if (isDeleteMode) {
                     deletePointAt(x, y)
                     return true
@@ -184,16 +191,21 @@ class SignatureCanvasView @JvmOverloads constructor(
                 if (draggedMarker != null) {
                     saveToHistory()
                 }
-                if (draggedMarker == null) {
-                    // Tapped on empty space in edit mode, clear everything and go back to draw mode
-                    switchToDrawMode()
-                }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (draggedMarker != null) {
                     draggedMarker?.set(x, y)
                     regenerateSignature()
+                } else if (scaleFactor > 1.0f) {
+                    // Panning mode: move the canvas
+                    val dx = event.x - lastTouchX
+                    val dy = event.y - lastTouchY
+                    translateX += dx
+                    translateY += dy
+                    lastTouchX = event.x
+                    lastTouchY = event.y
+                    updateMatrix()
                 }
             }
             MotionEvent.ACTION_UP -> {
@@ -211,6 +223,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun switchToEditMode() {
         autoPlaceMarkers()
         drawingPath.reset()
+        isFirstGeneration = true
         regenerateSignature()
         mode = Mode.EDIT
         history.clear()
@@ -220,6 +233,8 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun switchToDrawMode() {
         clearCanvas(switchMode = true)
         scaleFactor = 1.0f
+        translateX = 0f
+        translateY = 0f
         updateMatrix()
     }
 
@@ -244,14 +259,22 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun clearCanvas(switchMode: Boolean = false) {
         markers.clear()
         drawingPath.reset()
+        isFirstGeneration = true
         generateSignaturePath()
         if (switchMode) {
             mode = Mode.DRAW
         }
+        scaleFactor = 1.0f
+        translateX = 0f
+        translateY = 0f
+        updateMatrix()
         invalidate()
     }
 
-    fun regenerateSignature() {
+    fun regenerateSignature(manualRefresh: Boolean = false) {
+        if (manualRefresh) {
+            isFirstGeneration = false
+        }
         generateSignaturePath()
         invalidate()
     }
@@ -263,12 +286,15 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     fun zoomNormal() {
         scaleFactor = 1.0f
+        translateX = 0f
+        translateY = 0f
         updateMatrix()
     }
 
     private fun updateMatrix() {
         matrix.reset()
-        matrix.postScale(scaleFactor, scaleFactor)
+        matrix.setScale(scaleFactor, scaleFactor)
+        matrix.postTranslate(translateX, translateY)
         invalidate()
     }
 
@@ -394,9 +420,10 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
+                val currentRadius = if (isFirstGeneration) 0f else markerRadius
                 val randomPoints = contour.map { marker ->
                     val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * markerRadius
+                    val radius = random.nextDouble() * currentRadius
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
                     val y = marker.y + (radius * Math.sin(angle)).toFloat()
                     PointF(x, y)

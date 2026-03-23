@@ -138,7 +138,7 @@ class SignatureSettingsFragment : Fragment() {
                 saveMarkers()
             } else {
                 // We are in EDIT mode, so the button is "Refresh Signature"
-                binding.signatureCanvasView.regenerateSignature()
+                binding.signatureCanvasView.regenerateSignature(manualRefresh = true)
             }
         }
 
