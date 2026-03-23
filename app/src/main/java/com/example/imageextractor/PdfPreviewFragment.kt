@@ -314,8 +314,7 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        val original = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                        signatureBitmap = makeWhiteTransparent(original)
+                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()

@@ -286,7 +286,16 @@ class SignatureCanvasView @JvmOverloads constructor(
         val pixels = IntArray(traceW * traceH)
         scaledBitmap.getPixels(pixels, 0, traceW, 0, 0, traceW, traceH)
         val visited = BooleanArray(traceW * traceH)
-        val threshold = 128
+
+        // Dynamic thresholding: find min lum to adapt to light signatures
+        var minLum = 255
+        for (p in pixels) {
+            val lum = (Color.red(p) + Color.green(p) + Color.blue(p)) / 3
+            if (lum < minLum) minLum = lum
+        }
+
+        // Use a threshold relative to the darkest point, but with a safe ceiling (180)
+        val threshold = Math.min(180, minLum + 50)
 
         val allTracedContours = mutableListOf<List<PointF>>()
         var minX = Float.MAX_VALUE
