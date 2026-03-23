@@ -44,6 +44,12 @@ class SignatureCanvasView @JvmOverloads constructor(
     var mode = Mode.DRAW
         private set
 
+    // Coordinate System (Logical: 500x200)
+    private val LOGICAL_WIDTH = 500f
+    private val LOGICAL_HEIGHT = 200f
+    private val baseMatrix = Matrix()
+    private val inverseBaseMatrix = Matrix()
+
     // Zoom & Pan properties
     private var scaleFactor = 1.0f
     private var translateX = 0f
@@ -104,7 +110,13 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja un fondo para que el área del lienzo sea visible
         canvas.drawColor(Color.LTGRAY)
 
+        // Setup base scale to fit logical coords into physical view
+        baseMatrix.reset()
+        baseMatrix.setScale(width / LOGICAL_WIDTH, height / LOGICAL_HEIGHT)
+        baseMatrix.invert(inverseBaseMatrix)
+
         canvas.save()
+        canvas.concat(baseMatrix)
         canvas.concat(matrix)
 
         // Dibuja el trazo del usuario
@@ -135,10 +147,15 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        // Transform touch coordinates based on the current matrix
-        val pts = floatArrayOf(event.x, event.y)
+        // 1. Transform from physical to logical coordinates (500x200)
+        val logicalPts = floatArrayOf(event.x, event.y)
+        inverseBaseMatrix.mapPoints(logicalPts)
+
+        // 2. Transform based on zoom/pan matrix
+        val pts = floatArrayOf(logicalPts[0], logicalPts[1])
         matrix.invert(inverseMatrix)
         inverseMatrix.mapPoints(pts)
+
         val transformedX = pts[0]
         val transformedY = pts[1]
 
@@ -306,8 +323,8 @@ class SignatureCanvasView @JvmOverloads constructor(
         val contentH = maxY - minY
 
         val margin = 10f
-        val targetW = 500f - 2 * margin
-        val targetH = 200f - 2 * margin
+        val targetW = LOGICAL_WIDTH - 2 * margin
+        val targetH = LOGICAL_HEIGHT - 2 * margin
 
         val scale = Math.min(targetW / contentW, targetH / contentH)
         val offsetX = margin + (targetW - contentW * scale) / 2f - minX * scale
@@ -411,9 +428,9 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Clamp translations to prevent sliding out of view
         if (scaleFactor > 1f) {
             val maxTX = 0f
-            val minTX = width * (1f - scaleFactor)
+            val minTX = LOGICAL_WIDTH * (1f - scaleFactor)
             val maxTY = 0f
-            val minTY = height * (1f - scaleFactor)
+            val minTY = LOGICAL_HEIGHT * (1f - scaleFactor)
 
             translateX = Math.max(minTX, Math.min(maxTX, translateX))
             translateY = Math.max(minTY, Math.min(maxTY, translateY))
