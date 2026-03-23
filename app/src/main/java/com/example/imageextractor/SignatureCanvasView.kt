@@ -261,42 +261,76 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun traceBitmap(bitmap: Bitmap) {
         clearCanvas()
 
-        // 1. Resize bitmap to canvas coordinates (500x200) for consistent tracing
-        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 500, 200, true)
+        // 1. Work with a reasonable resolution for tracing
+        val traceW = 1000
+        val traceH = (traceW * (bitmap.height.toFloat() / bitmap.width.toFloat())).toInt()
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, traceW, traceH, true)
 
-        // 2. Scan pixels to find "dark" points (strokes)
-        val width = scaledBitmap.width
-        val height = scaledBitmap.height
-        val pixels = IntArray(width * height)
-        scaledBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        val pixels = IntArray(traceW * traceH)
+        scaledBitmap.getPixels(pixels, 0, traceW, 0, 0, traceW, traceH)
+        val visited = BooleanArray(traceW * traceH)
+        val threshold = 128
 
-        val visited = BooleanArray(width * height)
-        val threshold = 128 // Lum threshold for stroke
+        val allTracedContours = mutableListOf<List<PointF>>()
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
 
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                val idx = y * width + x
-                val color = pixels[idx]
-                val lum = (Color.red(color) + Color.green(color) + Color.blue(color)) / 3
+        // 2. Initial trace to find bounds
+        for (y in 0 until traceH) {
+            for (x in 0 until traceW) {
+                val idx = y * traceW + x
+                val lum = (Color.red(pixels[idx]) + Color.green(pixels[idx]) + Color.blue(pixels[idx])) / 3
 
                 if (lum < threshold && !visited[idx]) {
-                    // Start tracing a new contour from this point
                     val contour = mutableListOf<PointF>()
-                    traceContour(x, y, width, height, pixels, visited, threshold, contour)
+                    traceContour(x, y, traceW, traceH, pixels, visited, threshold, contour)
                     if (contour.size > 5) {
-                        // Apply Intelligent Marking to this traced contour
-                        val path = Path()
-                        path.moveTo(contour[0].x, contour[0].y)
-                        for (i in 1 until contour.size) path.lineTo(contour[i].x, contour[i].y)
-
-                        // Temporarily set drawingPath to this trace to use autoPlaceMarkers
-                        val oldPath = Path(drawingPath)
-                        drawingPath.set(path)
-                        autoPlaceMarkers(append = true)
-                        drawingPath.set(oldPath)
+                        allTracedContours.add(contour)
+                        contour.forEach {
+                            minX = Math.min(minX, it.x)
+                            minY = Math.min(minY, it.y)
+                            maxX = Math.max(maxX, it.x)
+                            maxY = Math.max(maxY, it.y)
+                        }
                     }
                 }
             }
+        }
+
+        if (allTracedContours.isEmpty()) return
+
+        // 3. Normalize and scale to fit our 500x200 canvas
+        val contentW = maxX - minX
+        val contentH = maxY - minY
+
+        val margin = 10f
+        val targetW = 500f - 2 * margin
+        val targetH = 200f - 2 * margin
+
+        val scale = Math.min(targetW / contentW, targetH / contentH)
+        val offsetX = margin + (targetW - contentW * scale) / 2f - minX * scale
+        val offsetY = margin + (targetH - contentH * scale) / 2f - minY * scale
+
+        allTracedContours.forEach { contour ->
+            val path = Path()
+            var first = true
+            contour.forEach { p ->
+                val tx = p.x * scale + offsetX
+                val ty = p.y * scale + offsetY
+                if (first) {
+                    path.moveTo(tx, ty)
+                    first = false
+                } else {
+                    path.lineTo(tx, ty)
+                }
+            }
+
+            val oldPath = Path(drawingPath)
+            drawingPath.set(path)
+            autoPlaceMarkers(append = true)
+            drawingPath.set(oldPath)
         }
 
         mode = Mode.EDIT
