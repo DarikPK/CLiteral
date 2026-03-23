@@ -314,7 +314,8 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                        val original = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                        signatureBitmap = makeWhiteTransparent(original)
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
@@ -1250,6 +1251,30 @@ class PdfPreviewFragment : Fragment() {
             canvas.restore()
         }
         canvas.restore()
+    }
+
+    private fun makeWhiteTransparent(source: Bitmap): Bitmap {
+        val width = source.width
+        val height = source.height
+        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        for (i in pixels.indices) {
+            val color = pixels[i]
+            val r = Color.red(color)
+            val g = Color.green(color)
+            val b = Color.blue(color)
+
+            // Si el color es "casi blanco" (todos los canales > 200), hacerlo transparente
+            if (r > 200 && g > 200 && b > 200) {
+                pixels[i] = Color.TRANSPARENT
+            }
+        }
+
+        result.setPixels(pixels, 0, width, 0, 0, width, height)
+        return result
     }
 
     private fun clamp(v: Float, min: Float, max: Float) = max(min, min(v, max))
