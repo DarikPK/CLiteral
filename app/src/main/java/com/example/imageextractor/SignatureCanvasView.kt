@@ -278,8 +278,8 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun traceBitmap(bitmap: Bitmap) {
         clearCanvas()
 
-        // 1. Work with a reasonable resolution for tracing
-        val traceW = 1000
+        // 1. Reduce resolution for faster tracing (500px width is plenty)
+        val traceW = 500
         val traceH = (traceW * (bitmap.height.toFloat() / bitmap.width.toFloat())).toInt()
         val scaledBitmap = Bitmap.createScaledBitmap(bitmap, traceW, traceH, true)
 
@@ -365,36 +365,38 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     private fun traceContour(startX: Int, startY: Int, w: Int, h: Int, pixels: IntArray, visited: BooleanArray, threshold: Int, contour: MutableList<PointF>) {
-        val queue = mutableListOf<Pair<Int, Int>>()
-        queue.add(startX to startY)
-        visited[startY * w + startX] = true
+        var cx = startX
+        var cy = startY
+        visited[cy * w + cx] = true
+        contour.add(PointF(cx.toFloat(), cy.toFloat()))
 
-        while(queue.isNotEmpty()){
-            val (x, y) = queue.removeAt(0)
-            contour.add(PointF(x.toFloat(), y.toFloat()))
-
-            // Look in 8 directions for next stroke pixel
-            for(dy in -1..1){
-                for(dx in -1..1){
-                    if(dx == 0 && dy == 0) continue
-                    val nx = x + dx
-                    val ny = y + dy
-                    if(nx in 0 until w && ny in 0 until h){
+        var foundNext = true
+        while (foundNext) {
+            foundNext = false
+            // Look in 8 directions for next stroke pixel, prioritizing immediate neighbors
+            outer@for (dy in -1..1) {
+                for (dx in -1..1) {
+                    if (dx == 0 && dy == 0) continue
+                    val nx = cx + dx
+                    val ny = cy + dy
+                    if (nx in 0 until w && ny in 0 until h) {
                         val nIdx = ny * w + nx
-                        val nColor = pixels[nIdx]
-                        val nLum = (Color.red(nColor) + Color.green(nColor) + Color.blue(nColor)) / 3
-                        if(nLum < threshold && !visited[nIdx]){
+                        val lum = (Color.red(pixels[nIdx]) + Color.green(pixels[nIdx]) + Color.blue(pixels[nIdx])) / 3
+                        if (lum < threshold && !visited[nIdx]) {
                             visited[nIdx] = true
-                            queue.add(nx to ny)
-                            // Greedy trace: only take first neighbor to form a line, not a blob
-                            // Actually, for better tracing, let's just take the first one found
-                            break
+                            cx = nx
+                            cy = ny
+                            // Only add point if it's not too close to the last one (subsampling)
+                            if (distSq(contour.last(), PointF(cx.toFloat(), cy.toFloat())) > 16f) {
+                                contour.add(PointF(cx.toFloat(), cy.toFloat()))
+                            }
+                            foundNext = true
+                            break@outer
                         }
                     }
                 }
             }
-            // Limit contour size to avoid infinite loops or massive blobs
-            if (contour.size > 1000) break
+            if (contour.size > 500) break
         }
     }
 
@@ -526,7 +528,7 @@ class SignatureCanvasView @JvmOverloads constructor(
                 newContour.add(PointF(pos[0], pos[1]))
 
                 // 2. Sample points to detect sharp turns (curvature-based markers)
-                val step = 10f // Sample every 10px
+                val step = 20f // Increased step to 20px for fewer markers
                 var lastTanX = tan[0]
                 var lastTanY = tan[1]
 
@@ -538,7 +540,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
                     // Dot product to find angle change
                     val dot = lastTanX * currentTanX + lastTanY * currentTanY
-                    if (dot < 0.95f) { // Sharp turn detected (approx > 18 degrees)
+                    if (dot < 0.90f) { // Slightly less sensitive (approx > 25 degrees)
                         newContour.add(PointF(pos[0], pos[1]))
                         lastTanX = currentTanX
                         lastTanY = currentTanY
