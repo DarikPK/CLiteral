@@ -3,6 +3,7 @@ package com.example.imageextractor
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.graphics.PointF
 import android.net.Uri
 import android.os.Build
@@ -49,14 +50,25 @@ class SignatureSettingsFragment : Fragment() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Persist the URI string
-            saveString("signature_image_uri", it.toString())
+            try {
+                val inputStream = requireContext().contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
 
-            // Clear the procedural signature
-            binding.signatureCanvasView.clearCanvas(switchMode = true)
-            saveMarkers()
+                if (bitmap != null) {
+                    // Trace the bitmap to convert it into markers
+                    binding.signatureCanvasView.traceBitmap(bitmap)
 
-            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se ha borrado la firma dibujada.", Toast.LENGTH_LONG).show()
+                    // Clear the static image URI so the procedural signature is used
+                    sharedPrefs.edit().remove("signature_image_uri").apply()
+
+                    saveMarkers()
+                    updateButtonLabels()
+                    Toast.makeText(requireContext(), "Firma importada y trazada con éxito.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Error al importar firma: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

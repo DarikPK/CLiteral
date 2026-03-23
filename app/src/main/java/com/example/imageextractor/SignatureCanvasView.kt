@@ -1,6 +1,7 @@
 package com.example.imageextractor
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -222,7 +223,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     fun switchToEditMode() {
-        autoPlaceMarkers()
+        autoPlaceMarkers(append = false)
         drawingPath.reset()
         isFirstGeneration = true
         regenerateSignature()
@@ -255,6 +256,86 @@ class SignatureCanvasView @JvmOverloads constructor(
         mode = if (markers.isEmpty()) Mode.DRAW else Mode.EDIT
         history.clear()
         regenerateSignature()
+    }
+
+    fun traceBitmap(bitmap: Bitmap) {
+        clearCanvas()
+
+        // 1. Resize bitmap to canvas coordinates (500x200) for consistent tracing
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 500, 200, true)
+
+        // 2. Scan pixels to find "dark" points (strokes)
+        val width = scaledBitmap.width
+        val height = scaledBitmap.height
+        val pixels = IntArray(width * height)
+        scaledBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        val visited = BooleanArray(width * height)
+        val threshold = 128 // Lum threshold for stroke
+
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val idx = y * width + x
+                val color = pixels[idx]
+                val lum = (Color.red(color) + Color.green(color) + Color.blue(color)) / 3
+
+                if (lum < threshold && !visited[idx]) {
+                    // Start tracing a new contour from this point
+                    val contour = mutableListOf<PointF>()
+                    traceContour(x, y, width, height, pixels, visited, threshold, contour)
+                    if (contour.size > 5) {
+                        // Apply Intelligent Marking to this traced contour
+                        val path = Path()
+                        path.moveTo(contour[0].x, contour[0].y)
+                        for (i in 1 until contour.size) path.lineTo(contour[i].x, contour[i].y)
+
+                        // Temporarily set drawingPath to this trace to use autoPlaceMarkers
+                        val oldPath = Path(drawingPath)
+                        drawingPath.set(path)
+                        autoPlaceMarkers(append = true)
+                        drawingPath.set(oldPath)
+                    }
+                }
+            }
+        }
+
+        mode = Mode.EDIT
+        isFirstGeneration = true
+        regenerateSignature()
+    }
+
+    private fun traceContour(startX: Int, startY: Int, w: Int, h: Int, pixels: IntArray, visited: BooleanArray, threshold: Int, contour: MutableList<PointF>) {
+        val queue = mutableListOf<Pair<Int, Int>>()
+        queue.add(startX to startY)
+        visited[startY * w + startX] = true
+
+        while(queue.isNotEmpty()){
+            val (x, y) = queue.removeAt(0)
+            contour.add(PointF(x.toFloat(), y.toFloat()))
+
+            // Look in 8 directions for next stroke pixel
+            for(dy in -1..1){
+                for(dx in -1..1){
+                    if(dx == 0 && dy == 0) continue
+                    val nx = x + dx
+                    val ny = y + dy
+                    if(nx in 0 until w && ny in 0 until h){
+                        val nIdx = ny * w + nx
+                        val nColor = pixels[nIdx]
+                        val nLum = (Color.red(nColor) + Color.green(nColor) + Color.blue(nColor)) / 3
+                        if(nLum < threshold && !visited[nIdx]){
+                            visited[nIdx] = true
+                            queue.add(nx to ny)
+                            // Greedy trace: only take first neighbor to form a line, not a blob
+                            // Actually, for better tracing, let's just take the first one found
+                            break
+                        }
+                    }
+                }
+            }
+            // Limit contour size to avoid infinite loops or massive blobs
+            if (contour.size > 1000) break
+        }
     }
 
     fun clearCanvas(switchMode: Boolean = false) {
@@ -363,8 +444,9 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
     }
 
-    private fun autoPlaceMarkers() {
-        markers.clear()
+
+    private fun autoPlaceMarkers(append: Boolean = false) {
+        if (!append) markers.clear()
         if (drawingPath.isEmpty) return
 
         val pathMeasure = PathMeasure(drawingPath, false)
