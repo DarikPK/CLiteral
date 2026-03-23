@@ -176,6 +176,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                parent.requestDisallowInterceptTouchEvent(true)
                 lastTouchX = event.x
                 lastTouchY = event.y
                 if (isDeleteMode) {
@@ -292,6 +293,20 @@ class SignatureCanvasView @JvmOverloads constructor(
     }
 
     private fun updateMatrix() {
+        // Clamp translations to prevent sliding out of view
+        if (scaleFactor > 1f) {
+            val maxTX = 0f
+            val minTX = width * (1f - scaleFactor)
+            val maxTY = 0f
+            val minTY = height * (1f - scaleFactor)
+
+            translateX = Math.max(minTX, Math.min(maxTX, translateX))
+            translateY = Math.max(minTY, Math.min(maxTY, translateY))
+        } else {
+            translateX = 0f
+            translateY = 0f
+        }
+
         matrix.reset()
         matrix.setScale(scaleFactor, scaleFactor)
         matrix.postTranslate(translateX, translateY)
