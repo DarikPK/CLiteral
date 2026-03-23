@@ -21,3 +21,20 @@ data class ImageFolder(
     val partidaId: String,
     val imageFiles: List<ImageFile>
 )
+
+/**
+ * Representa el perfil de un registrador con todos sus datos asociados
+ * para ser guardado en Firebase.
+ */
+data class RegistrarProfile(
+    val id: String = "",
+    val name: String = "",
+    val position: String = "",
+    val area: String = "",
+    val office: String = "",
+    val signatureMarkers: String = "", // Serialized markers string
+    // Opcional: Otros ajustes de sello como tamaño de fuente, etc.
+    val stamp2FontSize: String = "13",
+    val stamp2WearIntensity: Float = 30f,
+    val stamp2WearSize: Float = 50f
+)

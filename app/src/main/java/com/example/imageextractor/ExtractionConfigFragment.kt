@@ -133,17 +133,21 @@ class ExtractionConfigFragment : Fragment() {
     }
 
     private fun saveCurrentSettings() {
+        val office = binding.oficinaDropdown.text.toString()
         with(extractionPrefs.edit()) {
             putString("dni", binding.dniEditText.text.toString())
             putString("digito", binding.digitoEditText.text.toString())
             putString("fecha_emision", binding.fechaEmisionEditText.text.toString())
-            putString("oficina", binding.oficinaDropdown.text.toString())
+            putString("oficina", office)
             putString("area", binding.areaDropdown.text.toString())
             putString("partida", binding.partidaEditText.text.toString())
             putBoolean("prefix_p", binding.prefixPCheckbox.isChecked)
             putBoolean("is_manual_login", binding.radioManual.isChecked)
             apply()
         }
+        // Sync with PdfSettings for Cloud Profiles
+        requireActivity().getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
+            .edit().putString("oficina", office).apply()
     }
 
     private fun setupLoginModeSelector() {
