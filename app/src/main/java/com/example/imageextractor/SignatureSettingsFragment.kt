@@ -19,7 +19,9 @@ import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.example.imageextractor.databinding.FragmentSignatureSettingsBinding
 
 class SignatureSettingsFragment : Fragment() {
@@ -113,22 +115,28 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureCanvasView.setNumMarkers(numMarkers)
         binding.signatureCanvasView.setMarkerRadius(markerSize)
 
-        // Load markers
+        // Load markers in background to avoid ANR
         val markersString = sharedPrefs.getString("signature_markers", null)
         if (!markersString.isNullOrEmpty()) {
-            val contours = markersString.split("|").map { contourString ->
-                contourString.split(";").mapNotNull {
-                    val parts = it.split(",")
-                    if (parts.size == 2) {
-                        PointF(parts[0].toFloat(), parts[1].toFloat())
-                    } else {
-                        null
+            lifecycleScope.launch(Dispatchers.Default) {
+                val contours = markersString.split("|").map { contourString ->
+                    contourString.split(";").mapNotNull {
+                        val parts = it.split(",")
+                        if (parts.size == 2) {
+                            PointF(parts[0].toFloat(), parts[1].toFloat())
+                        } else {
+                            null
+                        }
                     }
                 }
+                withContext(Dispatchers.Main) {
+                    binding.signatureCanvasView.setMarkerContours(contours)
+                    updateButtonLabels()
+                }
             }
-            binding.signatureCanvasView.setMarkerContours(contours)
+        } else {
+            updateButtonLabels()
         }
-        updateButtonLabels()
     }
 
     private fun updateButtonLabels() {
