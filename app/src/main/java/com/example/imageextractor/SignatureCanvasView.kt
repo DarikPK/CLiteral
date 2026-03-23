@@ -287,7 +287,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         regenerateSignature()
     }
 
-    fun traceBitmap(bitmap: Bitmap, customThreshold: Int? = null) {
+    fun traceBitmap(bitmap: Bitmap, customThreshold: Int? = null, targetStrokes: Int = 7) {
         clearCanvas()
 
         // 1. Reduce resolution for faster tracing (500px width is plenty)
@@ -339,11 +339,67 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         if (allTracedContours.isEmpty()) return
 
-        // 2.5 Filter and Sort contours
-        // Sort by point count (proxy for length) and take only significant ones (max 7)
-        val sortedContours = allTracedContours
+        // 2.5 Fusion and Filter Engine
+        // Convert to mutable for fusion
+        val mutableContours = allTracedContours.map { it.toMutableList() }.toMutableList()
+
+        // Iteratively fuse closest ends until we reach targetStrokes or can't fuse more
+        while (mutableContours.size > targetStrokes) {
+            var bestDistSq = 10000f // Max distance squared to consider fusion (100px)
+            var bestPair: Pair<Int, Int>? = null
+            var reverseSecond = false
+            var appendToEnd = true
+
+            for (i in 0 until mutableContours.size) {
+                for (j in i + 1 until mutableContours.size) {
+                    val c1 = mutableContours[i]
+                    val c2 = mutableContours[j]
+
+                    // Check 4 possible connections between ends
+                    val d1 = distSq(c1.last(), c2.first())
+                    val d2 = distSq(c1.last(), c2.last())
+                    val d3 = distSq(c1.first(), c2.first())
+                    val d4 = distSq(c1.first(), c2.last())
+
+                    val (minD, rev, end) = when {
+                        d1 <= d2 && d1 <= d3 && d1 <= d4 -> Triple(d1, false, true)
+                        d2 <= d1 && d2 <= d3 && d2 <= d4 -> Triple(d2, true, true)
+                        d3 <= d1 && d3 <= d2 && d3 <= d4 -> Triple(d3, false, false)
+                        else -> Triple(d4, true, false)
+                    }
+
+                    if (minD < bestDistSq) {
+                        bestDistSq = minD
+                        bestPair = i to j
+                        reverseSecond = rev
+                        appendToEnd = end
+                    }
+                }
+            }
+
+            if (bestPair != null) {
+                val (idx1, idx2) = bestPair
+                val c1 = mutableContours[idx1]
+                val c2 = if (reverseSecond) mutableContours[idx2].reversed() else mutableContours[idx2]
+
+                if (appendToEnd) {
+                    c1.addAll(c2)
+                } else {
+                    val combined = c2.toMutableList()
+                    combined.addAll(c1)
+                    mutableContours[idx1] = combined
+                }
+                mutableContours.removeAt(idx2)
+            } else {
+                // No more pairs close enough to fuse
+                break
+            }
+        }
+
+        // Sort by size and take targetStrokes anyway in case of too much noise
+        val sortedContours = mutableContours
             .sortedByDescending { it.size }
-            .take(7)
+            .take(targetStrokes)
 
         // 3. Normalize and scale to fit our 500x200 canvas
         val contentW = maxX - minX

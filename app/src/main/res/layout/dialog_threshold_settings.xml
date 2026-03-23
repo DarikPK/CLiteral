@@ -30,4 +30,29 @@
         android:alpha="0.7"
         android:layout_marginTop="8dp"/>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Número de Trazos Deseados"
+        style="@style/TextAppearance.Material3.LabelLarge"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp"/>
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/strokesSlider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:valueFrom="1.0"
+        android:valueTo="15.0"
+        android:stepSize="1.0"
+        android:value="7.0" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="El motor unirá los fragmentos más cercanos hasta alcanzar este número. 1 = Firma continua."
+        style="@style/TextAppearance.Material3.BodySmall"
+        android:alpha="0.7"
+        android:layout_marginTop="8dp"/>
+
 </LinearLayout>

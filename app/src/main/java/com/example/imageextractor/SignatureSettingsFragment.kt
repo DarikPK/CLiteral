@@ -69,15 +69,16 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun showThresholdDialog(bitmap: Bitmap) {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_threshold_settings, null)
-        val slider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.thresholdSlider)
+        val thresholdSlider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.thresholdSlider)
+        val strokesSlider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.strokesSlider)
 
         android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Ajustar Tolerancia al Blanco")
+            .setTitle("Ajustes de Importación")
             .setView(dialogView)
-            .setMessage("Mueve el deslizador para mejorar el trazado. Valores bajos capturan más trazos.")
             .setPositiveButton("Importar") { _, _ ->
-                val threshold = slider.value.toInt()
-                binding.signatureCanvasView.traceBitmap(bitmap, threshold)
+                val threshold = thresholdSlider.value.toInt()
+                val targetStrokes = strokesSlider.value.toInt()
+                binding.signatureCanvasView.traceBitmap(bitmap, threshold, targetStrokes)
                 sharedPrefs.edit().remove("signature_image_uri").apply()
                 saveMarkers()
                 updateButtonLabels()
