@@ -42,6 +42,16 @@ class SignatureCanvasView @JvmOverloads constructor(
     var mode = Mode.DRAW
         private set
 
+    // Zoom properties
+    private var scaleFactor = 1.0f
+    private val matrix = Matrix()
+    private val inverseMatrix = Matrix()
+
+    // History for Undo
+    private val history = mutableListOf<List<List<PointF>>>()
+
+    var isDeleteMode = false
+
     private val signaturePaint = Paint().apply {
         color = Color.parseColor("#2557A8")
         style = Paint.Style.STROKE
@@ -87,6 +97,9 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja un fondo para que el área del lienzo sea visible
         canvas.drawColor(Color.LTGRAY)
 
+        canvas.save()
+        canvas.concat(matrix)
+
         // Dibuja el trazo del usuario
         canvas.drawPath(drawingPath, drawingPaint)
 
@@ -111,15 +124,20 @@ class SignatureCanvasView @JvmOverloads constructor(
                 canvas.drawCircle(marker.x, marker.y, markerRadius, markerPaint)
             }
         }
+        canvas.restore()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val x = event.x
-        val y = event.y
+        // Transform touch coordinates based on the current matrix
+        val pts = floatArrayOf(event.x, event.y)
+        matrix.invert(inverseMatrix)
+        inverseMatrix.mapPoints(pts)
+        val transformedX = pts[0]
+        val transformedY = pts[1]
 
         return when (mode) {
-            Mode.DRAW -> handleDrawTouchEvent(event, x, y)
-            Mode.EDIT -> handleEditTouchEvent(event, x, y)
+            Mode.DRAW -> handleDrawTouchEvent(event, transformedX, transformedY)
+            Mode.EDIT -> handleEditTouchEvent(event, transformedX, transformedY)
         }
     }
 
@@ -152,11 +170,18 @@ class SignatureCanvasView @JvmOverloads constructor(
     private fun handleEditTouchEvent(event: MotionEvent, x: Float, y: Float): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                if (isDeleteMode) {
+                    deletePointAt(x, y)
+                    return true
+                }
                 // Flatten the list of lists to find the closest marker across all contours
                 draggedMarker = markers.flatten().find {
                     val dx = it.x - x
                     val dy = it.y - y
-                    dx * dx + dy * dy < touchThreshold * touchThreshold
+                    dx * dx + dy * dy < (touchThreshold / scaleFactor) * (touchThreshold / scaleFactor)
+                }
+                if (draggedMarker != null) {
+                    saveToHistory()
                 }
                 if (draggedMarker == null) {
                     // Tapped on empty space in edit mode, clear everything and go back to draw mode
@@ -187,11 +212,14 @@ class SignatureCanvasView @JvmOverloads constructor(
         drawingPath.reset()
         regenerateSignature()
         mode = Mode.EDIT
+        history.clear()
         invalidate()
     }
 
     private fun switchToDrawMode() {
         clearCanvas(switchMode = true)
+        scaleFactor = 1.0f
+        updateMatrix()
     }
 
     fun getDrawingPath(): Path {
@@ -208,6 +236,7 @@ class SignatureCanvasView @JvmOverloads constructor(
             markers.add(contour.toMutableList())
         }
         mode = if (markers.isEmpty()) Mode.DRAW else Mode.EDIT
+        history.clear()
         regenerateSignature()
     }
 
@@ -224,6 +253,72 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun regenerateSignature() {
         generateSignaturePath()
         invalidate()
+    }
+
+    fun zoomIn() {
+        scaleFactor = 2.0f
+        updateMatrix()
+    }
+
+    fun zoomNormal() {
+        scaleFactor = 1.0f
+        updateMatrix()
+    }
+
+    private fun updateMatrix() {
+        matrix.reset()
+        matrix.postScale(scaleFactor, scaleFactor)
+        invalidate()
+    }
+
+    private fun saveToHistory() {
+        // Deep copy markers
+        val snapshot = markers.map { contour ->
+            contour.map { PointF(it.x, it.y) }
+        }
+        history.add(snapshot)
+        if (history.size > 20) history.removeAt(0)
+    }
+
+    fun undo() {
+        if (history.isNotEmpty()) {
+            val lastState = history.removeAt(history.size - 1)
+            markers.clear()
+            lastState.forEach { contour ->
+                markers.add(contour.toMutableList())
+            }
+            regenerateSignature()
+            markerListener?.invoke()
+        }
+    }
+
+    private fun deletePointAt(x: Float, y: Float) {
+        var pointToRemove: PointF? = null
+        var contourOfPoint: MutableList<PointF>? = null
+
+        for (contour in markers) {
+            pointToRemove = contour.find {
+                val dx = it.x - x
+                val dy = it.y - y
+                dx * dx + dy * dy < (touchThreshold / scaleFactor) * (touchThreshold / scaleFactor)
+            }
+            if (pointToRemove != null) {
+                contourOfPoint = contour
+                break
+            }
+        }
+
+        if (pointToRemove != null && contourOfPoint != null) {
+            saveToHistory()
+            contourOfPoint.remove(pointToRemove)
+            // If contour is now empty or has 1 point, it might be better to remove it if it's no longer a line,
+            // but for now we keep it and let the signature generation handle it.
+            if (contourOfPoint.size < 2) {
+                markers.remove(contourOfPoint)
+            }
+            regenerateSignature()
+            markerListener?.invoke()
+        }
     }
 
     private fun autoPlaceMarkers() {

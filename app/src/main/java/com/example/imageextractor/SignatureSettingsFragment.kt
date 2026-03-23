@@ -117,16 +117,18 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun updateButtonLabels() {
         if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
-            binding.primaryActionButton.text = "Generar Marcadores"
+            binding.primaryActionButton.text = "Terminar Dibujo"
+            binding.editActionsLayout.visibility = View.GONE
         } else {
             binding.primaryActionButton.text = "Refrescar Firma"
+            binding.editActionsLayout.visibility = View.VISIBLE
         }
     }
 
     private fun setupListeners() {
         binding.primaryActionButton.setOnClickListener {
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
-                // We are in DRAW mode, so the button is "Generate Markers"
+                // We are in DRAW mode, so the button is "Terminar Dibujo"
                 if (binding.signatureCanvasView.getDrawingPath().isEmpty) {
                     Toast.makeText(requireContext(), "Por favor, dibuje una firma primero", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
@@ -143,8 +145,30 @@ class SignatureSettingsFragment : Fragment() {
         binding.secondaryActionButton.setOnClickListener {
             // This button is always "Clear Canvas"
             binding.signatureCanvasView.clearCanvas(switchMode = true)
+            binding.deletePointsButton.isChecked = false
+            binding.signatureCanvasView.isDeleteMode = false
             updateButtonLabels()
             saveMarkers()
+        }
+
+        binding.zoomInButton.setOnClickListener {
+            binding.signatureCanvasView.zoomIn()
+        }
+
+        binding.zoomNormalButton.setOnClickListener {
+            binding.signatureCanvasView.zoomNormal()
+        }
+
+        binding.deletePointsButton.setOnClickListener {
+            val isChecked = binding.deletePointsButton.isChecked
+            binding.signatureCanvasView.isDeleteMode = isChecked
+            if (isChecked) {
+                Toast.makeText(requireContext(), "Modo eliminación: toque puntos para borrarlos", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.undoButton.setOnClickListener {
+            binding.signatureCanvasView.undo()
         }
 
         binding.selectImageButton.setOnClickListener {
