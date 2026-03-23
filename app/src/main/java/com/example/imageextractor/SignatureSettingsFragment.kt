@@ -215,7 +215,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
 
         numMarkersEditText.doOnTextChanged { text, _, _, _ ->
-            val numMarkers = text.toString().toIntOrNull() ?: 15
+            val numMarkers = text.toString().toIntOrNull() ?: 0
             saveInt("signature_num_markers", numMarkers)
             binding.signatureCanvasView.setNumMarkers(numMarkers)
         }
@@ -250,10 +250,11 @@ class SignatureSettingsFragment : Fragment() {
 
             val result = firebaseManager.saveProfile(profile)
             if (result.isSuccess) {
-                // If it was a new profile, we'd need to save the ID, but for simplicity:
                 Toast.makeText(requireContext(), "Perfil guardado en la nube", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(requireContext(), "Error al guardar: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                val error = result.exceptionOrNull()
+                val message = error?.localizedMessage ?: error?.message ?: "Error desconocido"
+                Toast.makeText(requireContext(), "Error al guardar: $message", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -277,7 +278,9 @@ class SignatureSettingsFragment : Fragment() {
                     .setNegativeButton("Cancelar", null)
                     .show()
             } else {
-                Toast.makeText(requireContext(), "Error al cargar: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                val error = result.exceptionOrNull()
+                val message = error?.localizedMessage ?: error?.message ?: "Error desconocido"
+                Toast.makeText(requireContext(), "Error al cargar: $message", Toast.LENGTH_LONG).show()
             }
         }
     }

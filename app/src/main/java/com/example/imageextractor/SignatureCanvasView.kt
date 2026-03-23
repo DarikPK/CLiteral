@@ -73,7 +73,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     private var markerListener: (() -> Unit)? = null
 
     fun setNumMarkers(count: Int) {
-        if (count > 1) { // Need at least 2 markers for a line
+        if (count >= 0) {
             this.numMarkers = count
             // Regenerate signature if we are in edit mode to reflect changes
             if (mode == Mode.EDIT) {
@@ -368,61 +368,95 @@ class SignatureCanvasView @JvmOverloads constructor(
         if (drawingPath.isEmpty) return
 
         val pathMeasure = PathMeasure(drawingPath, false)
-        val contourLengths = mutableListOf<Float>()
-        var totalLength = 0f
 
-        // Primero, medimos la longitud de cada trazo (contorno)
-        do {
-            val length = pathMeasure.length
-            contourLengths.add(length)
-            totalLength += length
-        } while (pathMeasure.nextContour())
+        if (numMarkers == 0) {
+            // Intelligent Marker Motor: Place markers only at key points
+            do {
+                val contourLength = pathMeasure.length
+                if (contourLength < 5f) continue
 
-        if (totalLength == 0f || numMarkers < 2) return
-
-        // Reiniciamos el pathMeasure para empezar desde el primer contorno de nuevo
-        pathMeasure.setPath(drawingPath, false)
-
-        // Distribuimos los marcadores proporcionalmente a la longitud de cada trazo
-        var markersPlaced = 0
-        for (contourLength in contourLengths) {
-            val contourMarkers = if (totalLength > 0) {
-                // Asigna al menos 2 marcadores a trazos muy pequeños para que sean visibles
-                Math.max(2, (contourLength / totalLength * numMarkers).toInt())
-            } else {
-                0
-            }
-
-            if (contourMarkers > 1) {
                 val newContour = mutableListOf<PointF>()
                 val pos = FloatArray(2)
                 val tan = FloatArray(2)
-                for (i in 0 until contourMarkers) {
-                    val distance = (contourLength / (contourMarkers - 1)) * i
-                    pathMeasure.getPosTan(distance, pos, tan)
-                    newContour.add(PointF(pos[0], pos[1]))
-                }
-                markers.add(newContour)
-                markersPlaced += contourMarkers
-            }
-            pathMeasure.nextContour()
-        }
 
-        // Asegurarse de que al menos el número mínimo de marcadores se coloquen si algo falla
-        if (markers.isEmpty() && totalLength > 0 && numMarkers > 1) {
+                // 1. Start point
+                pathMeasure.getPosTan(0f, pos, tan)
+                newContour.add(PointF(pos[0], pos[1]))
+
+                // 2. Sample points to detect sharp turns (curvature-based markers)
+                val step = 10f // Sample every 10px
+                var lastTanX = tan[0]
+                var lastTanY = tan[1]
+
+                var d = step
+                while (d < contourLength - step) {
+                    pathMeasure.getPosTan(d, pos, tan)
+                    val currentTanX = tan[0]
+                    val currentTanY = tan[1]
+
+                    // Dot product to find angle change
+                    val dot = lastTanX * currentTanX + lastTanY * currentTanY
+                    if (dot < 0.95f) { // Sharp turn detected (approx > 18 degrees)
+                        newContour.add(PointF(pos[0], pos[1]))
+                        lastTanX = currentTanX
+                        lastTanY = currentTanY
+                    }
+                    d += step
+                }
+
+                // 3. End point
+                pathMeasure.getPosTan(contourLength, pos, tan)
+                val endPoint = PointF(pos[0], pos[1])
+                if (newContour.last().let { distSq(it, endPoint) > 100f }) {
+                    newContour.add(endPoint)
+                }
+
+                if (newContour.size >= 2) {
+                    markers.add(newContour)
+                }
+            } while (pathMeasure.nextContour())
+        } else {
+            // Proportional Distribution Motor
+            val contourLengths = mutableListOf<Float>()
+            var totalLength = 0f
+
+            do {
+                val length = pathMeasure.length
+                contourLengths.add(length)
+                totalLength += length
+            } while (pathMeasure.nextContour())
+
+            if (totalLength == 0f || numMarkers < 2) return
+
             pathMeasure.setPath(drawingPath, false)
-            val fallbackContour = mutableListOf<PointF>()
-            val pos = FloatArray(2)
-            val tan = FloatArray(2)
-            for (i in 0 until numMarkers) {
-                val distance = (totalLength / (numMarkers - 1)) * i
-                pathMeasure.getPosTan(distance, pos, tan)
-                fallbackContour.add(PointF(pos[0], pos[1]))
-            }
-            if (fallbackContour.isNotEmpty()) {
-                markers.add(fallbackContour)
+
+            for (contourLength in contourLengths) {
+                val contourMarkers = if (totalLength > 0) {
+                    Math.max(2, (contourLength / totalLength * numMarkers).toInt())
+                } else {
+                    0
+                }
+
+                if (contourMarkers > 1) {
+                    val newContour = mutableListOf<PointF>()
+                    val pos = FloatArray(2)
+                    val tan = FloatArray(2)
+                    for (i in 0 until contourMarkers) {
+                        val distance = (contourLength / (contourMarkers - 1)) * i
+                        pathMeasure.getPosTan(distance, pos, tan)
+                        newContour.add(PointF(pos[0], pos[1]))
+                    }
+                    markers.add(newContour)
+                }
+                pathMeasure.nextContour()
             }
         }
+    }
+
+    private fun distSq(p1: PointF, p2: PointF): Float {
+        val dx = p1.x - p2.x
+        val dy = p1.y - p2.y
+        return dx * dx + dy * dy
     }
 
     private fun generateSignaturePath() {
