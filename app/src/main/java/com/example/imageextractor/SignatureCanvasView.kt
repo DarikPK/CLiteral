@@ -498,9 +498,61 @@ class SignatureCanvasView @JvmOverloads constructor(
     fun regenerateSignature(manualRefresh: Boolean = false) {
         if (manualRefresh) {
             isFirstGeneration = false
+            // Optimization: If numMarkers is specified (>0) and we have more, simplify.
+            // Or if it's 0, we can also try to keep it lean.
+            pruneRedundantMarkers()
         }
         generateSignaturePath()
         invalidate()
+    }
+
+    private fun pruneRedundantMarkers() {
+        if (markers.isEmpty()) return
+
+        val newMarkers = mutableListOf<MutableList<PointF>>()
+
+        markers.forEach { contour ->
+            if (contour.size <= 2) {
+                newMarkers.add(contour)
+                return@forEach
+            }
+
+            val simplified = mutableListOf<PointF>()
+            simplified.add(contour.first())
+
+            // curvature-based pruning
+            var lastIdx = 0
+            for (i in 1 until contour.size - 1) {
+                val prev = contour[lastIdx]
+                val curr = contour[i]
+                val next = contour[i + 1]
+
+                // Vectors
+                val v1x = curr.x - prev.x
+                val v1y = curr.y - prev.y
+                val v2x = next.x - curr.x
+                val v2y = next.y - curr.y
+
+                // Normalise and check dot product (angle)
+                val mag1 = Math.sqrt((v1x * v1x + v1y * v1y).toDouble()).toFloat()
+                val mag2 = Math.sqrt((v2x * v2x + v2y * v2y).toDouble()).toFloat()
+
+                if (mag1 > 0 && mag2 > 0) {
+                    val dot = (v1x * v2x + v1y * v2y) / (mag1 * mag2)
+                    // If points are almost collinear (> 0.99) and close enough, it's redundant
+                    val dist = mag1
+                    if (dot < 0.995f || dist > 30f) {
+                        simplified.add(curr)
+                        lastIdx = i
+                    }
+                }
+            }
+            simplified.add(contour.last())
+            newMarkers.add(simplified)
+        }
+
+        markers.clear()
+        markers.addAll(newMarkers)
     }
 
     fun zoomIn() {
