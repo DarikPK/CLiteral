@@ -65,15 +65,16 @@ class SignatureCanvasView @JvmOverloads constructor(
     var isDeleteMode = false
     private var isFirstGeneration = true
 
+    data class SignaturePoint(val x: Float, val y: Float, val width: Float)
+
     private val signaturePaint = Paint().apply {
         color = Color.parseColor("#2557A8")
         style = Paint.Style.STROKE
-        strokeWidth = 10f
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
-    private var signaturePoints = listOf<List<PointF>>()
+    private var signaturePoints = listOf<List<SignaturePoint>>()
     private var markerRadius = 10f
     private var numMarkers = 15
 
@@ -122,16 +123,14 @@ class SignatureCanvasView @JvmOverloads constructor(
         // Dibuja el trazo del usuario
         canvas.drawPath(drawingPath, drawingPaint)
 
-        // Dibuja la firma generada con grosor variable
+        // Dibuja la firma generada con grosor variable aleatorio y estrechamiento
         signaturePoints.forEach { contour ->
             if (contour.size > 1) {
                 for (i in 0 until contour.size - 1) {
                     val p1 = contour[i]
                     val p2 = contour[i + 1]
-                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                    val taper = Math.min(progress, 1 - progress) * 2
-                    val strokeWidth = (2 + taper * 8).toFloat()
-                    signaturePaint.strokeWidth = strokeWidth
+
+                    signaturePaint.strokeWidth = p1.width
                     canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
                 }
             }
@@ -280,7 +279,7 @@ class SignatureCanvasView @JvmOverloads constructor(
         regenerateSignature()
     }
 
-    fun traceBitmap(bitmap: Bitmap) {
+    fun traceBitmap(bitmap: Bitmap, customThreshold: Int? = null) {
         clearCanvas()
 
         // 1. Reduce resolution for faster tracing (500px width is plenty)
@@ -299,8 +298,8 @@ class SignatureCanvasView @JvmOverloads constructor(
             if (lum < minLum) minLum = lum
         }
 
-        // Use a threshold relative to the darkest point, but with a safe ceiling (180)
-        val threshold = Math.min(180, minLum + 50)
+        // Use custom threshold if provided, else auto
+        val threshold = customThreshold ?: Math.min(180, minLum + 50)
 
         val allTracedContours = mutableListOf<List<PointF>>()
         var minX = Float.MAX_VALUE
@@ -626,7 +625,7 @@ class SignatureCanvasView @JvmOverloads constructor(
             return
         }
 
-        val newSignaturePoints = mutableListOf<List<PointF>>()
+        val newSignaturePoints = mutableListOf<List<SignaturePoint>>()
 
         markers.forEach { contour ->
             if (contour.size >= 2) {
@@ -639,9 +638,9 @@ class SignatureCanvasView @JvmOverloads constructor(
                     PointF(x, y)
                 }
 
-                val interpolatedPoints = mutableListOf<PointF>()
+                val interpolatedPoints = mutableListOf<SignaturePoint>()
                 val segments = randomPoints.size - 1
-                val pointsPerSegment = 8 // Reduced from 20 for performance
+                val pointsPerSegment = 8
 
                 for (i in 0 until segments) {
                     val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
@@ -661,7 +660,24 @@ class SignatureCanvasView @JvmOverloads constructor(
 
                         val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
                         val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
-                        interpolatedPoints.add(PointF(tx, ty))
+
+                        // --- Grosor Aleatorio con Tapering ---
+                        // 1. Calcular progreso total del trazo para el efecto de inicio/fin delgado
+                        val totalEstimatedPoints = segments * pointsPerSegment
+                        val currentPointIdx = i * pointsPerSegment + j
+                        val progress = currentPointIdx.toFloat() / totalEstimatedPoints.toFloat()
+
+                        // Tapering factor (0 at ends, 1 in middle)
+                        val taper = Math.min(progress * 5, (1 - progress) * 5).coerceIn(0f, 1f)
+
+                        // Base width between 2 and 7, plus a stable random jitter
+                        // Seed random with point coordinates to keep jitter consistent between redraws
+                        val pointRandom = Random((tx * 1000 + ty).toLong())
+                        val jitter = pointRandom.nextFloat() * 4f
+
+                        val strokeWidth = (2f + (5f + jitter) * taper)
+
+                        interpolatedPoints.add(SignaturePoint(tx, ty, strokeWidth))
                     }
                 }
                 newSignaturePoints.add(interpolatedPoints)

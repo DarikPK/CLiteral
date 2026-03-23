@@ -667,10 +667,8 @@ class PdfPreviewFragment : Fragment() {
                 for (i in 0 until contour.size - 1) {
                     val p1 = contour[i]
                     val p2 = contour[i + 1]
-                    val progress = if (contour.size > 1) i.toFloat() / (contour.size - 2).toFloat() else 0f
-                    val taper = Math.min(progress, 1 - progress) * 2
-                    val strokeWidth = (2 + taper * 8).toFloat()
-                    signaturePaint.strokeWidth = strokeWidth
+
+                    signaturePaint.strokeWidth = p1.width
                     canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
                 }
             }
@@ -678,12 +676,14 @@ class PdfPreviewFragment : Fragment() {
         return bitmap
     }
 
-    private fun generateProceduralSignaturePoints(): List<List<PointF>> {
+    data class SignaturePoint(val x: Float, val y: Float, val width: Float)
+
+    private fun generateProceduralSignaturePoints(): List<List<SignaturePoint>> {
         if (signatureMarkerContours.isEmpty()) {
             return emptyList()
         }
 
-        val signatureContours = mutableListOf<List<PointF>>()
+        val signatureContours = mutableListOf<List<SignaturePoint>>()
 
         signatureMarkerContours.forEach { contour ->
             if (contour.size >= 2) {
@@ -695,9 +695,9 @@ class PdfPreviewFragment : Fragment() {
                     PointF(x, y)
                 }
 
-                val interpolatedPoints = mutableListOf<PointF>()
+                val interpolatedPoints = mutableListOf<SignaturePoint>()
                 val segments = randomPoints.size - 1
-                val pointsPerSegment = 20
+                val pointsPerSegment = 8
 
                 for (i in 0 until segments) {
                     val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
@@ -717,7 +717,18 @@ class PdfPreviewFragment : Fragment() {
 
                         val tx = 0.5f * (p0.x * q1 + p1.x * q2 + p2.x * q3 + p3.x * q4)
                         val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
-                        interpolatedPoints.add(PointF(tx, ty))
+
+                        // Sync random thickness with coordinates for stability
+                        val pointRandom = java.util.Random((tx * 1000 + ty).toLong())
+                        val jitter = pointRandom.nextFloat() * 4f
+                        val totalEstimatedPoints = segments * pointsPerSegment
+                        val currentPointIdx = i * pointsPerSegment + j
+                        val progress = currentPointIdx.toFloat() / totalEstimatedPoints.toFloat()
+                        val taper = Math.min(progress * 5, (1 - progress) * 5).coerceIn(0f, 1f)
+
+                        val strokeWidth = (2f + (5f + jitter) * taper)
+
+                        interpolatedPoints.add(SignaturePoint(tx, ty, strokeWidth))
                     }
                 }
                 signatureContours.add(interpolatedPoints)
