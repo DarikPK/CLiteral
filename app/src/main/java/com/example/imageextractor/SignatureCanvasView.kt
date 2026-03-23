@@ -23,7 +23,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     // Cada lista interna representa un trazo continuo.
     private val markers = mutableListOf<MutableList<PointF>>()
     private val markerPaint = Paint().apply {
-        color = Color.BLUE
+        color = Color.GREEN
         style = Paint.Style.FILL
         isAntiAlias = true
     }
@@ -77,6 +77,7 @@ class SignatureCanvasView @JvmOverloads constructor(
     private var signaturePoints = listOf<List<SignaturePoint>>()
     private var markerRadius = 10f
     private var numMarkers = 15
+    private var strokeBaseWidth = 5f
 
     private var markerListener: (() -> Unit)? = null
 
@@ -95,6 +96,13 @@ class SignatureCanvasView @JvmOverloads constructor(
             this.markerRadius = radius
             // Since marker size now controls randomness, we need to regenerate the signature
             // y redraw everything.
+            regenerateSignature()
+        }
+    }
+
+    fun setStrokeBaseWidth(width: Float) {
+        if (width > 0) {
+            this.strokeBaseWidth = width
             regenerateSignature()
         }
     }
@@ -673,9 +681,9 @@ class SignatureCanvasView @JvmOverloads constructor(
                         // Base width between 2 and 7, plus a stable random jitter
                         // Seed random with point coordinates to keep jitter consistent between redraws
                         val pointRandom = Random((tx * 1000 + ty).toLong())
-                        val jitter = pointRandom.nextFloat() * 4f
+                        val jitter = pointRandom.nextFloat() * (strokeBaseWidth * 0.8f)
 
-                        val strokeWidth = (2f + (5f + jitter) * taper)
+                        val strokeWidth = (1f + (strokeBaseWidth + jitter) * taper)
 
                         interpolatedPoints.add(SignaturePoint(tx, ty, strokeWidth))
                     }

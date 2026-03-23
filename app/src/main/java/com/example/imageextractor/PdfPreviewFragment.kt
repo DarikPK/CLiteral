@@ -82,6 +82,7 @@ class PdfPreviewFragment : Fragment() {
     private var signatureOffsetY: Float = 0f
     private var signatureScale: Float = 100f
     private var signatureRotation: Float = 0f
+    private var signatureStrokeWidth: Float = 5f
     private var randomizationRadius: Float = 20f
 
 
@@ -211,9 +212,10 @@ class PdfPreviewFragment : Fragment() {
             signatureOffsetY = it.getFloat("signatureOffsetY", 0f)
             signatureScale = it.getFloat("signatureScale", 100f)
             signatureRotation = it.getFloat("signatureRotation", 0f)
-            // Also load the randomization radius from shared prefs
+            // Also load the randomization radius and stroke width from shared prefs
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             randomizationRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
+            signatureStrokeWidth = sharedPrefs.getFloat("signature_stroke_width", 5f)
         }
         }
     }
@@ -720,13 +722,13 @@ class PdfPreviewFragment : Fragment() {
 
                         // Sync random thickness with coordinates for stability
                         val pointRandom = java.util.Random((tx * 1000 + ty).toLong())
-                        val jitter = pointRandom.nextFloat() * 4f
+                        val jitter = pointRandom.nextFloat() * (signatureStrokeWidth * 0.8f)
                         val totalEstimatedPoints = segments * pointsPerSegment
                         val currentPointIdx = i * pointsPerSegment + j
                         val progress = currentPointIdx.toFloat() / totalEstimatedPoints.toFloat()
                         val taper = Math.min(progress * 5, (1 - progress) * 5).coerceIn(0f, 1f)
 
-                        val strokeWidth = (2f + (5f + jitter) * taper)
+                        val strokeWidth = (1f + (signatureStrokeWidth + jitter) * taper)
 
                         interpolatedPoints.add(SignaturePoint(tx, ty, strokeWidth))
                     }
