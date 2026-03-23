@@ -267,8 +267,13 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     fun setMarkerContours(newMarkers: List<List<PointF>>) {
         markers.clear()
+        // Limit total markers to prevent ANR with massive signatures
+        var totalPoints = 0
         newMarkers.forEach { contour ->
-            markers.add(contour.toMutableList())
+            if (totalPoints < 3000) {
+                markers.add(contour.toMutableList())
+                totalPoints += contour.size
+            }
         }
         mode = if (markers.isEmpty()) Mode.DRAW else Mode.EDIT
         history.clear()
@@ -624,7 +629,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
                 val interpolatedPoints = mutableListOf<PointF>()
                 val segments = randomPoints.size - 1
-                val pointsPerSegment = 20
+                val pointsPerSegment = 8 // Reduced from 20 for performance
 
                 for (i in 0 until segments) {
                     val p0 = if (i > 0) randomPoints[i - 1] else randomPoints[i]
