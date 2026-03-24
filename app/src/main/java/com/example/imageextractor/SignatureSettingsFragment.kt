@@ -35,6 +35,9 @@ class SignatureSettingsFragment : Fragment() {
     private lateinit var numMarkersEditText: com.google.android.material.textfield.TextInputEditText
     private lateinit var markerSizeEditText: com.google.android.material.textfield.TextInputEditText
 
+    private var tempImageUri: String? = null
+    private var tempWhiteThreshold: Float = 210f
+
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
@@ -102,18 +105,9 @@ class SignatureSettingsFragment : Fragment() {
             .setView(dialogView)
             .setPositiveButton("Importar") { _, _ ->
                 val threshold = thresholdSlider.value
-                saveFloat("signature_white_threshold" + suffix, threshold)
-
-                val currentUris = sharedPrefs.getString("signature_image_uris" + suffix, "") ?: ""
-                if (!currentUris.contains(uri.toString())) {
-                    val newUris = if (currentUris.isBlank()) uri.toString() else "$currentUris|${uri}"
-                    sharedPrefs.edit().putString("signature_image_uris" + suffix, newUris).apply()
-                }
-
-                saveString("signature_image_uri" + suffix, uri.toString())
-
+                tempImageUri = uri.toString()
+                tempWhiteThreshold = threshold
                 binding.signatureCanvasView.clearCanvas(switchMode = true)
-                saveMarkers()
 
                 // Cargar y mostrar la imagen procesada inmediatamente
                 loadAndDisplaySignatureImage(uri, threshold)
@@ -198,7 +192,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureTypeSwitch.isChecked = isLoadedMode
         binding.loadedSignaturesButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
         binding.selectImageButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
-        binding.saveSignatureToCloudButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
+        binding.saveSignatureToCloudButton.visibility = View.VISIBLE
 
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, false)
         val scale = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
@@ -292,11 +286,9 @@ class SignatureSettingsFragment : Fragment() {
                 }
                 binding.signatureCanvasView.switchToEditMode()
                 updateButtonLabels()
-                saveMarkers()
             } else {
                 // We are in EDIT mode, so the button is "Refresh Signature"
                 binding.signatureCanvasView.regenerateSignature(manualRefresh = true)
-                saveMarkers() // Save new markers if regenerated
             }
         }
 
@@ -306,12 +298,8 @@ class SignatureSettingsFragment : Fragment() {
             binding.deletePointsButton.isChecked = false
             binding.signatureCanvasView.isDeleteMode = false
 
-            // Limpiar datos persistentes del modo actual
-            saveString("signature_image_uri" + suffix, "")
-            saveString("signature_markers" + suffix, "")
-
+            binding.signatureCanvasView.tag = null
             updateButtonLabels()
-            saveMarkers()
         }
 
         binding.zoomInButton.setOnClickListener {
@@ -337,8 +325,8 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
             binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             binding.selectImageButton.visibility = if (isChecked) View.VISIBLE else View.GONE
-            binding.saveSignatureToCloudButton.visibility = if (isChecked) View.VISIBLE else View.GONE
-            saveBoolean("signature_type_loaded" + suffix, isChecked)
+            // El botón de guardar ahora siempre será visible según el plan para permitir guardar configuraciones
+            binding.saveSignatureToCloudButton.visibility = View.VISIBLE
             updateButtonLabels()
         }
 
@@ -347,7 +335,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.saveSignatureToCloudButton.setOnClickListener {
-            saveCurrentSignatureToBase64()
+            saveAllSettingsAndSignature()
         }
 
         binding.selectImageButton.setOnClickListener {
@@ -356,15 +344,14 @@ class SignatureSettingsFragment : Fragment() {
 
 
         binding.signatureCanvasView.setMarkerListener {
-            saveMarkers()
+            // Ya no se guarda automáticamente
         }
 
-        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled" + suffix, isChecked) }
+        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> /* No auto-save */ }
 
         binding.signatureScaleSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 binding.signatureScaleEditText.setText(value.toInt().toString())
-                saveFloat("signature_scale" + suffix, value)
             }
         }
 
@@ -372,29 +359,72 @@ class SignatureSettingsFragment : Fragment() {
             val scale = text.toString().toFloatOrNull() ?: 100f
             if (scale in 1f..300f) {
                 binding.signatureScaleSlider.value = scale
-                saveFloat("signature_scale" + suffix, scale)
             }
         }
 
-        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation" + suffix, value) }
-        binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation_tolerance" + suffix, value) }
+        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> /* No auto-save */ }
+        binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> /* No auto-save */ }
         binding.signatureStrokeWidthSlider.addOnChangeListener { _, value, _ ->
-            saveFloat("signature_stroke_width" + suffix, value)
             binding.signatureCanvasView.setStrokeBaseWidth(value)
         }
-        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x" + suffix, text.toString()) }
-        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y" + suffix, text.toString()) }
+        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> /* No auto-save */ }
+        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> /* No auto-save */ }
 
         numMarkersEditText.doOnTextChanged { text, _, _, _ ->
             val numMarkers = text.toString().toIntOrNull() ?: 0
-            saveInt("signature_num_markers" + suffix, numMarkers)
             binding.signatureCanvasView.setNumMarkers(numMarkers)
         }
 
         markerSizeEditText.doOnTextChanged { text, _, _, _ ->
             val markerSize = text.toString().toFloatOrNull() ?: 10f
-            saveFloat("signature_marker_size" + suffix, markerSize)
             binding.signatureCanvasView.setMarkerRadius(markerSize)
+        }
+    }
+
+    private fun saveAllSettingsAndSignature() {
+        // 1. Persistir configuraciones de la UI en SharedPreferences
+        val isLoadedMode = binding.signatureTypeSwitch.isChecked
+        saveBoolean("signature_type_loaded" + suffix, isLoadedMode)
+        saveBoolean("signature_enabled" + suffix, binding.signatureEnabledCheckbox.isChecked)
+
+        val scale = binding.signatureScaleSlider.value
+        saveFloat("signature_scale" + suffix, scale)
+
+        val rotation = binding.signatureRotationSlider.value
+        saveFloat("signature_rotation" + suffix, rotation)
+
+        saveFloat("signature_rotation_tolerance" + suffix, binding.signatureRotationToleranceSlider.value)
+        saveFloat("signature_stroke_width" + suffix, binding.signatureStrokeWidthSlider.value)
+
+        val offsetX = binding.signatureOffsetXEditText.text.toString()
+        val offsetY = binding.signatureOffsetYEditText.text.toString()
+        saveString("signature_offset_x" + suffix, offsetX)
+        saveString("signature_offset_y" + suffix, offsetY)
+
+        val numMarkers = numMarkersEditText.text.toString().toIntOrNull() ?: 15
+        saveInt("signature_num_markers" + suffix, numMarkers)
+
+        val markerSize = markerSizeEditText.text.toString().toFloatOrNull() ?: 10f
+        saveFloat("signature_marker_size" + suffix, markerSize)
+
+        // Guardar marcadores procedurales
+        val contours = binding.signatureCanvasView.getMarkerContours()
+        val markersString = contours.joinToString("|") { contour ->
+            contour.joinToString(";") { "${it.x},${it.y}" }
+        }
+        saveString("signature_markers" + suffix, markersString)
+
+        // Guardar URI de imagen si existe temporalmente
+        tempImageUri?.let { uriString ->
+            saveString("signature_image_uri" + suffix, uriString)
+            saveFloat("signature_white_threshold" + suffix, tempWhiteThreshold)
+        }
+
+        // 2. Si estamos en modo cargadas y hay un bitmap, guardarlo como una nueva entrada en la carpeta
+        if (isLoadedMode) {
+            saveCurrentSignatureToBase64(scale, offsetX, offsetY)
+        } else {
+            Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -431,16 +461,12 @@ class SignatureSettingsFragment : Fragment() {
         sharedPrefs.edit().putInt(key, value).apply()
     }
 
-    private fun saveCurrentSignatureToBase64() {
+    private fun saveCurrentSignatureToBase64(scale: Float, offsetX: String, offsetY: String) {
         val bitmap = binding.signatureCanvasView.getSignatureBitmap()
         if (bitmap == null) {
             Toast.makeText(context, "No hay firma para guardar.", Toast.LENGTH_SHORT).show()
             return
         }
-
-        val scale = binding.signatureScaleSlider.value
-        val offsetX = binding.signatureOffsetXEditText.text.toString().ifBlank { "0" }
-        val offsetY = binding.signatureOffsetYEditText.text.toString().ifBlank { "0" }
 
         lifecycleScope.launch(Dispatchers.IO) {
             val outputStream = java.io.ByteArrayOutputStream()
@@ -448,7 +474,9 @@ class SignatureSettingsFragment : Fragment() {
             // Usar NO_WRAP para evitar problemas con separadores |
             val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
             // Codificar escala y offsets: base64:scale:offsetX:offsetY
-            val dataToSave = "$base64:$scale:$offsetX:$offsetY"
+            val ox = if (offsetX.isBlank()) "0" else offsetX
+            val oy = if (offsetY.isBlank()) "0" else offsetY
+            val dataToSave = "$base64:$scale:$ox:$oy"
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
@@ -456,7 +484,7 @@ class SignatureSettingsFragment : Fragment() {
                 val newList = currentList + dataToSave
                 val newBase64String = newList.joinToString("|")
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
-                Toast.makeText(context, "Firma guardada en el registro del registrador.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Firma guardada en la carpeta de firmas.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -473,6 +501,17 @@ class SignatureSettingsFragment : Fragment() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_signature_picker, null)
         val container = dialogView.findViewById<android.widget.LinearLayout>(R.id.signature_container)
 
+        // Usar un GridLayout para que parezca más una "carpeta"
+        val gridLayout = android.widget.GridLayout(requireContext()).apply {
+            columnCount = 2
+            alignmentMode = android.widget.GridLayout.ALIGN_BOUNDS
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        container.addView(gridLayout)
+
         val dialog = android.app.AlertDialog.Builder(requireContext())
             .setTitle("Carpeta de Firmas")
             .setView(dialogView)
@@ -481,21 +520,22 @@ class SignatureSettingsFragment : Fragment() {
 
         base64List.forEachIndexed { index, data ->
             val itemLayout = android.widget.RelativeLayout(requireContext()).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 8, 0, 8)
+                val params = android.widget.GridLayout.LayoutParams().apply {
+                    width = 0
+                    height = android.widget.GridLayout.LayoutParams.WRAP_CONTENT
+                    columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+                    setMargins(8, 8, 8, 8)
                 }
+                layoutParams = params
                 setBackgroundResource(R.drawable.dotted_border)
-                setPadding(16, 16, 16, 16)
+                setPadding(8, 8, 8, 8)
             }
 
             val imageView = android.widget.ImageView(requireContext()).apply {
                 id = android.view.View.generateViewId()
                 layoutParams = android.widget.RelativeLayout.LayoutParams(
                     android.widget.RelativeLayout.LayoutParams.MATCH_PARENT,
-                    200
+                    150
                 ).apply {
                     addRule(android.widget.RelativeLayout.CENTER_IN_PARENT)
                 }
@@ -519,15 +559,16 @@ class SignatureSettingsFragment : Fragment() {
 
             val deleteButton = android.widget.ImageButton(requireContext()).apply {
                 layoutParams = android.widget.RelativeLayout.LayoutParams(
-                    android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT
+                    60, 60
                 ).apply {
                     addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP)
                     addRule(android.widget.RelativeLayout.ALIGN_PARENT_END)
                 }
                 setImageResource(android.R.drawable.ic_menu_delete)
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER)
                 setColorFilter(android.graphics.Color.RED)
+                setPadding(0, 0, 0, 0)
                 setOnClickListener {
                     android.app.AlertDialog.Builder(requireContext())
                         .setTitle("Eliminar Firma")
@@ -546,7 +587,7 @@ class SignatureSettingsFragment : Fragment() {
 
             itemLayout.addView(imageView)
             itemLayout.addView(deleteButton)
-            container.addView(itemLayout)
+            gridLayout.addView(itemLayout)
         }
         dialog.show()
     }
@@ -573,23 +614,20 @@ class SignatureSettingsFragment : Fragment() {
                     val localUri = Uri.fromFile(file)
 
                     withContext(Dispatchers.Main) {
-                        saveString("signature_image_uri" + suffix, localUri.toString())
+                        tempImageUri = localUri.toString()
                         binding.signatureCanvasView.setSignatureBitmap(bitmap)
 
                         scale?.let {
                             binding.signatureScaleSlider.value = it
                             binding.signatureScaleEditText.setText(it.toInt().toString())
-                            saveFloat("signature_scale" + suffix, it)
                         }
 
                         offsetX?.let {
                             binding.signatureOffsetXEditText.setText(it)
-                            saveString("signature_offset_x" + suffix, it)
                         }
 
                         offsetY?.let {
                             binding.signatureOffsetYEditText.setText(it)
-                            saveString("signature_offset_y" + suffix, it)
                         }
 
                         updateButtonLabels()
