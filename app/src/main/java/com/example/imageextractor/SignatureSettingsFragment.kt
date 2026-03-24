@@ -53,39 +53,15 @@ class SignatureSettingsFragment : Fragment() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            try {
-                val inputStream = requireContext().contentResolver.openInputStream(it)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+            // Persist the URI string
+            saveString("signature_image_uri", it.toString())
 
-                if (bitmap != null) {
-                    showThresholdDialog(bitmap)
-                }
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Error al cargar imagen: ${e.message}", Toast.LENGTH_LONG).show()
-            }
+            // Clear the procedural signature
+            binding.signatureCanvasView.clearCanvas(switchMode = true)
+            saveMarkers()
+
+            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se usará la imagen original sin fondo.", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun showThresholdDialog(bitmap: Bitmap) {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_threshold_settings, null)
-        val thresholdSlider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.thresholdSlider)
-        val strokesSlider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.strokesSlider)
-
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Ajustes de Importación")
-            .setView(dialogView)
-            .setPositiveButton("Importar") { _, _ ->
-                val threshold = thresholdSlider.value.toInt()
-                val targetStrokes = strokesSlider.value.toInt()
-                binding.signatureCanvasView.traceBitmap(bitmap, threshold, targetStrokes)
-                sharedPrefs.edit().remove("signature_image_uri").apply()
-                saveMarkers()
-                updateButtonLabels()
-                Toast.makeText(requireContext(), "Firma trazada con éxito.", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
     }
 
     override fun onCreateView(

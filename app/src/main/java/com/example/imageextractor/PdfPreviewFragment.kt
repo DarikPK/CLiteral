@@ -316,7 +316,8 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        signatureBitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                        val original = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                        signatureBitmap = makeWhiteTransparent(original)
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
@@ -1279,12 +1280,12 @@ class PdfPreviewFragment : Fragment() {
 
         for (i in pixels.indices) {
             val color = pixels[i]
-            val r = Color.red(color)
-            val g = Color.green(color)
-            val b = Color.blue(color)
+            val r = (color shr 16) and 0xFF
+            val g = (color shr 8) and 0xFF
+            val b = color and 0xFF
 
-            // Si el color es "casi blanco" (todos los canales > 200), hacerlo transparente
-            if (r > 200 && g > 200 && b > 200) {
+            // Umbral de blanco: si todos los canales son muy altos (> 210), hacerlo transparente
+            if (r > 210 && g > 210 && b > 210) {
                 pixels[i] = Color.TRANSPARENT
             }
         }
