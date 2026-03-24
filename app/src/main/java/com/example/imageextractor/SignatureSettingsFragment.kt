@@ -462,9 +462,9 @@ class SignatureSettingsFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
-                val list = currentBase64String.split("|").toMutableList().filter { it.isNotBlank() }
-                list.add(base64)
-                val newBase64String = list.joinToString("|")
+                val currentList = currentBase64String.split("|").filter { it.isNotBlank() }
+                val newList = currentList + base64
+                val newBase64String = newList.joinToString("|")
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
                 Toast.makeText(context, "Firma guardada en el registro del registrador.", Toast.LENGTH_LONG).show()
             }
