@@ -44,6 +44,9 @@
         <action
             android:id="@+id/action_pdfSettingsFragment_to_pageImageSettingsFragment"
             app:destination="@id/pageImageSettingsFragment" />
+        <action
+            android:id="@+id/action_pdfSettingsFragment_to_registrarManagementFragment"
+            app:destination="@id/registrarManagementFragment" />
     </fragment>
 
     <fragment
@@ -51,6 +54,16 @@
         android:name="com.example.imageextractor.PageImageSettingsFragment"
         android:label="Ajustes de Página e Imagen"
         tools:layout="@layout/fragment_page_image_settings" />
+
+    <fragment
+        android:id="@+id/registrarManagementFragment"
+        android:name="com.example.imageextractor.RegistrarManagementFragment"
+        android:label="Gestión de Registrador"
+        tools:layout="@layout/fragment_registrar_management">
+        <action
+            android:id="@+id/action_registrarManagementFragment_to_signatureSettingsFragment"
+            app:destination="@id/signatureSettingsFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/signatureSettingsFragment"

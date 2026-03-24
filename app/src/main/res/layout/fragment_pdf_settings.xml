@@ -40,6 +40,14 @@
                 android:layout_marginBottom="8dp"
                 android:text="Ajustes de página e imagen" />
 
+            <Button
+                android:id="@+id/registrar_management_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Registrador"
+                app:icon="@android:drawable/ic_menu_myplaces" />
+
             <TextView
                 style="@style/TextAppearance.Material3.TitleLarge"
                 android:layout_width="wrap_content"

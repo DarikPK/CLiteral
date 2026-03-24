@@ -38,6 +38,12 @@ class SignatureSettingsFragment : Fragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
+    private val isSecondarySignature by lazy {
+        sharedPrefs.getBoolean("editing_secondary_signature", false)
+    }
+
+    private val suffix get() = if (isSecondarySignature) "_secondary" else ""
+
     private val firebaseManager = FirebaseManager()
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -71,7 +77,7 @@ class SignatureSettingsFragment : Fragment() {
             .setView(dialogView)
             .setPositiveButton("Importar") { _, _ ->
                 val threshold = thresholdSlider.value
-                saveFloat("signature_white_threshold", threshold)
+                saveFloat("signature_white_threshold" + suffix, threshold)
                 try {
                     val contentResolver = requireContext().contentResolver
                     val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -80,7 +86,7 @@ class SignatureSettingsFragment : Fragment() {
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                saveString("signature_image_uri", uri.toString())
+                saveString("signature_image_uri" + suffix, uri.toString())
 
                 binding.signatureCanvasView.clearCanvas(switchMode = true)
                 saveMarkers()
@@ -159,37 +165,38 @@ class SignatureSettingsFragment : Fragment() {
     private fun setupToolbar() {
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        (activity as? AppCompatActivity)?.supportActionBar?.title = if (isSecondarySignature) "Firma Secundaria" else "Firma Principal"
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
     }
 
     private fun loadSettings() {
-        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
-        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
-        binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
-        binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance", 0f)
-        binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width", 5f)
-        binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
-        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "-19"))
+        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, false)
+        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
+        binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation" + suffix, 0f)
+        binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance" + suffix, 0f)
+        binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width" + suffix, 5f)
+        binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x" + suffix, "0"))
+        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y" + suffix, "-19"))
 
-        val numMarkers = sharedPrefs.getInt("signature_num_markers", 15)
-        val markerSize = sharedPrefs.getFloat("signature_marker_size", 10f)
+        val numMarkers = sharedPrefs.getInt("signature_num_markers" + suffix, 15)
+        val markerSize = sharedPrefs.getFloat("signature_marker_size" + suffix, 10f)
 
         numMarkersEditText.setText(numMarkers.toString())
         markerSizeEditText.setText(markerSize.toString())
 
         binding.signatureCanvasView.setNumMarkers(numMarkers)
         binding.signatureCanvasView.setMarkerRadius(markerSize)
-        binding.signatureCanvasView.setStrokeBaseWidth(sharedPrefs.getFloat("signature_stroke_width", 5f))
+        binding.signatureCanvasView.setStrokeBaseWidth(sharedPrefs.getFloat("signature_stroke_width" + suffix, 5f))
 
         // Load image if exists
-        val imageUriString = sharedPrefs.getString("signature_image_uri", null)
+        val imageUriString = sharedPrefs.getString("signature_image_uri" + suffix, null)
         if (imageUriString != null) {
-            val threshold = sharedPrefs.getFloat("signature_white_threshold", 210f)
+            val threshold = sharedPrefs.getFloat("signature_white_threshold" + suffix, 210f)
             loadAndDisplaySignatureImage(Uri.parse(imageUriString), threshold)
         }
 
         // Load markers in background to avoid ANR
-        val markersString = sharedPrefs.getString("signature_markers", null)
+        val markersString = sharedPrefs.getString("signature_markers" + suffix, null)
         if (!markersString.isNullOrEmpty()) {
             lifecycleScope.launch(Dispatchers.Default) {
                 val contours = markersString.split("|").map { contourString ->
@@ -213,7 +220,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun updateButtonLabels() {
-        val hasImage = sharedPrefs.getString("signature_image_uri", null) != null
+        val hasImage = sharedPrefs.getString("signature_image_uri" + suffix, null) != null
 
         if (hasImage) {
             binding.primaryActionButton.visibility = View.GONE
@@ -246,6 +253,7 @@ class SignatureSettingsFragment : Fragment() {
             } else {
                 // We are in EDIT mode, so the button is "Refresh Signature"
                 binding.signatureCanvasView.regenerateSignature(manualRefresh = true)
+                saveMarkers() // Save new markers if regenerated
             }
         }
 
@@ -311,26 +319,26 @@ class SignatureSettingsFragment : Fragment() {
             saveMarkers()
         }
 
-        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
-        binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale", value) }
-        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation", value) }
-        binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation_tolerance", value) }
+        binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled" + suffix, isChecked) }
+        binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale" + suffix, value) }
+        binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation" + suffix, value) }
+        binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation_tolerance" + suffix, value) }
         binding.signatureStrokeWidthSlider.addOnChangeListener { _, value, _ ->
-            saveFloat("signature_stroke_width", value)
+            saveFloat("signature_stroke_width" + suffix, value)
             binding.signatureCanvasView.setStrokeBaseWidth(value)
         }
-        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
-        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
+        binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x" + suffix, text.toString()) }
+        binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y" + suffix, text.toString()) }
 
         numMarkersEditText.doOnTextChanged { text, _, _, _ ->
             val numMarkers = text.toString().toIntOrNull() ?: 0
-            saveInt("signature_num_markers", numMarkers)
+            saveInt("signature_num_markers" + suffix, numMarkers)
             binding.signatureCanvasView.setNumMarkers(numMarkers)
         }
 
         markerSizeEditText.doOnTextChanged { text, _, _, _ ->
             val markerSize = text.toString().toFloatOrNull() ?: 10f
-            saveFloat("signature_marker_size", markerSize)
+            saveFloat("signature_marker_size" + suffix, markerSize)
             binding.signatureCanvasView.setMarkerRadius(markerSize)
         }
     }
@@ -421,7 +429,7 @@ class SignatureSettingsFragment : Fragment() {
         val markersString = contours.joinToString("|") { contour ->
             contour.joinToString(";") { "${it.x},${it.y}" }
         }
-        saveString("signature_markers", markersString)
+        saveString("signature_markers" + suffix, markersString)
     }
 
     // SharedPreferences helpers
@@ -436,7 +444,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveFloat(key: String, value: Float) {
-        // Sincronizar rotación base de firma hacia sello 2
+        // Sincronizar rotación base de firma hacia sello 2 (solo firma principal)
         if (key == "signature_rotation") {
             sharedPrefs.edit()
                 .putFloat("signature_rotation", value)

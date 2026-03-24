@@ -178,6 +178,10 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
         }
 
+        binding.registrarManagementButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
+        }
+
         binding.signatureSettingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
         }
@@ -188,9 +192,19 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
+        val now = Calendar.getInstance()
+        val day = now.get(Calendar.DAY_OF_MONTH)
+        val month = now.get(Calendar.MONTH)
+        val year = now.get(Calendar.YEAR)
+
+        binding.stampDayTextView.text = day.toString()
+        binding.stampMonthSpinner.setSelection(month)
+        binding.stampYearEditText.setText(year.toString())
+        binding.dynamicAno.setText(year.toString())
+        selectedDate.set(year, month, day)
+
         // Los ajustes de imagen y márgenes ahora se cargan en PageImageSettingsFragment
         // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
-        binding.stampYearEditText.setText(sharedPrefs.getString("stamp_year", "2026"))
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
         binding.stampSizeEditText.setText(sharedPrefs.getString("stamp_size", "8"))
         binding.stampRotationEditText.setText(sharedPrefs.getString("stamp_rotation", "5"))
@@ -203,11 +217,8 @@ class PdfSettingsFragment : Fragment() {
         binding.stampWearIntensitySlider.value = sharedPrefs.getFloat("stamp_wear_intensity", 30f)
         binding.stampWearSizeSlider.value = sharedPrefs.getFloat("stamp_wear_size", 50f)
 
-        binding.stampMonthSpinner.setSelection(sharedPrefs.getInt("stamp_month_position", 0))
-
         // Load dynamic fields
         binding.dynamicNumeroPublicidad.setText(sharedPrefs.getString("dynamic_numero_publicidad", ""))
-        binding.dynamicAno.setText(sharedPrefs.getString("dynamic_ano", "2026"))
 
         binding.dynamicDigito1.setText(sharedPrefs.getString("dynamic_digito1", ""))
         binding.dynamicDigito2.setText(sharedPrefs.getString("dynamic_digito2", ""))
@@ -479,6 +490,9 @@ class PdfSettingsFragment : Fragment() {
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             putString("dynamic_fecha", sdf.format(selectedDate.time))
             putString("dynamic_hora_wm4", binding.dynamicHora.text.toString())
+
+            // Visibility
+            putBoolean("showInPdf", sharedPrefs.getBoolean("show_in_pdf", true))
 
             // Signature Data
             val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
