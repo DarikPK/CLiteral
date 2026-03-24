@@ -414,10 +414,11 @@ class SignatureSettingsFragment : Fragment() {
         }
         saveString("signature_markers" + suffix, markersString)
 
-        // Guardar URI de imagen si existe temporalmente
-        tempImageUri?.let { uriString ->
-            saveString("signature_image_uri" + suffix, uriString)
-            saveFloat("signature_white_threshold" + suffix, tempWhiteThreshold)
+        // Guardar URI de imagen si existe temporalmente (o limpiar si no hay nada nuevo y se borró)
+        val finalUri = tempImageUri ?: if (binding.signatureCanvasView.getSignatureBitmap() == null) "" else null
+        finalUri?.let {
+            saveString("signature_image_uri" + suffix, it)
+            if (it.isNotEmpty()) saveFloat("signature_white_threshold" + suffix, tempWhiteThreshold)
         }
 
         // 2. Si estamos en modo cargadas y hay un bitmap, guardarlo como una nueva entrada en la carpeta
