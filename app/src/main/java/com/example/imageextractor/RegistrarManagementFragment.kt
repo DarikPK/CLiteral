@@ -86,12 +86,14 @@ class RegistrarManagementFragment : Fragment() {
 
         binding.configPrimarySignatureButton.setOnClickListener {
             sharedPrefs.edit().putBoolean("editing_secondary_signature", false).apply()
-            findNavController().navigate(R.id.action_registrarManagementFragment_to_signatureSettingsFragment)
+            val bundle = Bundle().apply { putBoolean("is_secondary", false) }
+            findNavController().navigate(R.id.action_registrarManagementFragment_to_signatureSettingsFragment, bundle)
         }
 
         binding.configSecondarySignatureButton.setOnClickListener {
             sharedPrefs.edit().putBoolean("editing_secondary_signature", true).apply()
-            findNavController().navigate(R.id.action_registrarManagementFragment_to_signatureSettingsFragment)
+            val bundle = Bundle().apply { putBoolean("is_secondary", true) }
+            findNavController().navigate(R.id.action_registrarManagementFragment_to_signatureSettingsFragment, bundle)
         }
 
         binding.saveRegistrarButton.setOnClickListener {

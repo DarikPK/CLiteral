@@ -43,7 +43,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private val isSecondarySignature: Boolean
-        get() = sharedPrefs.getBoolean("editing_secondary_signature", false)
+        get() = arguments?.getBoolean("is_secondary", false) ?: sharedPrefs.getBoolean("editing_secondary_signature", false)
 
     private val suffix: String
         get() = if (isSecondarySignature) "_secondary" else ""
@@ -426,6 +426,9 @@ class SignatureSettingsFragment : Fragment() {
         } else {
             Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
         }
+
+        // Limpiar temporales tras guardar
+        tempImageUri = null
     }
 
     private fun saveMarkers() {
