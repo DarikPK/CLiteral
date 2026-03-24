@@ -343,46 +343,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.loadedSignaturesButton.setOnClickListener {
-            val base64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
-            val base64List = base64String.split("|").filter { it.isNotBlank() }
-
-            if (base64List.isEmpty()) {
-                Toast.makeText(context, "No hay firmas guardadas para este registrador.", Toast.LENGTH_SHORT).show()
-            } else {
-                val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_signature_picker, null)
-                val container = dialogView.findViewById<android.widget.LinearLayout>(R.id.signature_container)
-
-                val dialog = android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Seleccionar Firma")
-                    .setView(dialogView)
-                    .setNegativeButton("Cerrar", null)
-                    .create()
-
-                base64List.forEachIndexed { index, base64 ->
-                    val imageView = android.widget.ImageView(requireContext()).apply {
-                        layoutParams = android.widget.LinearLayout.LayoutParams(
-                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                            200
-                        ).apply {
-                            setMargins(0, 8, 0, 8)
-                        }
-                        setBackgroundResource(R.drawable.dotted_border)
-                        setPadding(8, 8, 8, 8)
-
-                        // Cargar preview
-                        val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
-                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                        setImageBitmap(bitmap)
-
-                        setOnClickListener {
-                            loadSignatureFromBase64(base64)
-                            dialog.dismiss()
-                        }
-                    }
-                    container.addView(imageView)
-                }
-                dialog.show()
-            }
+            showSignatureFolderDialog()
         }
 
         binding.saveSignatureToCloudButton.setOnClickListener {
@@ -478,14 +439,16 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         val scale = binding.signatureScaleSlider.value
+        val offsetX = binding.signatureOffsetXEditText.text.toString().ifBlank { "0" }
+        val offsetY = binding.signatureOffsetYEditText.text.toString().ifBlank { "0" }
 
         lifecycleScope.launch(Dispatchers.IO) {
             val outputStream = java.io.ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
             // Usar NO_WRAP para evitar problemas con separadores |
             val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
-            // Codificar la escala junto con la imagen: base64:scale
-            val dataToSave = "$base64:$scale"
+            // Codificar escala y offsets: base64:scale:offsetX:offsetY
+            val dataToSave = "$base64:$scale:$offsetX:$offsetY"
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
@@ -498,13 +461,105 @@ class SignatureSettingsFragment : Fragment() {
         }
     }
 
+    private fun showSignatureFolderDialog() {
+        val base64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
+        val base64List = base64String.split("|").filter { it.isNotBlank() }.toMutableList()
+
+        if (base64List.isEmpty()) {
+            Toast.makeText(context, "No hay firmas guardadas.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_signature_picker, null)
+        val container = dialogView.findViewById<android.widget.LinearLayout>(R.id.signature_container)
+
+        val dialog = android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Carpeta de Firmas")
+            .setView(dialogView)
+            .setNegativeButton("Cerrar", null)
+            .create()
+
+        base64List.forEachIndexed { index, data ->
+            val itemLayout = android.widget.RelativeLayout(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(0, 8, 0, 8)
+                }
+                setBackgroundResource(R.drawable.dotted_border)
+                setPadding(16, 16, 16, 16)
+            }
+
+            val imageView = android.widget.ImageView(requireContext()).apply {
+                id = android.view.View.generateViewId()
+                layoutParams = android.widget.RelativeLayout.LayoutParams(
+                    android.widget.RelativeLayout.LayoutParams.MATCH_PARENT,
+                    200
+                ).apply {
+                    addRule(android.widget.RelativeLayout.CENTER_IN_PARENT)
+                }
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+
+                // Cargar preview (tomar solo la parte base64)
+                val base64 = data.split(":")[0]
+                try {
+                    val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                    val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                    setImageBitmap(bitmap)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                setOnClickListener {
+                    loadSignatureFromBase64(data)
+                    dialog.dismiss()
+                }
+            }
+
+            val deleteButton = android.widget.ImageButton(requireContext()).apply {
+                layoutParams = android.widget.RelativeLayout.LayoutParams(
+                    android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP)
+                    addRule(android.widget.RelativeLayout.ALIGN_PARENT_END)
+                }
+                setImageResource(android.R.drawable.ic_menu_delete)
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setColorFilter(android.graphics.Color.RED)
+                setOnClickListener {
+                    android.app.AlertDialog.Builder(requireContext())
+                        .setTitle("Eliminar Firma")
+                        .setMessage("¿Estás seguro de que quieres eliminar esta firma?")
+                        .setPositiveButton("Eliminar") { _, _ ->
+                            base64List.removeAt(index)
+                            val newBase64String = base64List.joinToString("|")
+                            sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
+                            dialog.dismiss()
+                            showSignatureFolderDialog() // Refrescar diálogo
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+            }
+
+            itemLayout.addView(imageView)
+            itemLayout.addView(deleteButton)
+            container.addView(itemLayout)
+        }
+        dialog.show()
+    }
+
     private fun loadSignatureFromBase64(data: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Separar base64 y escala
+                // Separar base64, escala y offsets
                 val parts = data.split(":")
                 val base64 = parts[0]
                 val scale = if (parts.size > 1) parts[1].toFloatOrNull() else null
+                val offsetX = if (parts.size > 2) parts[2] else null
+                val offsetY = if (parts.size > 3) parts[3] else null
 
                 val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
                 val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
@@ -525,6 +580,16 @@ class SignatureSettingsFragment : Fragment() {
                             binding.signatureScaleSlider.value = it
                             binding.signatureScaleEditText.setText(it.toInt().toString())
                             saveFloat("signature_scale" + suffix, it)
+                        }
+
+                        offsetX?.let {
+                            binding.signatureOffsetXEditText.setText(it)
+                            saveString("signature_offset_x" + suffix, it)
+                        }
+
+                        offsetY?.let {
+                            binding.signatureOffsetYEditText.setText(it)
+                            saveString("signature_offset_y" + suffix, it)
                         }
 
                         updateButtonLabels()

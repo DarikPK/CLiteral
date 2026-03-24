@@ -77,7 +77,15 @@ class PdfPreviewFragment : Fragment() {
     private var isSignatureEnabled: Boolean = false
     private var signatureMarkerContours: List<List<PointF>> = emptyList()
     private var signatureBitmap: Bitmap? = null
-    private var signatureCloudBitmaps: List<Bitmap> = emptyList()
+
+    data class LoadedSignature(
+        val bitmap: Bitmap,
+        val scale: Float,
+        val offsetX: Float,
+        val offsetY: Float
+    )
+    private var signatureCloudList: List<LoadedSignature> = emptyList()
+
     private var firstPageSignatureIndex: Int = -1
     private var lastPageSignatureIndex: Int = -1
     private var signatureState: StampState? = null
@@ -94,7 +102,7 @@ class PdfPreviewFragment : Fragment() {
     private var isSignatureSecondaryEnabled: Boolean = false
     private var signatureMarkerContoursSecondary: List<List<PointF>> = emptyList()
     private var signatureSecondaryBitmap: Bitmap? = null
-    private var signatureSecondaryCloudBitmaps: List<Bitmap> = emptyList()
+    private var signatureSecondaryCloudList: List<LoadedSignature> = emptyList()
     private var signatureImageUriSecondary: String? = null
     private var signatureOffsetXSecondary: Float = 0f
     private var signatureOffsetYSecondary: Float = 0f
@@ -231,23 +239,30 @@ class PdfPreviewFragment : Fragment() {
             val signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false)
             if (signatureTypeLoaded) {
                 val base64String = sharedPrefs.getString("signature_images_base64", "") ?: ""
-                signatureCloudBitmaps = base64String.split("|")
+                signatureCloudList = base64String.split("|")
                     .filter { it.isNotBlank() }
-                    .mapNotNull { base64 ->
+                    .mapNotNull { data ->
                         try {
+                            val parts = data.split(":")
+                            val base64 = parts[0]
+                            val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
+                            val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
+                            val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
+
                             val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
-                            BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
                         } catch (e: Exception) { null }
                     }
 
-                if (signatureCloudBitmaps.size >= 2) {
-                    firstPageSignatureIndex = random.nextInt(signatureCloudBitmaps.size)
-                    var secondIndex = random.nextInt(signatureCloudBitmaps.size)
+                if (signatureCloudList.size >= 2) {
+                    firstPageSignatureIndex = random.nextInt(signatureCloudList.size)
+                    var secondIndex = random.nextInt(signatureCloudList.size)
                     while (secondIndex == firstPageSignatureIndex) {
-                        secondIndex = random.nextInt(signatureCloudBitmaps.size)
+                        secondIndex = random.nextInt(signatureCloudList.size)
                     }
                     lastPageSignatureIndex = secondIndex
-                } else if (signatureCloudBitmaps.size == 1) {
+                } else if (signatureCloudList.size == 1) {
                     firstPageSignatureIndex = 0
                     lastPageSignatureIndex = 0
                 }
@@ -270,12 +285,19 @@ class PdfPreviewFragment : Fragment() {
             val signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false)
             if (signatureTypeLoadedSecondary) {
                 val base64String = sharedPrefs.getString("signature_images_base64_secondary", "") ?: ""
-                signatureSecondaryCloudBitmaps = base64String.split("|")
+                signatureSecondaryCloudList = base64String.split("|")
                     .filter { it.isNotBlank() }
-                    .mapNotNull { base64 ->
+                    .mapNotNull { data ->
                         try {
+                            val parts = data.split(":")
+                            val base64 = parts[0]
+                            val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
+                            val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
+                            val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
+
                             val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
-                            BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
                         } catch (e: Exception) { null }
                     }
             }
@@ -551,49 +573,51 @@ class PdfPreviewFragment : Fragment() {
         updateStampOverlay()
     }
 
-    private fun getSignatureForPage(index: Int): Bitmap? {
+    private fun getSignatureDataForPage(index: Int): LoadedSignature? {
         val totalPages = pageBitmaps.size
         val isFirstOrLast = index == 0 || (index == totalPages - 1 && totalPages > 1)
 
         if (isFirstOrLast) {
             // Lógica Firma Principal
-            if (signatureCloudBitmaps.isNotEmpty()) {
+            if (signatureCloudList.isNotEmpty()) {
                 val sigIndex = if (index == 0) firstPageSignatureIndex else lastPageSignatureIndex
-                if (sigIndex != -1 && sigIndex < signatureCloudBitmaps.size) {
-                    return signatureCloudBitmaps[sigIndex]
+                if (sigIndex != -1 && sigIndex < signatureCloudList.size) {
+                    return signatureCloudList[sigIndex]
                 }
-                return signatureCloudBitmaps[Random(index.toLong()).nextInt(signatureCloudBitmaps.size)]
+                return signatureCloudList[Random(index.toLong()).nextInt(signatureCloudList.size)]
             } else if (signatureBitmap != null) {
                 // Procedural o imagen única
-                return if (signatureMarkerContours.isNotEmpty()) {
-                    // Regenerar proceduralmente para cada página (semilla basada en índice)
+                val bitmap = if (signatureMarkerContours.isNotEmpty()) {
                     generateProceduralSignatureBitmap(signatureMarkerContours, randomizationRadius, signatureStrokeWidth, seed = index.toLong())
                 } else {
                     signatureBitmap
                 }
+                return bitmap?.let { LoadedSignature(it, signatureScale, signatureOffsetX, signatureOffsetY) }
             }
         } else {
-            // Lógica Firma Secundaria (solo si hay más de 2 páginas y estamos en el medio)
+            // Lógica Firma Secundaria
             if (isSignatureSecondaryEnabled) {
-                if (signatureSecondaryCloudBitmaps.isNotEmpty()) {
-                    return signatureSecondaryCloudBitmaps[Random(index.toLong()).nextInt(signatureSecondaryCloudBitmaps.size)]
+                if (signatureSecondaryCloudList.isNotEmpty()) {
+                    return signatureSecondaryCloudList[Random(index.toLong()).nextInt(signatureSecondaryCloudList.size)]
                 } else if (signatureSecondaryBitmap != null) {
-                    return if (signatureMarkerContoursSecondary.isNotEmpty()) {
+                    val bitmap = if (signatureMarkerContoursSecondary.isNotEmpty()) {
                         generateProceduralSignatureBitmap(signatureMarkerContoursSecondary, randomizationRadiusSecondary, signatureStrokeWidthSecondary, seed = index.toLong())
                     } else {
                         signatureSecondaryBitmap
                     }
+                    return bitmap?.let { LoadedSignature(it, signatureScaleSecondary, signatureOffsetXSecondary, signatureOffsetYSecondary) }
                 }
             }
-            // Fallback a principal si no hay secundaria y es necesario
-            return null
         }
         return null
     }
 
+    private fun getSignatureForPage(index: Int): Bitmap? = getSignatureDataForPage(index)?.bitmap
+
     private fun updateSignaturePositionRelative() {
         if (!isSignatureEnabled) return
-        val currentSigBitmap = getSignatureForPage(currentPageIndex) ?: return
+        val sigData = getSignatureDataForPage(currentPageIndex) ?: return
+        val currentSigBitmap = sigData.bitmap
 
         val mmToPx = 2.83f
         val s2State = stamp2State
@@ -602,6 +626,9 @@ class PdfPreviewFragment : Fragment() {
         val baseCenterX: Float
         val baseCenterY: Float
         val baseRotation: Float
+
+        val totalPages = pageBitmaps.size
+        val isFirstOrLast = currentPageIndex == 0 || (currentPageIndex == totalPages - 1 && totalPages > 1)
 
         if (isStamp2Enabled && s2State != null && s2Bitmap != null) {
             baseCenterX = s2State.x + (s2Bitmap.width * s2State.scale) / 2f
@@ -612,17 +639,13 @@ class PdfPreviewFragment : Fragment() {
             val pageH = pageW / (595f / 842f)
             baseCenterX = pageW / 2
             baseCenterY = pageH / 2
-            baseRotation = if (currentPageIndex == 0) signatureRotation else signatureRotationSecondary
+            baseRotation = if (isFirstOrLast) signatureRotation else signatureRotationSecondary
         }
 
-        // Determinar parámetros según la página
-        val totalPages = pageBitmaps.size
-        val isFirstOrLast = currentPageIndex == 0 || (currentPageIndex == totalPages - 1 && totalPages > 1)
-
-        val currentSigOffsetX = if (isFirstOrLast) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
-        val currentSigOffsetY = if (isFirstOrLast) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
-        val currentSigScale = if (isFirstOrLast) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
-        val currentSigRotation = if (isFirstOrLast) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
+        // Determinar parámetros de la firma
+        val currentSigOffsetX = sigData.offsetX
+        val currentSigOffsetY = sigData.offsetY
+        val currentSigScale = sigData.scale
 
         val signatureScaleFloat = currentSigScale / 100f
 
@@ -631,7 +654,7 @@ class PdfPreviewFragment : Fragment() {
         val dy = currentSigOffsetY * mmToPx
 
         // 3. Rotar el vector de desplazamiento según la rotación base
-        val finalBaseRotation = if (isStamp2Enabled && s2State != null && s2Bitmap != null) baseRotation else currentSigRotation
+        val finalBaseRotation = if (isStamp2Enabled && s2State != null && s2Bitmap != null) baseRotation else (if (isFirstOrLast) signatureRotation else signatureRotationSecondary)
         val angleRad = Math.toRadians(finalBaseRotation.toDouble())
         val cos = Math.cos(angleRad).toFloat()
         val sin = Math.sin(angleRad).toFloat()
@@ -641,10 +664,10 @@ class PdfPreviewFragment : Fragment() {
 
         // 4. Actualizar estado de la firma (la rotación también sigue al sello)
         signatureState?.let {
-            it.x = baseCenterX + rotatedDx - (currentSigBitmap!!.width * signatureScaleFloat) / 2f
-            it.y = baseCenterY + rotatedDy - (currentSigBitmap!!.height * signatureScaleFloat) / 2f
+            it.x = baseCenterX + rotatedDx - (currentSigBitmap.width * signatureScaleFloat) / 2f
+            it.y = baseCenterY + rotatedDy - (currentSigBitmap.height * signatureScaleFloat) / 2f
             it.rotation = finalBaseRotation
-            it.scale = signatureScaleFloat // Reutilizamos scale en StampState para previsualización
+            it.scale = signatureScaleFloat
         }
     }
 
@@ -842,19 +865,18 @@ class PdfPreviewFragment : Fragment() {
         // Draw Signature
         val totalPages = pageBitmaps.size
         val isFirstOrLast = index == 0 || (index == totalPages - 1 && totalPages > 1)
-        val currentSigBitmap = getSignatureForPage(index)
+        val sigData = getSignatureDataForPage(index)
 
-        if (isSignatureEnabled && currentSigBitmap != null) {
+        if (isSignatureEnabled && sigData != null) {
+            val currentSigBitmap = sigData.bitmap
             canvas.save()
 
             val mmToPx = 2.83f
             val previewToPdfScale = 595f / 1000f
 
-            val currentSigOffsetX = if (isFirstOrLast) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
-            val currentSigOffsetY = if (isFirstOrLast) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
-            val currentSigScale = if (isFirstOrLast) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
-            val currentSigRotation = if (isFirstOrLast) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
-
+            val currentSigOffsetX = sigData.offsetX
+            val currentSigOffsetY = sigData.offsetY
+            val currentSigScale = sigData.scale
             val signatureScaleFloat = currentSigScale / 100f
 
             val s2State = stamp2State
@@ -880,7 +902,7 @@ class PdfPreviewFragment : Fragment() {
                 val pageH = pageW / (595f / 842f)
                 baseCenterX_Pdf = (pageW / 2f) * previewToPdfScale
                 baseCenterY_Pdf = (pageH / 2f) * previewToPdfScale
-                baseRotation = currentSigRotation
+                baseRotation = if (isFirstOrLast) signatureRotation else signatureRotationSecondary
             }
 
             val dx_Pdf = currentSigOffsetX * mmToPx * previewToPdfScale
@@ -903,7 +925,7 @@ class PdfPreviewFragment : Fragment() {
 
             // 4. Rotación de la firma: Rotación base + Tolerancia propia
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            val sigToleranceSuffix = if (index == 0) "" else "_secondary"
+            val sigToleranceSuffix = if (isFirstOrLast) "" else "_secondary"
             val sigTolerance = sharedPrefs.getFloat("signature_rotation_tolerance" + sigToleranceSuffix, 0f)
             val randomSigRotation = if (sigTolerance > 0) (Random().nextFloat() * 2 * sigTolerance) - sigTolerance else 0f
 
