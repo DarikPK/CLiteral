@@ -106,11 +106,18 @@ class RegistrarManagementFragment : Fragment() {
             putString("stamp2_name", "")
             putString("stamp2_position", "")
             putString("stamp2_area", "")
-            // Limpiar firmas
+            // Limpiar firmas y registros Base64
             remove("signature_markers")
             remove("signature_image_uri")
+            remove("signature_image_uris")
+            remove("signature_images_base64")
+            remove("signature_type_loaded")
+
             remove("signature_markers_secondary")
             remove("signature_image_uri_secondary")
+            remove("signature_image_uris_secondary")
+            remove("signature_images_base64_secondary")
+            remove("signature_type_loaded_secondary")
             apply()
         }
         loadSettings()

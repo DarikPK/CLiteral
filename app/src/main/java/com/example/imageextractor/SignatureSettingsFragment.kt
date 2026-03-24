@@ -39,11 +39,11 @@ class SignatureSettingsFragment : Fragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
-    private val isSecondarySignature by lazy {
-        sharedPrefs.getBoolean("editing_secondary_signature", false)
-    }
+    private val isSecondarySignature: Boolean
+        get() = sharedPrefs.getBoolean("editing_secondary_signature", false)
 
-    private val suffix get() = if (isSecondarySignature) "_secondary" else ""
+    private val suffix: String
+        get() = if (isSecondarySignature) "_secondary" else ""
 
     private val firebaseManager = FirebaseManager()
 
@@ -462,7 +462,9 @@ class SignatureSettingsFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
-                val newBase64String = if (currentBase64String.isBlank()) base64 else "$currentBase64String|$base64"
+                val list = currentBase64String.split("|").toMutableList().filter { it.isNotBlank() }
+                list.add(base64)
+                val newBase64String = list.joinToString("|")
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
                 Toast.makeText(context, "Firma guardada en el registro del registrador.", Toast.LENGTH_LONG).show()
             }
