@@ -467,16 +467,27 @@ class PdfPreviewFragment : Fragment() {
         val mmToPx = 2.83f
         val signatureScaleFloat = signatureScale / 100f
 
-        // El desplazamiento configurado (X, Y) es relativo al centro del Sello 2
-        val baseCenterX = stamp2State!!.x + (stamp2Bitmap!!.width * stamp2State!!.scale) / 2f
-        val baseCenterY = stamp2State!!.y + (stamp2Bitmap!!.height * stamp2State!!.scale) / 2f
+        // 1. Centro del Sello 2 (Punto de rotación)
+        val s2CenterX = stamp2State!!.x + (stamp2Bitmap!!.width * stamp2State!!.scale) / 2f
+        val s2CenterY = stamp2State!!.y + (stamp2Bitmap!!.height * stamp2State!!.scale) / 2f
 
+        // 2. Desplazamiento configurado (relativo al centro sin rotación)
         val dx = signatureOffsetX * mmToPx
         val dy = signatureOffsetY * mmToPx
 
+        // 3. Rotar el vector de desplazamiento según la rotación del Sello 2
+        val angleRad = Math.toRadians(stamp2State!!.rotation.toDouble())
+        val cos = Math.cos(angleRad).toFloat()
+        val sin = Math.sin(angleRad).toFloat()
+
+        val rotatedDx = dx * cos - dy * sin
+        val rotatedDy = dx * sin + dy * cos
+
+        // 4. Actualizar estado de la firma (la rotación también sigue al sello)
         signatureState?.let {
-            it.x = baseCenterX + dx - (signatureBitmap!!.width * signatureScaleFloat) / 2f
-            it.y = baseCenterY + dy - (signatureBitmap!!.height * signatureScaleFloat) / 2f
+            it.x = s2CenterX + rotatedDx - (signatureBitmap!!.width * signatureScaleFloat) / 2f
+            it.y = s2CenterY + rotatedDy - (signatureBitmap!!.height * signatureScaleFloat) / 2f
+            it.rotation = stamp2State!!.rotation + 90f
         }
     }
 
@@ -703,7 +714,8 @@ class PdfPreviewFragment : Fragment() {
         val bitmap = Bitmap.createBitmap(SIGNATURE_CANVAS_WIDTH.toInt(), SIGNATURE_CANVAS_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // El bitmap interno se genera normal (alineado con la vista de ajustes)
+        // Aplicar rotación de 90 grados al generar el bitmap procedural para alinear con el lienzo de ajustes
+        canvas.rotate(90f, SIGNATURE_CANVAS_WIDTH / 2f, SIGNATURE_CANVAS_HEIGHT / 2f)
 
         val signaturePaint = Paint().apply {
             color = Color.parseColor("#2557A8")

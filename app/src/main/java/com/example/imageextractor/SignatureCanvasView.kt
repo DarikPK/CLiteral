@@ -131,6 +131,9 @@ class SignatureCanvasView @JvmOverloads constructor(
         canvas.concat(baseMatrix)
         canvas.concat(matrix)
 
+        // Aplicar rotación de 90 grados para alineación con el sello
+        canvas.rotate(90f, LOGICAL_WIDTH / 2, LOGICAL_HEIGHT / 2)
+
         // 1. Dibuja el bitmap si existe
         signatureBitmap?.let {
             val src = Rect(0, 0, it.width, it.height)
