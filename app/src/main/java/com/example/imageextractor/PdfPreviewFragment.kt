@@ -214,7 +214,7 @@ class PdfPreviewFragment : Fragment() {
             signatureRotation = it.getFloat("signatureRotation", 0f)
             // Also load the randomization radius and stroke width from shared prefs
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            randomizationRadius = sharedPrefs.getFloat("signature_random_radius", 20f)
+            randomizationRadius = sharedPrefs.getFloat("signature_marker_size", 10f)
             signatureStrokeWidth = sharedPrefs.getFloat("signature_stroke_width", 5f)
         }
         }
@@ -721,8 +721,12 @@ class PdfPreviewFragment : Fragment() {
                         val ty = 0.5f * (p0.y * q1 + p1.y * q2 + p2.y * q3 + p3.y * q4)
 
                         // Sync random thickness with coordinates for stability
-                        val pointRandom = java.util.Random((tx * 1000 + ty).toLong())
-                        val jitter = pointRandom.nextFloat() * (signatureStrokeWidth * 0.8f)
+                        val jitter = if (randomizationRadius > 0) {
+                            val pointRandom = java.util.Random((tx * 1000 + ty).toLong())
+                            pointRandom.nextFloat() * (signatureStrokeWidth * 0.8f)
+                        } else {
+                            0f
+                        }
                         val totalEstimatedPoints = segments * pointsPerSegment
                         val currentPointIdx = i * pointsPerSegment + j
                         val progress = currentPointIdx.toFloat() / totalEstimatedPoints.toFloat()

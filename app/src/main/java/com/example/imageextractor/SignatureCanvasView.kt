@@ -788,8 +788,12 @@ class SignatureCanvasView @JvmOverloads constructor(
 
                         // Base width between 2 and 7, plus a stable random jitter
                         // Seed random with point coordinates to keep jitter consistent between redraws
-                        val pointRandom = Random((tx * 1000 + ty).toLong())
-                        val jitter = pointRandom.nextFloat() * (strokeBaseWidth * 0.8f)
+                        val jitter = if (markerRadius > 0) {
+                            val pointRandom = Random((tx * 1000 + ty).toLong())
+                            pointRandom.nextFloat() * (strokeBaseWidth * 0.8f)
+                        } else {
+                            0f
+                        }
 
                         val strokeWidth = (1f + (strokeBaseWidth + jitter) * taper)
 
