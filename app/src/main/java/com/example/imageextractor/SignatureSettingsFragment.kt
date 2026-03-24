@@ -53,15 +53,79 @@ class SignatureSettingsFragment : Fragment() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Persist the URI string
-            saveString("signature_image_uri", it.toString())
-
-            // Clear the procedural signature
-            binding.signatureCanvasView.clearCanvas(switchMode = true)
-            saveMarkers()
-
-            Toast.makeText(requireContext(), "Imagen de firma seleccionada. Se usará la imagen original sin fondo.", Toast.LENGTH_LONG).show()
+            showImportSettingsDialog(it)
         }
+    }
+
+    private fun showImportSettingsDialog(uri: Uri) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_threshold_settings, null)
+        val thresholdSlider = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.thresholdSlider)
+        // Ocultar el slider de trazos ya que no usaremos trazado vectorial
+        dialogView.findViewById<View>(R.id.strokesSlider).visibility = View.GONE
+        dialogView.findViewById<View>(R.id.strokesSliderLabel).visibility = View.GONE
+        dialogView.findViewById<View>(R.id.strokesSliderDescription).visibility = View.GONE
+
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Ajustes de Importación")
+            .setView(dialogView)
+            .setPositiveButton("Importar") { _, _ ->
+                val threshold = thresholdSlider.value
+                saveFloat("signature_white_threshold", threshold)
+                saveString("signature_image_uri", uri.toString())
+
+                binding.signatureCanvasView.clearCanvas(switchMode = true)
+                saveMarkers()
+
+                // Cargar y mostrar la imagen procesada inmediatamente
+                loadAndDisplaySignatureImage(uri, threshold)
+                updateButtonLabels()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun loadAndDisplaySignatureImage(uri: Uri, threshold: Float) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val inputStream = requireContext().contentResolver.openInputStream(uri)
+                val original = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (original != null) {
+                    val processed = makeWhiteTransparent(original, threshold)
+                    withContext(Dispatchers.Main) {
+                        binding.signatureCanvasView.setSignatureBitmap(processed)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Error al cargar imagen: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun makeWhiteTransparent(source: Bitmap, threshold: Float): Bitmap {
+        val width = source.width
+        val height = source.height
+        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        val pixels = IntArray(width * height)
+        source.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        for (i in pixels.indices) {
+            val color = pixels[i]
+            val r = (color shr 16) and 0xFF
+            val g = (color shr 8) and 0xFF
+            val b = color and 0xFF
+
+            if (r > threshold && g > threshold && b > threshold) {
+                pixels[i] = 0x00000000
+            }
+        }
+
+        result.setPixels(pixels, 0, width, 0, 0, width, height)
+        return result
     }
 
     override fun onCreateView(
@@ -108,6 +172,13 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureCanvasView.setMarkerRadius(markerSize)
         binding.signatureCanvasView.setStrokeBaseWidth(sharedPrefs.getFloat("signature_stroke_width", 5f))
 
+        // Load image if exists
+        val imageUriString = sharedPrefs.getString("signature_image_uri", null)
+        if (imageUriString != null) {
+            val threshold = sharedPrefs.getFloat("signature_white_threshold", 210f)
+            loadAndDisplaySignatureImage(Uri.parse(imageUriString), threshold)
+        }
+
         // Load markers in background to avoid ANR
         val markersString = sharedPrefs.getString("signature_markers", null)
         if (!markersString.isNullOrEmpty()) {
@@ -133,12 +204,22 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun updateButtonLabels() {
-        if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
-            binding.primaryActionButton.text = "Terminar Dibujo"
+        val hasImage = sharedPrefs.getString("signature_image_uri", null) != null
+
+        if (hasImage) {
+            binding.primaryActionButton.visibility = View.GONE
+            binding.proceduralControlsLayout.visibility = View.GONE
             binding.editActionsLayout.visibility = View.GONE
         } else {
-            binding.primaryActionButton.text = "Refrescar Firma"
-            binding.editActionsLayout.visibility = View.VISIBLE
+            binding.primaryActionButton.visibility = View.VISIBLE
+            binding.proceduralControlsLayout.visibility = View.VISIBLE
+            if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
+                binding.primaryActionButton.text = "Terminar Dibujo"
+                binding.editActionsLayout.visibility = View.GONE
+            } else {
+                binding.primaryActionButton.text = "Refrescar Firma"
+                binding.editActionsLayout.visibility = View.VISIBLE
+            }
         }
     }
 

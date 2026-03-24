@@ -64,6 +64,7 @@ class SignatureCanvasView @JvmOverloads constructor(
 
     var isDeleteMode = false
     private var isFirstGeneration = true
+    private var signatureBitmap: Bitmap? = null
 
     data class SignaturePoint(val x: Float, val y: Float, val width: Float)
 
@@ -128,10 +129,17 @@ class SignatureCanvasView @JvmOverloads constructor(
         canvas.concat(baseMatrix)
         canvas.concat(matrix)
 
-        // Dibuja el trazo del usuario
+        // 1. Dibuja el bitmap si existe
+        signatureBitmap?.let {
+            val src = Rect(0, 0, it.width, it.height)
+            val dst = RectF(0f, 0f, LOGICAL_WIDTH, LOGICAL_HEIGHT)
+            canvas.drawBitmap(it, src, dst, null)
+        }
+
+        // 2. Dibuja el trazo del usuario
         canvas.drawPath(drawingPath, drawingPaint)
 
-        // Dibuja la firma generada con grosor variable aleatorio y estrechamiento
+        // 3. Dibuja la firma generada con grosor variable aleatorio y estrechamiento
         signaturePoints.forEach { contour ->
             if (contour.size > 1) {
                 for (i in 0 until contour.size - 1) {
@@ -144,7 +152,7 @@ class SignatureCanvasView @JvmOverloads constructor(
             }
         }
 
-        // Dibuja cada marcador
+        // 4. Dibuja cada marcador
         markers.forEach { contour ->
             contour.forEach { marker ->
                 canvas.drawCircle(marker.x, marker.y, markerRadius, markerPaint)
@@ -480,8 +488,14 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
     }
 
+    fun setSignatureBitmap(bitmap: Bitmap?) {
+        this.signatureBitmap = bitmap
+        invalidate()
+    }
+
     fun clearCanvas(switchMode: Boolean = false) {
         markers.clear()
+        signatureBitmap = null
         drawingPath.reset()
         isFirstGeneration = true
         generateSignaturePath()

@@ -31,6 +31,7 @@
         android:layout_marginTop="8dp"/>
 
     <TextView
+        android:id="@+id/strokesSliderLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Número de Trazos Deseados"
@@ -48,6 +49,7 @@
         android:value="7.0" />
 
     <TextView
+        android:id="@+id/strokesSliderDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="El motor unirá los fragmentos más cercanos hasta alcanzar este número. 1 = Firma continua."
