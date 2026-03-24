@@ -236,36 +236,33 @@ class PdfPreviewFragment : Fragment() {
         // Read signature data
         isSignatureEnabled = it.getBoolean("isSignatureEnabled", false)
         if (isSignatureEnabled) {
-            val signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false)
-            if (signatureTypeLoaded) {
-                val base64String = sharedPrefs.getString("signature_images_base64", "") ?: ""
-                signatureCloudList = base64String.split("|")
-                    .filter { it.isNotBlank() }
-                    .mapNotNull { data ->
-                        try {
-                            val parts = data.split(":")
-                            val base64 = parts[0]
-                            val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
-                            val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
-                            val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
+            val base64String = sharedPrefs.getString("signature_images_base64", "") ?: ""
+            signatureCloudList = base64String.split("|")
+                .filter { it.isNotBlank() }
+                .mapNotNull { data ->
+                    try {
+                        val parts = data.split(":")
+                        val base64 = parts[0]
+                        val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
+                        val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
+                        val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
 
-                            val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
-                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                            if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
-                        } catch (e: Exception) { null }
-                    }
-
-                if (signatureCloudList.size >= 2) {
-                    firstPageSignatureIndex = random.nextInt(signatureCloudList.size)
-                    var secondIndex = random.nextInt(signatureCloudList.size)
-                    while (secondIndex == firstPageSignatureIndex) {
-                        secondIndex = random.nextInt(signatureCloudList.size)
-                    }
-                    lastPageSignatureIndex = secondIndex
-                } else if (signatureCloudList.size == 1) {
-                    firstPageSignatureIndex = 0
-                    lastPageSignatureIndex = 0
+                        val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
+                    } catch (e: Exception) { null }
                 }
+
+            if (signatureCloudList.size >= 2) {
+                firstPageSignatureIndex = random.nextInt(signatureCloudList.size)
+                var secondIndex = random.nextInt(signatureCloudList.size)
+                while (secondIndex == firstPageSignatureIndex) {
+                    secondIndex = random.nextInt(signatureCloudList.size)
+                }
+                lastPageSignatureIndex = secondIndex
+            } else if (signatureCloudList.size == 1) {
+                firstPageSignatureIndex = 0
+                lastPageSignatureIndex = 0
             }
 
             signatureImageUri = it.getString("signatureImageUri")
@@ -282,25 +279,22 @@ class PdfPreviewFragment : Fragment() {
         // Read secondary signature data
         isSignatureSecondaryEnabled = sharedPrefs.getBoolean("signature_enabled_secondary", false)
         if (isSignatureSecondaryEnabled) {
-            val signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false)
-            if (signatureTypeLoadedSecondary) {
-                val base64String = sharedPrefs.getString("signature_images_base64_secondary", "") ?: ""
-                signatureSecondaryCloudList = base64String.split("|")
-                    .filter { it.isNotBlank() }
-                    .mapNotNull { data ->
-                        try {
-                            val parts = data.split(":")
-                            val base64 = parts[0]
-                            val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
-                            val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
-                            val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
+            val base64String = sharedPrefs.getString("signature_images_base64_secondary", "") ?: ""
+            signatureSecondaryCloudList = base64String.split("|")
+                .filter { it.isNotBlank() }
+                .mapNotNull { data ->
+                    try {
+                        val parts = data.split(":")
+                        val base64 = parts[0]
+                        val scale = if (parts.size > 1) parts[1].toFloatOrNull() ?: 100f else 100f
+                        val ox = if (parts.size > 2) parts[2].toFloatOrNull() ?: 0f else 0f
+                        val oy = if (parts.size > 3) parts[3].toFloatOrNull() ?: 0f else 0f
 
-                            val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
-                            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                            if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
-                        } catch (e: Exception) { null }
-                    }
-            }
+                        val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        if (bitmap != null) LoadedSignature(bitmap, scale, ox, oy) else null
+                    } catch (e: Exception) { null }
+                }
 
             signatureImageUriSecondary = sharedPrefs.getString("signature_image_uri_secondary", null)
             signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0")?.toFloatOrNull() ?: 0f
@@ -551,10 +545,9 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Firma - Vinculada al centro del Sello 2
-        if (isSignatureEnabled && signatureBitmap != null) {
-            val scale = signatureScale / 100f
-            // Inicializar con valores temporales, updateSignaturePositionRelative() hará el trabajo real
-            signatureState = StampState(0f, 0f, scale, signatureRotation)
+        if (isSignatureEnabled) {
+            val initialScale = signatureScale / 100f
+            signatureState = StampState(0f, 0f, initialScale, signatureRotation)
             updateSignaturePositionRelative()
         }
     }
@@ -576,10 +569,12 @@ class PdfPreviewFragment : Fragment() {
     private fun getSignatureDataForPage(index: Int): LoadedSignature? {
         val totalPages = pageBitmaps.size
         val isFirstOrLast = index == 0 || (index == totalPages - 1 && totalPages > 1)
+        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
 
         if (isFirstOrLast) {
             // Lógica Firma Principal
-            if (signatureCloudList.isNotEmpty()) {
+            val isLoadedMode = sharedPrefs.getBoolean("signature_type_loaded", false)
+            if (isLoadedMode && signatureCloudList.isNotEmpty()) {
                 val sigIndex = if (index == 0) firstPageSignatureIndex else lastPageSignatureIndex
                 if (sigIndex != -1 && sigIndex < signatureCloudList.size) {
                     return signatureCloudList[sigIndex]
@@ -597,7 +592,8 @@ class PdfPreviewFragment : Fragment() {
         } else {
             // Lógica Firma Secundaria
             if (isSignatureSecondaryEnabled) {
-                if (signatureSecondaryCloudList.isNotEmpty()) {
+                val isLoadedModeSec = sharedPrefs.getBoolean("signature_type_loaded_secondary", false)
+                if (isLoadedModeSec && signatureSecondaryCloudList.isNotEmpty()) {
                     return signatureSecondaryCloudList[Random(index.toLong()).nextInt(signatureSecondaryCloudList.size)]
                 } else if (signatureSecondaryBitmap != null) {
                     val bitmap = if (signatureMarkerContoursSecondary.isNotEmpty()) {

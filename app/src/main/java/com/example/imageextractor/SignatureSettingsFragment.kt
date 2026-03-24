@@ -247,8 +247,8 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun updateButtonLabels() {
-        val isLoadedMode = sharedPrefs.getBoolean("signature_type_loaded" + suffix, false)
-        val hasImage = sharedPrefs.getString("signature_image_uri" + suffix, null) != null
+        val isLoadedMode = binding.signatureTypeSwitch.isChecked
+        val hasImage = (tempImageUri ?: sharedPrefs.getString("signature_image_uri" + suffix, null)) != null
 
         if (isLoadedMode) {
             // Modo Firmas Cargadas
