@@ -132,6 +132,8 @@ class RegistrarManagementFragment : Fragment() {
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
                 signatureImageUris = sharedPrefs.getString("signature_image_uris", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 signatureImageUrisSecondary = sharedPrefs.getString("signature_image_uris_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImagesBase64 = sharedPrefs.getString("signature_images_base64", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImagesBase64Secondary = sharedPrefs.getString("signature_images_base64_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
                 stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
@@ -188,6 +190,8 @@ class RegistrarManagementFragment : Fragment() {
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
             putString("signature_image_uris", profile.signatureImageUris.joinToString("|"))
             putString("signature_image_uris_secondary", profile.signatureImageUrisSecondary.joinToString("|"))
+            putString("signature_images_base64", profile.signatureImagesBase64.joinToString("|"))
+            putString("signature_images_base64_secondary", profile.signatureImagesBase64Secondary.joinToString("|"))
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
             putFloat("stamp2_wear_size", profile.stamp2WearSize)

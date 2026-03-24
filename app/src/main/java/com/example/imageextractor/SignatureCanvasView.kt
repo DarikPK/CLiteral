@@ -822,3 +822,32 @@ class SignatureCanvasView @JvmOverloads constructor(
         signaturePoints = newSignaturePoints
     }
 }
+
+    fun getSignatureBitmap(): Bitmap? {
+        if (markers.isEmpty() && signatureBitmap == null) return null
+
+        // Crear un bitmap con el tamaño lógico
+        val bitmap = Bitmap.createBitmap(LOGICAL_WIDTH.toInt(), LOGICAL_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // 1. Dibujar el bitmap de fondo si existe
+        signatureBitmap?.let {
+            val src = Rect(0, 0, it.width, it.height)
+            val dst = RectF(0f, 0f, LOGICAL_WIDTH, LOGICAL_HEIGHT)
+            canvas.drawBitmap(it, src, dst, null)
+        }
+
+        // 2. Dibujar la firma procedural (sin los marcadores verdes)
+        signaturePoints.forEach { contour ->
+            if (contour.size > 1) {
+                for (i in 0 until contour.size - 1) {
+                    val p1 = contour[i]
+                    val p2 = contour[i + 1]
+                    signaturePaint.strokeWidth = p1.width
+                    canvas.drawLine(p1.x, p1.y, p2.x, p2.y, signaturePaint)
+                }
+            }
+        }
+
+        return bitmap
+    }

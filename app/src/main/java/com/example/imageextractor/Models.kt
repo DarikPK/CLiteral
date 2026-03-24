@@ -42,6 +42,9 @@ data class RegistrarProfile(
     // Registro de firmas cargadas (URIs)
     val signatureImageUris: List<String> = emptyList(),
     val signatureImageUrisSecondary: List<String> = emptyList(),
+    // Imágenes de firma guardadas en Base64 (Firebase)
+    val signatureImagesBase64: List<String> = emptyList(),
+    val signatureImagesBase64Secondary: List<String> = emptyList(),
     // Opcional: Otros ajustes de sello como tamaño de fuente, etc.
     val stamp2FontSize: String = "13",
     val stamp2WearIntensity: Float = 30f,

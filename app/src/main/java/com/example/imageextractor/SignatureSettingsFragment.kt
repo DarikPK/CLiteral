@@ -102,13 +102,6 @@ class SignatureSettingsFragment : Fragment() {
             .setPositiveButton("Importar") { _, _ ->
                 val threshold = thresholdSlider.value
                 saveFloat("signature_white_threshold" + suffix, threshold)
-                try {
-                    val contentResolver = requireContext().contentResolver
-                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    contentResolver.takePersistableUriPermission(uri, takeFlags)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
 
                 val currentUris = sharedPrefs.getString("signature_image_uris" + suffix, "") ?: ""
                 if (!currentUris.contains(uri.toString())) {
@@ -200,6 +193,12 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun loadSettings() {
+        val isLoadedMode = sharedPrefs.getBoolean("signature_type_loaded" + suffix, false)
+        binding.signatureTypeSwitch.isChecked = isLoadedMode
+        binding.loadedSignaturesButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
+        binding.selectImageButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
+        binding.saveSignatureToCloudButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
+
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, false)
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation" + suffix, 0f)
@@ -329,27 +328,31 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
             binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             binding.selectImageButton.visibility = if (isChecked) View.VISIBLE else View.GONE
+            binding.saveSignatureToCloudButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             saveBoolean("signature_type_loaded" + suffix, isChecked)
             updateButtonLabels()
         }
 
         binding.loadedSignaturesButton.setOnClickListener {
-            val urisString = sharedPrefs.getString("signature_image_uris" + suffix, "") ?: ""
-            val uris = urisString.split("|").filter { it.isNotBlank() }
-            if (uris.isEmpty()) {
-                Toast.makeText(context, "No hay firmas cargadas para este registrador.", Toast.LENGTH_SHORT).show()
+            val base64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
+            val base64List = base64String.split("|").filter { it.isNotBlank() }
+
+            if (base64List.isEmpty()) {
+                Toast.makeText(context, "No hay firmas guardadas en la nube.", Toast.LENGTH_SHORT).show()
             } else {
                 android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Firmas Cargadas")
-                    .setItems(uris.toTypedArray()) { _, which ->
-                        val selectedUri = uris[which]
-                        saveString("signature_image_uri" + suffix, selectedUri)
-                        loadAndDisplaySignatureImage(Uri.parse(selectedUri), sharedPrefs.getFloat("signature_white_threshold" + suffix, 210f))
-                        updateButtonLabels()
+                    .setTitle("Firmas Guardadas")
+                    .setItems(base64List.indices.map { "Firma ${it + 1}" }.toTypedArray()) { _, which ->
+                        val selectedBase64 = base64List[which]
+                        loadSignatureFromBase64(selectedBase64)
                     }
                     .setNegativeButton("Cerrar", null)
                     .show()
             }
+        }
+
+        binding.saveSignatureToCloudButton.setOnClickListener {
+            saveCurrentSignatureToBase64()
         }
 
         binding.selectImageButton.setOnClickListener {
@@ -385,87 +388,6 @@ class SignatureSettingsFragment : Fragment() {
         }
     }
 
-    private fun saveProfileToFirebase() {
-        lifecycleScope.launch {
-            val name = sharedPrefs.getString("stamp2_name", "Desconocido") ?: "Desconocido"
-            val position = sharedPrefs.getString("stamp2_position", "") ?: ""
-            val area = sharedPrefs.getString("stamp2_area", "") ?: ""
-            val office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA"
-
-            val signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: ""
-
-            val profile = RegistrarProfile(
-                id = sharedPrefs.getString("firebase_profile_id", "") ?: "",
-                name = name,
-                position = position,
-                area = area,
-                office = office,
-                signatureMarkers = signatureMarkers,
-                signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
-                signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
-                stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
-                stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
-                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
-            )
-
-            val result = firebaseManager.saveProfile(profile)
-            if (result.isSuccess) {
-                Toast.makeText(requireContext(), "Perfil guardado en la nube", Toast.LENGTH_SHORT).show()
-            } else {
-                val error = result.exceptionOrNull()
-                val message = error?.localizedMessage ?: error?.message ?: "Error desconocido"
-                Toast.makeText(requireContext(), "Error al guardar: $message", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun showLoadProfilesDialog() {
-        lifecycleScope.launch {
-            val result = firebaseManager.getAllProfiles()
-            if (result.isSuccess) {
-                val profiles = result.getOrNull() ?: emptyList()
-                if (profiles.isEmpty()) {
-                    Toast.makeText(requireContext(), "No hay perfiles en la nube", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                val profileNames = profiles.map { "${it.name} (${it.office})" }.toTypedArray()
-                android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Cargar Perfil")
-                    .setItems(profileNames) { _, which ->
-                        loadProfileIntoSettings(profiles[which])
-                    }
-                    .setNegativeButton("Cancelar", null)
-                    .show()
-            } else {
-                val error = result.exceptionOrNull()
-                val message = error?.localizedMessage ?: error?.message ?: "Error desconocido"
-                Toast.makeText(requireContext(), "Error al cargar: $message", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun loadProfileIntoSettings(profile: RegistrarProfile) {
-        sharedPrefs.edit().apply {
-            putString("firebase_profile_id", profile.id)
-            putString("stamp2_name", profile.name)
-            putString("stamp2_position", profile.position)
-            putString("stamp2_area", profile.area)
-            putString("oficina", profile.office)
-            putString("signature_markers", profile.signatureMarkers)
-            putFloat("signature_rotation_tolerance", profile.signatureRotationTolerance)
-            putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
-            putString("stamp2_font_size", profile.stamp2FontSize)
-            putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
-            putFloat("stamp2_wear_size", profile.stamp2WearSize)
-            apply()
-        }
-
-        // Reload settings in UI
-        loadSettings()
-        Toast.makeText(requireContext(), "Perfil de ${profile.name} cargado", Toast.LENGTH_SHORT).show()
-    }
-
     private fun saveMarkers() {
         val contours = binding.signatureCanvasView.getMarkerContours()
         val markersString = contours.joinToString("|") { contour ->
@@ -476,8 +398,6 @@ class SignatureSettingsFragment : Fragment() {
 
     // SharedPreferences helpers
     private fun saveString(key: String, value: String) {
-        // Al guardar offsets desde la UI, actualizar también SharedPreferences directamente
-        // para que PdfPreviewFragment los vea de inmediato
         sharedPrefs.edit().putString(key, value).apply()
     }
 
@@ -499,6 +419,56 @@ class SignatureSettingsFragment : Fragment() {
 
     private fun saveInt(key: String, value: Int) {
         sharedPrefs.edit().putInt(key, value).apply()
+    }
+
+    private fun saveCurrentSignatureToBase64() {
+        val bitmap = binding.signatureCanvasView.getSignatureBitmap()
+        if (bitmap == null) {
+            Toast.makeText(context, "No hay firma para guardar.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
+
+            withContext(Dispatchers.Main) {
+                val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
+                val newBase64String = if (currentBase64String.isBlank()) base64 else "$currentBase64String|$base64"
+                sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
+                Toast.makeText(context, "Firma guardada localmente. Use 'Guardar Registrador' para subir a la nube.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun loadSignatureFromBase64(base64: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+
+                if (bitmap != null) {
+                    // Guardar en archivo local temporal para consistencia con el flujo de imagen
+                    val file = java.io.File(requireContext().filesDir, "temp_sig_${System.currentTimeMillis()}.png")
+                    java.io.FileOutputStream(file).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    val localUri = Uri.fromFile(file)
+
+                    withContext(Dispatchers.Main) {
+                        saveString("signature_image_uri" + suffix, localUri.toString())
+                        binding.signatureCanvasView.setSignatureBitmap(bitmap)
+                        updateButtonLabels()
+                        Toast.makeText(context, "Firma cargada.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error al cargar firma: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {
