@@ -338,16 +338,41 @@ class SignatureSettingsFragment : Fragment() {
             val base64List = base64String.split("|").filter { it.isNotBlank() }
 
             if (base64List.isEmpty()) {
-                Toast.makeText(context, "No hay firmas guardadas en la nube.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "No hay firmas guardadas para este registrador.", Toast.LENGTH_SHORT).show()
             } else {
-                android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Firmas Guardadas")
-                    .setItems(base64List.indices.map { "Firma ${it + 1}" }.toTypedArray()) { _, which ->
-                        val selectedBase64 = base64List[which]
-                        loadSignatureFromBase64(selectedBase64)
-                    }
+                val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_signature_picker, null)
+                val container = dialogView.findViewById<LinearLayout>(R.id.signature_container)
+
+                val dialog = android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Seleccionar Firma")
+                    .setView(dialogView)
                     .setNegativeButton("Cerrar", null)
-                    .show()
+                    .create()
+
+                base64List.forEachIndexed { index, base64 ->
+                    val imageView = android.widget.ImageView(requireContext()).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            200
+                        ).apply {
+                            setMargins(0, 8, 0, 8)
+                        }
+                        setBackgroundResource(R.drawable.dotted_border)
+                        setPadding(8, 8, 8, 8)
+
+                        // Cargar preview
+                        val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        setImageBitmap(bitmap)
+
+                        setOnClickListener {
+                            loadSignatureFromBase64(base64)
+                            dialog.dismiss()
+                        }
+                    }
+                    container.addView(imageView)
+                }
+                dialog.show()
             }
         }
 
@@ -431,13 +456,14 @@ class SignatureSettingsFragment : Fragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             val outputStream = java.io.ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-            val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
+            // Usar NO_WRAP para evitar problemas con separadores |
+            val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
                 val newBase64String = if (currentBase64String.isBlank()) base64 else "$currentBase64String|$base64"
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
-                Toast.makeText(context, "Firma guardada localmente. Use 'Guardar Registrador' para subir a la nube.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Firma guardada en el registro del registrador.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -445,7 +471,7 @@ class SignatureSettingsFragment : Fragment() {
     private fun loadSignatureFromBase64(base64: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
                 val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
 
                 if (bitmap != null) {
