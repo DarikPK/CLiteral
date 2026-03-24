@@ -303,7 +303,6 @@ class PdfPreviewFragment : Fragment() {
         randomizationRadiusSecondary = sharedPrefs.getFloat("signature_marker_size_secondary", 10f)
         signatureStrokeWidthSecondary = sharedPrefs.getFloat("signature_stroke_width_secondary", 5f)
         signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f)
-        }
     }
 
     override fun onCreateView(
@@ -402,7 +401,8 @@ class PdfPreviewFragment : Fragment() {
                     try {
                         val uri = Uri.parse(signatureImageUri)
                         val inputStream = if (uri.scheme == "file") {
-                            java.io.FileInputStream(uri.path)
+                            val path = uri.path ?: ""
+                            if (path.isNotBlank()) java.io.FileInputStream(path) else null
                         } else {
                             requireContext().contentResolver.openInputStream(uri)
                         }
@@ -441,7 +441,8 @@ class PdfPreviewFragment : Fragment() {
                     try {
                         val uri = Uri.parse(signatureImageUriSecondary)
                         val inputStream = if (uri.scheme == "file") {
-                            java.io.FileInputStream(uri.path)
+                            val path = uri.path ?: ""
+                            if (path.isNotBlank()) java.io.FileInputStream(path) else null
                         } else {
                             requireContext().contentResolver.openInputStream(uri)
                         }
