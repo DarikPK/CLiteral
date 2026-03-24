@@ -266,17 +266,12 @@ class PdfPreviewFragment : Fragment() {
             }
         }
 
-        binding.signatureOverlayView.setOnStampUpdateListener { x, y, rotation ->
-            signatureState?.let {
-                it.x = x
-                it.y = y
-                it.rotation = rotation
-            }
-        }
 
         binding.stampOverlayView.bringToFront()
         binding.stamp2OverlayView.bringToFront()
         binding.signatureOverlayView.bringToFront()
+        // Deshabilitar interactividad del overlay de firma
+        binding.signatureOverlayView.setOnTouchListener { _, _ -> true }
     }
 
     private fun setupToolbar() {
@@ -1147,16 +1142,6 @@ class PdfPreviewFragment : Fragment() {
                 val finalSignatureCenterX = it.x + signatureWidth / 2
                 val finalSignatureCenterY = it.y + signatureHeight / 2
 
-                // Calculate the offset from the page center
-                val offsetXInPx = finalSignatureCenterX - pageCenterX
-                val offsetYInPx = finalSignatureCenterY - pageCenterY
-
-                val offsetXInMm = offsetXInPx / mmToPx
-                val offsetYInMm = offsetYInPx / mmToPx
-
-                editor.putString("signature_offset_x", offsetXInMm.toInt().toString())
-                editor.putString("signature_offset_y", offsetYInMm.toInt().toString())
-                editor.apply()
             }
         }
 
