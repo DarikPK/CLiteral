@@ -35,10 +35,16 @@ data class RegistrarProfile(
     val signatureMarkers: String = "", // Serialized markers string
     val signatureRotationTolerance: Float = 0f,
     val signatureWhiteThreshold: Float = 210f,
+    val signatureScale: Float = 100f,
+    val signatureOffsetX: String = "0",
+    val signatureOffsetY: String = "0",
     // Firma secundaria (para páginas posteriores)
     val signatureMarkersSecondary: String = "", // Serialized markers string
     val signatureRotationToleranceSecondary: Float = 0f,
     val signatureWhiteThresholdSecondary: Float = 210f,
+    val signatureScaleSecondary: Float = 100f,
+    val signatureOffsetXSecondary: String = "0",
+    val signatureOffsetYSecondary: String = "0",
     // Registro de firmas cargadas (URIs)
     val signatureImageUris: List<String> = emptyList(),
     val signatureImageUrisSecondary: List<String> = emptyList(),

@@ -268,7 +268,7 @@ class PdfPreviewFragment : Fragment() {
 
         signatureImageUri = sharedPrefs.getString("signature_image_uri", null)
         signatureOffsetX = sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f
-        signatureOffsetY = sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f
+        signatureOffsetY = sharedPrefs.getString("signature_offset_y", "-19")?.toFloatOrNull() ?: -19f
         signatureScale = sharedPrefs.getFloat("signature_scale", 100f)
         signatureRotation = sharedPrefs.getFloat("signature_rotation", 0f)
         randomizationRadius = sharedPrefs.getFloat("signature_marker_size", 10f)
@@ -296,7 +296,7 @@ class PdfPreviewFragment : Fragment() {
 
         signatureImageUriSecondary = sharedPrefs.getString("signature_image_uri_secondary", null)
         signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0")?.toFloatOrNull() ?: 0f
-        signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "0")?.toFloatOrNull() ?: 0f
+        signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "-19")?.toFloatOrNull() ?: -19f
         signatureScaleSecondary = sharedPrefs.getFloat("signature_scale_secondary", 100f)
         // Corregir lectura de rotación secundaria (siempre de sharedPrefs)
         signatureRotationSecondary = sharedPrefs.getFloat("signature_rotation_secondary", 0f)
@@ -400,11 +400,18 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        val inputStream = if (uri.scheme == "file") {
-                            val path = uri.path ?: ""
-                            if (path.isNotBlank()) java.io.FileInputStream(path) else null
-                        } else {
-                            requireContext().contentResolver.openInputStream(uri)
+                        val inputStream = try {
+                            if (uri.scheme == "file" || uri.scheme == null) {
+                                val path = uri.path ?: uri.toString()
+                                if (path.isNotBlank()) {
+                                    val file = java.io.File(path)
+                                    if (file.exists()) java.io.FileInputStream(file) else null
+                                } else null
+                            } else {
+                                requireContext().contentResolver.openInputStream(uri)
+                            }
+                        } catch (e: Exception) {
+                            null
                         }
                         val original = BitmapFactory.decodeStream(inputStream)
                         inputStream?.close()
@@ -440,11 +447,18 @@ class PdfPreviewFragment : Fragment() {
                 if (!signatureImageUriSecondary.isNullOrBlank()) {
                     try {
                         val uri = Uri.parse(signatureImageUriSecondary)
-                        val inputStream = if (uri.scheme == "file") {
-                            val path = uri.path ?: ""
-                            if (path.isNotBlank()) java.io.FileInputStream(path) else null
-                        } else {
-                            requireContext().contentResolver.openInputStream(uri)
+                        val inputStream = try {
+                            if (uri.scheme == "file" || uri.scheme == null) {
+                                val path = uri.path ?: uri.toString()
+                                if (path.isNotBlank()) {
+                                    val file = java.io.File(path)
+                                    if (file.exists()) java.io.FileInputStream(file) else null
+                                } else null
+                            } else {
+                                requireContext().contentResolver.openInputStream(uri)
+                            }
+                        } catch (e: Exception) {
+                            null
                         }
                         val original = BitmapFactory.decodeStream(inputStream)
                         inputStream?.close()

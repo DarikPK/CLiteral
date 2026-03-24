@@ -120,11 +120,24 @@ class SignatureSettingsFragment : Fragment() {
     private fun loadAndDisplaySignatureImage(uri: Uri, threshold: Float) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val inputStream = if (uri.scheme == "file") {
-                    java.io.FileInputStream(uri.path)
-                } else {
-                    requireContext().contentResolver.openInputStream(uri)
+                val inputStream = try {
+                    if (uri.scheme == "file") {
+                        val path = uri.path
+                        if (!path.isNullOrBlank()) java.io.FileInputStream(path) else null
+                    } else {
+                        requireContext().contentResolver.openInputStream(uri)
+                    }
+                } catch (e: Exception) {
+                    null
                 }
+
+                if (inputStream == null) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "No se pudo acceder a la imagen de la firma.", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
                 val original = BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
 
@@ -221,7 +234,7 @@ class SignatureSettingsFragment : Fragment() {
 
         // Load image if exists
         val imageUriString = sharedPrefs.getString("signature_image_uri" + suffix, null)
-        if (imageUriString != null) {
+        if (!imageUriString.isNullOrBlank()) {
             val threshold = sharedPrefs.getFloat("signature_white_threshold" + suffix, 210f)
             loadAndDisplaySignatureImage(Uri.parse(imageUriString), threshold)
         }
@@ -419,7 +432,15 @@ class SignatureSettingsFragment : Fragment() {
         saveString("signature_markers" + suffix, markersString)
 
         // Guardar URI de imagen si existe temporalmente (o limpiar si no hay nada nuevo y se borró)
-        val finalUri = tempImageUri ?: if (binding.signatureCanvasView.getSignatureBitmap() == null) "" else null
+        val hasBitmap = binding.signatureCanvasView.getSignatureBitmap() != null
+        val finalUri = if (tempImageUri != null) {
+            tempImageUri
+        } else if (!hasBitmap) {
+            ""
+        } else {
+            null // No cambiar si ya tiene uno y no se ha borrado/cambiado
+        }
+
         finalUri?.let {
             saveString("signature_image_uri" + suffix, it)
             if (it.isNotEmpty()) saveFloat("signature_white_threshold" + suffix, tempWhiteThreshold)
