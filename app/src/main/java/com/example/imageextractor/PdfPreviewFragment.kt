@@ -613,7 +613,9 @@ class PdfPreviewFragment : Fragment() {
         if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
             val matrix = Matrix()
             val scaledScale = stamp2State!!.scale * previewToPdfScale
-            var finalRotation = stamp2State!!.rotation
+
+            // Usar rotación de firma (que está sincronizada) como base para el Sello 2
+            var finalRotation = signatureRotation
             if (stamp2VariableRotation && wornStamp2Bitmap != null) {
                 val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
                 finalRotation += randomRotation
@@ -638,8 +640,14 @@ class PdfPreviewFragment : Fragment() {
             // Define the destination rectangle on the PDF canvas
             val dstRect = RectF(finalX, finalY, finalX + finalWidth, finalY + finalHeight)
 
+            // Cargar tolerancia de rotación de firma
+            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val sigTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f)
+            val randomSigRotation = if (sigTolerance > 0) (Random().nextFloat() * 2 * sigTolerance) - sigTolerance else 0f
+            val finalSigRotation = signatureRotation + randomSigRotation
+
             // Rotate the canvas around the center of the destination rectangle
-            canvas.rotate(signatureState!!.rotation, dstRect.centerX(), dstRect.centerY())
+            canvas.rotate(finalSigRotation, dstRect.centerX(), dstRect.centerY())
 
             // Define the source rectangle (the entire bitmap)
             val srcRect = Rect(0, 0, signatureBitmap!!.width, signatureBitmap!!.height)
@@ -808,11 +816,11 @@ class PdfPreviewFragment : Fragment() {
             isAntiAlias = true
         }
 
-        // 2. Prepare text lines (no dots)
+        // 2. Prepare text lines (no dots) - Se eliminó uppercase() para respetar minusculas
         val textLines = listOf(
-            stamp2Name.uppercase(),
-            stamp2Position.uppercase(),
-            stamp2Area.uppercase()
+            stamp2Name,
+            stamp2Position,
+            stamp2Area
         )
 
         // 3. Calculate dimensions

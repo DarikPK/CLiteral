@@ -157,6 +157,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled", false)
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
+        binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance", 0f)
         binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width", 5f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
@@ -304,6 +305,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled", isChecked) }
         binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale", value) }
         binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation", value) }
+        binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation_tolerance", value) }
         binding.signatureStrokeWidthSlider.addOnChangeListener { _, value, _ ->
             saveFloat("signature_stroke_width", value)
             binding.signatureCanvasView.setStrokeBaseWidth(value)
@@ -340,6 +342,7 @@ class SignatureSettingsFragment : Fragment() {
                 area = area,
                 office = office,
                 signatureMarkers = signatureMarkers,
+                signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
                 signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
@@ -391,6 +394,7 @@ class SignatureSettingsFragment : Fragment() {
             putString("stamp2_area", profile.area)
             putString("oficina", profile.office)
             putString("signature_markers", profile.signatureMarkers)
+            putFloat("signature_rotation_tolerance", profile.signatureRotationTolerance)
             putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
@@ -421,7 +425,15 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveFloat(key: String, value: Float) {
-        sharedPrefs.edit().putFloat(key, value).apply()
+        // Sincronizar rotación base de firma hacia sello 2
+        if (key == "signature_rotation") {
+            sharedPrefs.edit()
+                .putFloat("signature_rotation", value)
+                .putString("stamp2_rotation", value.toInt().toString())
+                .apply()
+        } else {
+            sharedPrefs.edit().putFloat(key, value).apply()
+        }
     }
 
     private fun saveInt(key: String, value: Int) {

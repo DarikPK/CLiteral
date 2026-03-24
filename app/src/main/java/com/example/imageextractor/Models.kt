@@ -33,6 +33,7 @@ data class RegistrarProfile(
     val area: String = "",
     val office: String = "",
     val signatureMarkers: String = "", // Serialized markers string
+    val signatureRotationTolerance: Float = 0f,
     val signatureWhiteThreshold: Float = 210f,
     // Opcional: Otros ajustes de sello como tamaño de fuente, etc.
     val stamp2FontSize: String = "13",

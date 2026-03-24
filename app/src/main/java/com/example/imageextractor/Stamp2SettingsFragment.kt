@@ -121,6 +121,7 @@ class Stamp2SettingsFragment : Fragment() {
                 area = sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL") ?: "ZONA REGISTRAL",
                 office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
                 signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
+                signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
                 signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
@@ -169,6 +170,7 @@ class Stamp2SettingsFragment : Fragment() {
             putString("stamp2_area", profile.area)
             putString("oficina", profile.office)
             putString("signature_markers", profile.signatureMarkers)
+            putFloat("signature_rotation_tolerance", profile.signatureRotationTolerance)
             putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
@@ -191,7 +193,15 @@ class Stamp2SettingsFragment : Fragment() {
 
     // SharedPreferences helpers
     private fun saveString(key: String, value: String) {
-        sharedPrefs.edit().putString(key, value).apply()
+        // Interceptar la rotación del sello para sincronizarla con la firma
+        if (key == "stamp2_rotation") {
+            sharedPrefs.edit()
+                .putString("stamp2_rotation", value)
+                .putFloat("signature_rotation", value.toFloatOrNull() ?: 0f)
+                .apply()
+        } else {
+            sharedPrefs.edit().putString(key, value).apply()
+        }
     }
 
     private fun saveBoolean(key: String, value: Boolean) {
