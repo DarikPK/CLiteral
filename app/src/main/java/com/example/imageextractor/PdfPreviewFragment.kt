@@ -531,8 +531,8 @@ class PdfPreviewFragment : Fragment() {
             updateSignaturePositionRelative()
             binding.signatureOverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            // Usar la rotación del estado vinculada + 90 visuales para previsualización
-            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation + 90f, imageMatrix)
+            // Usar la rotación del estado vinculada - 90 visuales para previsualización
+            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation - 90f, imageMatrix)
         } else {
             binding.signatureOverlayView.visibility = View.GONE
         }
@@ -692,11 +692,11 @@ class PdfPreviewFragment : Fragment() {
             val randomSigRotation = if (sigTolerance > 0) (Random().nextFloat() * 2 * sigTolerance) - sigTolerance else 0f
 
             // Rotación base (sincronizada con Sello 2) + Aleatoriedad.
-            // Los +90 se aplican VISUALMENTE al dibujar, no al rotar el lienzo para mantener origen.
+            // Los -90 se aplican VISUALMENTE al dibujar, no al rotar el lienzo para mantener origen.
             val finalSigRotation = signatureState!!.rotation + randomSigRotation
 
             // Rotate the canvas around the center of the destination rectangle
-            canvas.rotate(finalSigRotation + 90f, dstRect.centerX(), dstRect.centerY())
+            canvas.rotate(finalSigRotation - 90f, dstRect.centerX(), dstRect.centerY())
 
             // Define the source rectangle (the entire bitmap)
             val srcRect = Rect(0, 0, signatureBitmap!!.width, signatureBitmap!!.height)
