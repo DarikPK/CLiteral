@@ -231,11 +231,8 @@ class PdfPreviewFragment : Fragment() {
             dynamicFecha = it.getString("dynamic_fecha")
             dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
 
-        showInPdf = it.getBoolean("showInPdf", true)
         val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-
         showInPdf = it.getBoolean("showInPdf", true)
-        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
 
         // --- CARGAR FIRMA PRINCIPAL ---
         isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
