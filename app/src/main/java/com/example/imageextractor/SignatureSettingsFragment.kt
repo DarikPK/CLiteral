@@ -201,7 +201,10 @@ class SignatureSettingsFragment : Fragment() {
         binding.saveSignatureToCloudButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
 
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, false)
-        binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
+        val scale = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
+        binding.signatureScaleSlider.value = scale
+        binding.signatureScaleEditText.setText(scale.toInt().toString())
+
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation" + suffix, 0f)
         binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance" + suffix, 0f)
         binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width" + suffix, 5f)
@@ -302,6 +305,11 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.clearCanvas(switchMode = true)
             binding.deletePointsButton.isChecked = false
             binding.signatureCanvasView.isDeleteMode = false
+
+            // Limpiar datos persistentes del modo actual
+            saveString("signature_image_uri" + suffix, "")
+            saveString("signature_markers" + suffix, "")
+
             updateButtonLabels()
             saveMarkers()
         }
@@ -391,7 +399,22 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("signature_enabled" + suffix, isChecked) }
-        binding.signatureScaleSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_scale" + suffix, value) }
+
+        binding.signatureScaleSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                binding.signatureScaleEditText.setText(value.toInt().toString())
+                saveFloat("signature_scale" + suffix, value)
+            }
+        }
+
+        binding.signatureScaleEditText.doOnTextChanged { text, _, _, fromUser ->
+            val scale = text.toString().toFloatOrNull() ?: 100f
+            if (scale in 1f..300f) {
+                binding.signatureScaleSlider.value = scale
+                saveFloat("signature_scale" + suffix, scale)
+            }
+        }
+
         binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation" + suffix, value) }
         binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_rotation_tolerance" + suffix, value) }
         binding.signatureStrokeWidthSlider.addOnChangeListener { _, value, _ ->
@@ -454,16 +477,20 @@ class SignatureSettingsFragment : Fragment() {
             return
         }
 
+        val scale = binding.signatureScaleSlider.value
+
         lifecycleScope.launch(Dispatchers.IO) {
             val outputStream = java.io.ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
             // Usar NO_WRAP para evitar problemas con separadores |
             val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
+            // Codificar la escala junto con la imagen: base64:scale
+            val dataToSave = "$base64:$scale"
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
                 val currentList = currentBase64String.split("|").filter { it.isNotBlank() }
-                val newList = currentList + base64
+                val newList = currentList + dataToSave
                 val newBase64String = newList.joinToString("|")
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
                 Toast.makeText(context, "Firma guardada en el registro del registrador.", Toast.LENGTH_LONG).show()
@@ -471,9 +498,14 @@ class SignatureSettingsFragment : Fragment() {
         }
     }
 
-    private fun loadSignatureFromBase64(base64: String) {
+    private fun loadSignatureFromBase64(data: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // Separar base64 y escala
+                val parts = data.split(":")
+                val base64 = parts[0]
+                val scale = if (parts.size > 1) parts[1].toFloatOrNull() else null
+
                 val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
                 val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
 
@@ -488,6 +520,13 @@ class SignatureSettingsFragment : Fragment() {
                     withContext(Dispatchers.Main) {
                         saveString("signature_image_uri" + suffix, localUri.toString())
                         binding.signatureCanvasView.setSignatureBitmap(bitmap)
+
+                        scale?.let {
+                            binding.signatureScaleSlider.value = it
+                            binding.signatureScaleEditText.setText(it.toInt().toString())
+                            saveFloat("signature_scale" + suffix, it)
+                        }
+
                         updateButtonLabels()
                         Toast.makeText(context, "Firma cargada.", Toast.LENGTH_SHORT).show()
                     }
