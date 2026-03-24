@@ -247,6 +247,9 @@ class PdfPreviewFragment : Fragment() {
                 it.y = y
                 it.rotation = rotation
             }
+            // Mover la firma junto con el sello 2
+            updateSignaturePositionRelative()
+            updateStampOverlay()
         }
 
         binding.pdfPageZoomableImageView.setOnMatrixChangedListener(object : ZoomableImageView.OnMatrixChangedListener {
@@ -461,6 +464,25 @@ class PdfPreviewFragment : Fragment() {
         binding.applyWearButton.isActivated = firstPageWornStampBitmap != null
 
         updateStampOverlay()
+    }
+
+    private fun updateSignaturePositionRelative() {
+        if (!isSignatureEnabled || signatureBitmap == null || stamp2Bitmap == null || stamp2State == null) return
+
+        val mmToPx = 2.83f
+        val signatureScaleFloat = signatureScale / 100f
+
+        // El desplazamiento configurado (X, Y) es relativo al centro del Sello 2
+        val baseCenterX = stamp2State!!.x + (stamp2Bitmap!!.width * stamp2State!!.scale) / 2f
+        val baseCenterY = stamp2State!!.y + (stamp2Bitmap!!.height * stamp2State!!.scale) / 2f
+
+        val dx = signatureOffsetX * mmToPx
+        val dy = signatureOffsetY * mmToPx
+
+        signatureState?.let {
+            it.x = baseCenterX + dx - (signatureBitmap!!.width * signatureScaleFloat) / 2f
+            it.y = baseCenterY + dy - (signatureBitmap!!.height * signatureScaleFloat) / 2f
+        }
     }
 
     private fun updateStampOverlay() {
@@ -684,8 +706,7 @@ class PdfPreviewFragment : Fragment() {
         val bitmap = Bitmap.createBitmap(SIGNATURE_CANVAS_WIDTH.toInt(), SIGNATURE_CANVAS_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // Aplicar rotación de 90 grados al generar el bitmap procedural para alinear con el lienzo de ajustes
-        canvas.rotate(90f, SIGNATURE_CANVAS_WIDTH / 2f, SIGNATURE_CANVAS_HEIGHT / 2f)
+        // El bitmap interno se genera normal (alineado con la vista de ajustes)
 
         val signaturePaint = Paint().apply {
             color = Color.parseColor("#2557A8")
