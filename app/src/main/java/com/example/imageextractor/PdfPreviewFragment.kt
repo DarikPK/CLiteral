@@ -1435,7 +1435,7 @@ class PdfPreviewFragment : Fragment() {
         canvas.restore()
     }
 
-    private fun makeWhiteTransparent(source: Bitmap): Bitmap {
+    private fun makeWhiteTransparent(source: Bitmap, threshold: Float): Bitmap {
         val width = source.width
         val height = source.height
         val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -1450,7 +1450,7 @@ class PdfPreviewFragment : Fragment() {
             val b = color and 0xFF
 
             // Umbral de blanco dinámico: si todos los canales son mayores al umbral, hacerlo transparente
-            if (r > signatureWhiteThreshold && g > signatureWhiteThreshold && b > signatureWhiteThreshold) {
+            if (r > threshold && g > threshold && b > threshold) {
                 pixels[i] = Color.TRANSPARENT
             }
         }
