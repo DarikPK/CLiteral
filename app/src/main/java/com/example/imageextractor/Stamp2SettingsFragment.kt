@@ -5,13 +5,17 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.net.Uri
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentStamp2SettingsBinding
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.launch
 
 class Stamp2SettingsFragment : Fragment() {
 
@@ -21,6 +25,8 @@ class Stamp2SettingsFragment : Fragment() {
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
+
+    private val firebaseManager = FirebaseManager()
 
     // Tracks which fields have been clicked for the first time
     private val firstClickTracker = mutableSetOf<Int>()
@@ -101,6 +107,77 @@ class Stamp2SettingsFragment : Fragment() {
         // Auto-save for Sliders
         binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
         binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
+
+        binding.saveCloudButton.setOnClickListener { saveProfileToFirebase() }
+        binding.loadCloudButton.setOnClickListener { showLoadProfilesDialog() }
+    }
+
+    private fun saveProfileToFirebase() {
+        lifecycleScope.launch {
+            val profile = RegistrarProfile(
+                id = sharedPrefs.getString("firebase_profile_id", "") ?: "",
+                name = sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO") ?: "NOMBRE APELLIDO",
+                position = sharedPrefs.getString("stamp2_position", "CARGO") ?: "CARGO",
+                area = sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL") ?: "ZONA REGISTRAL",
+                office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
+                signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
+                signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
+                stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
+                stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
+                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
+            )
+
+            val result = firebaseManager.saveProfile(profile)
+            if (result.isSuccess) {
+                Toast.makeText(requireContext(), "Perfil unificado guardado en la nube", Toast.LENGTH_SHORT).show()
+            } else {
+                val error = result.exceptionOrNull()
+                Toast.makeText(requireContext(), "Error al guardar: ${error?.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun showLoadProfilesDialog() {
+        lifecycleScope.launch {
+            val result = firebaseManager.getAllProfiles()
+            if (result.isSuccess) {
+                val profiles = result.getOrNull() ?: emptyList()
+                if (profiles.isEmpty()) {
+                    Toast.makeText(requireContext(), "No hay perfiles en la nube", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val profileNames = profiles.map { "${it.name} (${it.office})" }.toTypedArray()
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Cargar Perfil Completo")
+                    .setItems(profileNames) { _, which ->
+                        loadProfileIntoSettings(profiles[which])
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            } else {
+                Toast.makeText(requireContext(), "Error al cargar: ${result.exceptionOrNull()?.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun loadProfileIntoSettings(profile: RegistrarProfile) {
+        sharedPrefs.edit().apply {
+            putString("firebase_profile_id", profile.id)
+            putString("stamp2_name", profile.name)
+            putString("stamp2_position", profile.position)
+            putString("stamp2_area", profile.area)
+            putString("oficina", profile.office)
+            putString("signature_markers", profile.signatureMarkers)
+            putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
+            putString("stamp2_font_size", profile.stamp2FontSize)
+            putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
+            putFloat("stamp2_wear_size", profile.stamp2WearSize)
+            apply()
+        }
+
+        loadSettings()
+        Toast.makeText(requireContext(), "Perfil de ${profile.name} cargado por completo", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupFirstClickListener(editText: TextInputEditText) {
