@@ -94,6 +94,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
         binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width", 5f)
+        binding.signatureWhiteThresholdSlider.value = sharedPrefs.getFloat("signature_white_threshold", 210f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
 
@@ -227,6 +228,7 @@ class SignatureSettingsFragment : Fragment() {
             saveFloat("signature_stroke_width", value)
             binding.signatureCanvasView.setStrokeBaseWidth(value)
         }
+        binding.signatureWhiteThresholdSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_white_threshold", value) }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
 
@@ -259,6 +261,7 @@ class SignatureSettingsFragment : Fragment() {
                 area = area,
                 office = office,
                 signatureMarkers = signatureMarkers,
+                signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
                 stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
@@ -309,6 +312,7 @@ class SignatureSettingsFragment : Fragment() {
             putString("stamp2_area", profile.area)
             putString("oficina", profile.office)
             putString("signature_markers", profile.signatureMarkers)
+            putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
             putFloat("stamp2_wear_size", profile.stamp2WearSize)

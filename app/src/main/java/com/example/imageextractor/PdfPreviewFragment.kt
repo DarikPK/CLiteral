@@ -83,6 +83,7 @@ class PdfPreviewFragment : Fragment() {
     private var signatureScale: Float = 100f
     private var signatureRotation: Float = 0f
     private var signatureStrokeWidth: Float = 5f
+    private var signatureWhiteThreshold: Float = 210f
     private var randomizationRadius: Float = 20f
 
 
@@ -216,6 +217,7 @@ class PdfPreviewFragment : Fragment() {
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             randomizationRadius = sharedPrefs.getFloat("signature_marker_size", 10f)
             signatureStrokeWidth = sharedPrefs.getFloat("signature_stroke_width", 5f)
+            signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f)
         }
         }
     }
@@ -1284,8 +1286,8 @@ class PdfPreviewFragment : Fragment() {
             val g = (color shr 8) and 0xFF
             val b = color and 0xFF
 
-            // Umbral de blanco: si todos los canales son muy altos (> 210), hacerlo transparente
-            if (r > 210 && g > 210 && b > 210) {
+            // Umbral de blanco dinámico: si todos los canales son mayores al umbral, hacerlo transparente
+            if (r > signatureWhiteThreshold && g > signatureWhiteThreshold && b > signatureWhiteThreshold) {
                 pixels[i] = Color.TRANSPARENT
             }
         }
