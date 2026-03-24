@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -341,7 +342,7 @@ class SignatureSettingsFragment : Fragment() {
                 Toast.makeText(context, "No hay firmas guardadas para este registrador.", Toast.LENGTH_SHORT).show()
             } else {
                 val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_signature_picker, null)
-                val container = dialogView.findViewById<LinearLayout>(R.id.signature_container)
+                val container = dialogView.findViewById<android.widget.LinearLayout>(R.id.signature_container)
 
                 val dialog = android.app.AlertDialog.Builder(requireContext())
                     .setTitle("Seleccionar Firma")
@@ -351,8 +352,8 @@ class SignatureSettingsFragment : Fragment() {
 
                 base64List.forEachIndexed { index, base64 ->
                     val imageView = android.widget.ImageView(requireContext()).apply {
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                             200
                         ).apply {
                             setMargins(0, 8, 0, 8)
