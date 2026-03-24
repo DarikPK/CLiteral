@@ -166,20 +166,9 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_watermarkSettingsFragment)
         }
 
-        binding.pageImageSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
-        }
 
         binding.registrarManagementButton.setOnClickListener {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
-        }
-
-        binding.signatureSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_signatureSettingsFragment)
-        }
-
-        binding.pageImageSettingsButton.setOnClickListener {
-            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
         }
     }
 
