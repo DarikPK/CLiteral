@@ -50,24 +50,41 @@ class SignatureSettingsFragment : Fragment() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            pickImageLauncher.launch(arrayOf("image/*"))
+            pickImageLauncher.launch("image/*")
         } else {
             Toast.makeText(requireContext(), "Permiso denegado. No se puede seleccionar imagen.", Toast.LENGTH_SHORT).show()
         }
     }
 
     private val pickImageLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
+        ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val contentResolver = requireContext().contentResolver
-            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            try {
-                contentResolver.takePersistableUriPermission(it, takeFlags)
-            } catch (e: Exception) {
-                e.printStackTrace()
+            // Copiar la imagen localmente para evitar problemas de permisos persistentes
+            val localUri = saveImageLocally(it)
+            if (localUri != null) {
+                showImportSettingsDialog(localUri)
+            } else {
+                Toast.makeText(requireContext(), "Error al procesar la imagen seleccionada.", Toast.LENGTH_SHORT).show()
             }
-            showImportSettingsDialog(it)
+        }
+    }
+
+    private fun saveImageLocally(uri: Uri): Uri? {
+        return try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri) ?: return null
+            val fileName = "sig_${System.currentTimeMillis()}.png"
+            val file = java.io.File(requireContext().filesDir, fileName)
+            val outputStream = java.io.FileOutputStream(file)
+            inputStream.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+            Uri.fromFile(file)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 
@@ -336,7 +353,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.selectImageButton.setOnClickListener {
-            pickImageLauncher.launch(arrayOf("image/*"))
+            pickImageLauncher.launch("image/*")
         }
 
 

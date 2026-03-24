@@ -345,8 +345,12 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        val original = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                        signatureBitmap = makeWhiteTransparent(original, signatureWhiteThreshold)
+                        val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        val original = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+                        if (original != null) {
+                            signatureBitmap = makeWhiteTransparent(original, signatureWhiteThreshold)
+                        }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(context, "Error al cargar la imagen de la firma.", Toast.LENGTH_SHORT).show()
@@ -376,8 +380,12 @@ class PdfPreviewFragment : Fragment() {
                 if (signatureImageUriSecondary != null) {
                     try {
                         val uri = Uri.parse(signatureImageUriSecondary)
-                        val original = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                        signatureSecondaryBitmap = makeWhiteTransparent(original, signatureWhiteThresholdSecondary)
+                        val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        val original = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+                        if (original != null) {
+                            signatureSecondaryBitmap = makeWhiteTransparent(original, signatureWhiteThresholdSecondary)
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
