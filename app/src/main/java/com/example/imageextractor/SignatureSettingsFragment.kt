@@ -120,7 +120,11 @@ class SignatureSettingsFragment : Fragment() {
     private fun loadAndDisplaySignatureImage(uri: Uri, threshold: Float) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val inputStream = requireContext().contentResolver.openInputStream(uri)
+                val inputStream = if (uri.scheme == "file") {
+                    java.io.FileInputStream(uri.path)
+                } else {
+                    requireContext().contentResolver.openInputStream(uri)
+                }
                 val original = BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
 

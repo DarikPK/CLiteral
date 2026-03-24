@@ -232,7 +232,6 @@ class PdfPreviewFragment : Fragment() {
             dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
 
         val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-        showInPdf = it.getBoolean("showInPdf", true)
 
         // --- CARGAR FIRMA PRINCIPAL ---
         isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
@@ -297,6 +296,7 @@ class PdfPreviewFragment : Fragment() {
         signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0")?.toFloatOrNull() ?: 0f
         signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "0")?.toFloatOrNull() ?: 0f
         signatureScaleSecondary = sharedPrefs.getFloat("signature_scale_secondary", 100f)
+        // Corregir lectura de rotación secundaria (siempre de sharedPrefs)
         signatureRotationSecondary = sharedPrefs.getFloat("signature_rotation_secondary", 0f)
         randomizationRadiusSecondary = sharedPrefs.getFloat("signature_marker_size_secondary", 10f)
         signatureStrokeWidthSecondary = sharedPrefs.getFloat("signature_stroke_width_secondary", 5f)
@@ -399,7 +399,11 @@ class PdfPreviewFragment : Fragment() {
                     // Load signature from image URI
                     try {
                         val uri = Uri.parse(signatureImageUri)
-                        val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        val inputStream = if (uri.scheme == "file") {
+                            java.io.FileInputStream(uri.path)
+                        } else {
+                            requireContext().contentResolver.openInputStream(uri)
+                        }
                         val original = BitmapFactory.decodeStream(inputStream)
                         inputStream?.close()
                         if (original != null) {
@@ -434,7 +438,11 @@ class PdfPreviewFragment : Fragment() {
                 if (!signatureImageUriSecondary.isNullOrBlank()) {
                     try {
                         val uri = Uri.parse(signatureImageUriSecondary)
-                        val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        val inputStream = if (uri.scheme == "file") {
+                            java.io.FileInputStream(uri.path)
+                        } else {
+                            requireContext().contentResolver.openInputStream(uri)
+                        }
                         val original = BitmapFactory.decodeStream(inputStream)
                         inputStream?.close()
                         if (original != null) {
@@ -1193,7 +1201,7 @@ class PdfPreviewFragment : Fragment() {
     }
 
     fun applyInkWear(source: Bitmap, intensity: Float, size: Float, seed: Long): Bitmap {
-        if (intensity <= 0.0f) return source
+        if (intensity <= 0.0f || source.isRecycled) return source
 
         val maskBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         maskBitmap.density = source.density
@@ -1243,6 +1251,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // 5. Combinar el sello con la máscara generada.
+        if (source.isRecycled) return source
         val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         resultBitmap.density = source.density
         val resultCanvas = Canvas(resultBitmap)
@@ -1368,9 +1377,31 @@ class PdfPreviewFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        // Guardar posiciones antes de reciclar nada
+        saveFinalStates()
+
         super.onDestroyView()
 
-        // Save Signature position
+        pageBitmaps.forEach { it.recycle() }
+        pageBitmaps.clear()
+        cleanStampBitmap?.recycle()
+        cleanStampBitmap = null
+        firstPageWornStampBitmap?.recycle()
+        firstPageWornStampBitmap = null
+        lastPageWornStampBitmap?.recycle()
+        lastPageWornStampBitmap = null
+        stamp2Bitmap?.recycle()
+        stamp2Bitmap = null
+        wornStamp2Bitmap?.recycle()
+        wornStamp2Bitmap = null
+        signatureBitmap?.recycle()
+        signatureBitmap = null
+        signatureSecondaryBitmap?.recycle()
+        signatureSecondaryBitmap = null
+        _binding = null
+    }
+
+    private fun saveFinalStates() {
         signatureState?.let {
             if (signatureBitmap != null) { // Only save if there is a bitmap to reference
                 val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
@@ -1420,16 +1451,6 @@ class PdfPreviewFragment : Fragment() {
             editor.apply()
         }
 
-        pageBitmaps.forEach { it.recycle() }
-        pageBitmaps.clear()
-        cleanStampBitmap?.recycle()
-        firstPageWornStampBitmap?.recycle()
-        lastPageWornStampBitmap?.recycle()
-        stamp2Bitmap?.recycle()
-        wornStamp2Bitmap?.recycle()
-        signatureBitmap?.recycle()
-        _binding = null
-    }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.pdf_preview_menu, menu)
