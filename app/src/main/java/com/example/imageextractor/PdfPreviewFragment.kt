@@ -230,8 +230,10 @@ class PdfPreviewFragment : Fragment() {
             // Read data for watermark 4
             dynamicFecha = it.getString("dynamic_fecha")
             dynamicHoraWm4 = it.getString("dynamic_hora_wm4")
+        }
 
         val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        showInPdf = arguments?.getBoolean("showInPdf", true) ?: true
 
         // --- CARGAR FIRMA PRINCIPAL ---
         isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
@@ -1419,6 +1421,8 @@ class PdfPreviewFragment : Fragment() {
                 val finalSignatureCenterX = it.x + signatureWidth / 2
                 val finalSignatureCenterY = it.y + signatureHeight / 2
 
+                // Aquí podrías guardar la posición si fuera necesario
+                editor.apply()
             }
         }
 
@@ -1450,6 +1454,7 @@ class PdfPreviewFragment : Fragment() {
             editor.putString("stamp2_rotation", it.rotation.toInt().toString())
             editor.apply()
         }
+    }
 
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
