@@ -821,7 +821,6 @@ class SignatureCanvasView @JvmOverloads constructor(
         }
         signaturePoints = newSignaturePoints
     }
-}
 
     fun getSignatureBitmap(): Bitmap? {
         if (markers.isEmpty() && signatureBitmap == null) return null
@@ -851,3 +850,4 @@ class SignatureCanvasView @JvmOverloads constructor(
 
         return bitmap
     }
+}
