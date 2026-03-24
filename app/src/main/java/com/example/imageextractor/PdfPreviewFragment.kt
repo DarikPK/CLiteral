@@ -78,6 +78,8 @@ class PdfPreviewFragment : Fragment() {
     private var signatureMarkerContours: List<List<PointF>> = emptyList()
     private var signatureBitmap: Bitmap? = null
     private var signatureCloudBitmaps: List<Bitmap> = emptyList()
+    private var firstPageSignatureIndex: Int = -1
+    private var lastPageSignatureIndex: Int = -1
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -237,6 +239,18 @@ class PdfPreviewFragment : Fragment() {
                             BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
                         } catch (e: Exception) { null }
                     }
+
+                if (signatureCloudBitmaps.size >= 2) {
+                    firstPageSignatureIndex = random.nextInt(signatureCloudBitmaps.size)
+                    var secondIndex = random.nextInt(signatureCloudBitmaps.size)
+                    while (secondIndex == firstPageSignatureIndex) {
+                        secondIndex = random.nextInt(signatureCloudBitmaps.size)
+                    }
+                    lastPageSignatureIndex = secondIndex
+                } else if (signatureCloudBitmaps.size == 1) {
+                    firstPageSignatureIndex = 0
+                    lastPageSignatureIndex = 0
+                }
             }
 
             signatureImageUri = it.getString("signatureImageUri")
@@ -544,7 +558,10 @@ class PdfPreviewFragment : Fragment() {
         if (isFirstOrLast) {
             // Lógica Firma Principal
             if (signatureCloudBitmaps.isNotEmpty()) {
-                // Seleccionar aleatoriamente de las cargadas
+                val sigIndex = if (index == 0) firstPageSignatureIndex else lastPageSignatureIndex
+                if (sigIndex != -1 && sigIndex < signatureCloudBitmaps.size) {
+                    return signatureCloudBitmaps[sigIndex]
+                }
                 return signatureCloudBitmaps[Random(index.toLong()).nextInt(signatureCloudBitmaps.size)]
             } else if (signatureBitmap != null) {
                 // Procedural o imagen única
