@@ -2,6 +2,7 @@ package com.example.imageextractor
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -71,6 +72,14 @@ class SignatureSettingsFragment : Fragment() {
             .setPositiveButton("Importar") { _, _ ->
                 val threshold = thresholdSlider.value
                 saveFloat("signature_white_threshold", threshold)
+                try {
+                    val contentResolver = requireContext().contentResolver
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 saveString("signature_image_uri", uri.toString())
 
                 binding.signatureCanvasView.clearCanvas(switchMode = true)
@@ -160,7 +169,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance", 0f)
         binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width", 5f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
-        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
+        binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "-19"))
 
         val numMarkers = sharedPrefs.getInt("signature_num_markers", 15)
         val markerSize = sharedPrefs.getFloat("signature_marker_size", 10f)
@@ -417,6 +426,8 @@ class SignatureSettingsFragment : Fragment() {
 
     // SharedPreferences helpers
     private fun saveString(key: String, value: String) {
+        // Al guardar offsets desde la UI, actualizar también SharedPreferences directamente
+        // para que PdfPreviewFragment los vea de inmediato
         sharedPrefs.edit().putString(key, value).apply()
     }
 
