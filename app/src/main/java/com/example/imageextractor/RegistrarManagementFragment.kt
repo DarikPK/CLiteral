@@ -48,12 +48,22 @@ class RegistrarManagementFragment : Fragment() {
 
     private fun loadSettings() {
         binding.showInPdfCheckbox.isChecked = sharedPrefs.getBoolean("show_in_pdf", true)
-        binding.registrarNameEditText.setText(sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO"))
-        binding.registrarPositionEditText.setText(sharedPrefs.getString("stamp2_position", "CARGO"))
-        binding.registrarAreaEditText.setText(sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL"))
+        binding.registrarNameEditText.setText(sharedPrefs.getString("stamp2_name", ""))
+        binding.registrarPositionEditText.setText(sharedPrefs.getString("stamp2_position", ""))
+        binding.registrarAreaEditText.setText(sharedPrefs.getString("stamp2_area", ""))
     }
 
     private fun setupListeners() {
+        binding.createRegistrarButton.setOnClickListener {
+            clearRegistrarFields()
+            binding.initialOptionsLayout.visibility = View.GONE
+            binding.registrarDetailsLayout.visibility = View.VISIBLE
+        }
+
+        binding.selectRegistrarButton.setOnClickListener {
+            showLoadProfilesDialog()
+        }
+
         binding.showInPdfCheckbox.setOnCheckedChangeListener { _, isChecked ->
             sharedPrefs.edit().putBoolean("show_in_pdf", isChecked).apply()
         }
@@ -66,10 +76,6 @@ class RegistrarManagementFragment : Fragment() {
         }
         binding.registrarAreaEditText.doOnTextChanged { text, _, _, _ ->
             sharedPrefs.edit().putString("stamp2_area", text.toString()).apply()
-        }
-
-        binding.selectRegistrarButton.setOnClickListener {
-            showLoadProfilesDialog()
         }
 
         binding.configPrimarySignatureButton.setOnClickListener {
@@ -85,6 +91,22 @@ class RegistrarManagementFragment : Fragment() {
         binding.saveRegistrarButton.setOnClickListener {
             saveProfileToFirebase()
         }
+    }
+
+    private fun clearRegistrarFields() {
+        sharedPrefs.edit().apply {
+            remove("firebase_profile_id")
+            putString("stamp2_name", "")
+            putString("stamp2_position", "")
+            putString("stamp2_area", "")
+            // Limpiar firmas
+            remove("signature_markers")
+            remove("signature_image_uri")
+            remove("signature_markers_secondary")
+            remove("signature_image_uri_secondary")
+            apply()
+        }
+        loadSettings()
     }
 
     private fun saveProfileToFirebase() {
@@ -140,6 +162,8 @@ class RegistrarManagementFragment : Fragment() {
     }
 
     private fun loadProfileIntoSettings(profile: RegistrarProfile) {
+        binding.initialOptionsLayout.visibility = View.GONE
+        binding.registrarDetailsLayout.visibility = View.VISIBLE
         sharedPrefs.edit().apply {
             putString("firebase_profile_id", profile.id)
             putString("stamp2_name", profile.name)

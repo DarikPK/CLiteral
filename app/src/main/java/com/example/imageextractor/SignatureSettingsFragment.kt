@@ -286,8 +286,15 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.undo()
         }
 
-        binding.saveCloudButton.setOnClickListener { saveProfileToFirebase() }
-        binding.loadCloudButton.setOnClickListener { showLoadProfilesDialog() }
+        binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
+            saveBoolean("signature_type_loaded" + suffix, isChecked)
+        }
+
+        binding.loadedSignaturesButton.setOnClickListener {
+            // Acción para firmas cargadas
+            Toast.makeText(context, "Mostrando firmas cargadas...", Toast.LENGTH_SHORT).show()
+        }
 
         binding.selectImageButton.setOnClickListener {
             val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

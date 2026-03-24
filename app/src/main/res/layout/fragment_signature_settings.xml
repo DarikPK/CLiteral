@@ -51,26 +51,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="8dp">
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/signature_type_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Firmas Cargadas" />
 
                 <Button
-                    android:id="@+id/saveCloudButton"
+                    android:id="@+id/loaded_signatures_button"
                     style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Guardar en Nube"
-                    app:icon="@android:drawable/ic_menu_save" />
-
-                <Button
-                    android:id="@+id/loadCloudButton"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:text="Cargar Perfiles"
-                    app:icon="@android:drawable/ic_menu_search" />
+                    android:layout_marginStart="16dp"
+                    android:text="Firmas Cargadas"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
             </LinearLayout>
 
             <LinearLayout

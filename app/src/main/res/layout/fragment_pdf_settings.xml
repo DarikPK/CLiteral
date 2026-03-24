@@ -256,21 +256,6 @@
 
             </LinearLayout> <!-- Cierre de advanced_stamp_settings_layout -->
 
-            <Button
-                android:id="@+id/stamp2_settings_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Ajustes del Sello 2" />
-
-            <Button
-                android:id="@+id/signature_settings_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Ajustes de Firma" />
 
             <Button
                 android:id="@+id/watermark_settings_button"

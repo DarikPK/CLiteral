@@ -31,101 +31,124 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <CheckBox
-                android:id="@+id/show_in_pdf_checkbox"
+            <LinearLayout
+                android:id="@+id/initial_options_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Mostrar en PDF (Sellos y Firmas)"
-                android:checked="true"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="vertical">
 
-            <Button
-                android:id="@+id/select_registrar_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Seleccionar Registrador"
-                app:icon="@android:drawable/ic_menu_search" />
-
-            <TextView
-                style="@style/TextAppearance.Material3.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Datos del Registrador"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Nombre del Registrador">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/registrar_name_edit_text"
+                <Button
+                    android:id="@+id/create_registrar_button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="NOMBRE APELLIDO"/>
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:text="Crear Registrador"
+                    app:icon="@android:drawable/ic_input_add" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Cargo">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/registrar_position_edit_text"
+                <Button
+                    android:id="@+id/select_registrar_button"
+                    style="?attr/materialButtonOutlinedStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="CARGO"/>
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_marginTop="8dp"
+                    android:text="Seleccionar Registrador"
+                    app:icon="@android:drawable/ic_menu_search" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <LinearLayout
+                android:id="@+id/registrar_details_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="Zona Registral">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/registrar_area_edit_text"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <CheckBox
+                    android:id="@+id/show_in_pdf_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="ZONA REGISTRAL"/>
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_marginBottom="16dp"
+                    android:checked="true"
+                    android:text="Mostrar en PDF (Sellos y Firmas)" />
 
-            <TextView
-                style="@style/TextAppearance.Material3.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Firma Principal (1ra Página)"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
+                <TextView
+                    style="@style/TextAppearance.Material3.TitleLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Datos del Registrador" />
 
-            <Button
-                android:id="@+id/config_primary_signature_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Configurar Firma Principal" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Nombre del Registrador">
 
-            <TextView
-                style="@style/TextAppearance.Material3.TitleLarge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Firma Secundaria (Otras Páginas)"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/registrar_name_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
 
-            <Button
-                android:id="@+id/config_secondary_signature_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Configurar Firma Secundaria" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Cargo">
 
-            <Button
-                android:id="@+id/save_registrar_button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="Guardar Registrador en Nube" />
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/registrar_position_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Zona Registral">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/registrar_area_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/TextAppearance.Material3.TitleLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Firma Principal (1ra Página)" />
+
+                <Button
+                    android:id="@+id/config_primary_signature_button"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Configurar Firma Principal" />
+
+                <TextView
+                    style="@style/TextAppearance.Material3.TitleLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Firma Secundaria (Otras Páginas)" />
+
+                <Button
+                    android:id="@+id/config_secondary_signature_button"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Configurar Firma Secundaria" />
+
+                <Button
+                    android:id="@+id/save_registrar_button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="32dp"
+                    android:text="Guardar Registrador en Nube" />
+            </LinearLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
