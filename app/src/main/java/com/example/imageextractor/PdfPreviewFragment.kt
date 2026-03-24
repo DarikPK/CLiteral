@@ -77,6 +77,7 @@ class PdfPreviewFragment : Fragment() {
     private var isSignatureEnabled: Boolean = false
     private var signatureMarkerContours: List<List<PointF>> = emptyList()
     private var signatureBitmap: Bitmap? = null
+    private var signatureCloudBitmaps: List<Bitmap> = emptyList()
     private var signatureState: StampState? = null
     private var signatureImageUri: String? = null
     private var signatureOffsetX: Float = 0f
@@ -91,6 +92,7 @@ class PdfPreviewFragment : Fragment() {
     private var isSignatureSecondaryEnabled: Boolean = false
     private var signatureMarkerContoursSecondary: List<List<PointF>> = emptyList()
     private var signatureSecondaryBitmap: Bitmap? = null
+    private var signatureSecondaryCloudBitmaps: List<Bitmap> = emptyList()
     private var signatureImageUriSecondary: String? = null
     private var signatureOffsetXSecondary: Float = 0f
     private var signatureOffsetYSecondary: Float = 0f
@@ -224,6 +226,19 @@ class PdfPreviewFragment : Fragment() {
         // Read signature data
         isSignatureEnabled = it.getBoolean("isSignatureEnabled", false)
         if (isSignatureEnabled) {
+            val signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false)
+            if (signatureTypeLoaded) {
+                val base64String = sharedPrefs.getString("signature_images_base64", "") ?: ""
+                signatureCloudBitmaps = base64String.split("|")
+                    .filter { it.isNotBlank() }
+                    .mapNotNull { base64 ->
+                        try {
+                            val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                            BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        } catch (e: Exception) { null }
+                    }
+            }
+
             signatureImageUri = it.getString("signatureImageUri")
             signatureOffsetX = it.getFloat("signatureOffsetX", 0f)
             signatureOffsetY = it.getFloat("signatureOffsetY", 0f)
@@ -238,6 +253,19 @@ class PdfPreviewFragment : Fragment() {
         // Read secondary signature data
         isSignatureSecondaryEnabled = sharedPrefs.getBoolean("signature_enabled_secondary", false)
         if (isSignatureSecondaryEnabled) {
+            val signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false)
+            if (signatureTypeLoadedSecondary) {
+                val base64String = sharedPrefs.getString("signature_images_base64_secondary", "") ?: ""
+                signatureSecondaryCloudBitmaps = base64String.split("|")
+                    .filter { it.isNotBlank() }
+                    .mapNotNull { base64 ->
+                        try {
+                            val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
+                            BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        } catch (e: Exception) { null }
+                    }
+            }
+
             signatureImageUriSecondary = sharedPrefs.getString("signature_image_uri_secondary", null)
             signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0")?.toFloatOrNull() ?: 0f
             signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "0")?.toFloatOrNull() ?: 0f
@@ -509,8 +537,46 @@ class PdfPreviewFragment : Fragment() {
         updateStampOverlay()
     }
 
+    private fun getSignatureForPage(index: Int): Bitmap? {
+        val totalPages = pageBitmaps.size
+        val isFirstOrLast = index == 0 || (index == totalPages - 1 && totalPages > 1)
+
+        if (isFirstOrLast) {
+            // Lógica Firma Principal
+            if (signatureCloudBitmaps.isNotEmpty()) {
+                // Seleccionar aleatoriamente de las cargadas
+                return signatureCloudBitmaps[Random(index.toLong()).nextInt(signatureCloudBitmaps.size)]
+            } else if (signatureBitmap != null) {
+                // Procedural o imagen única
+                return if (signatureMarkerContours.isNotEmpty()) {
+                    // Regenerar proceduralmente para cada página (semilla basada en índice)
+                    generateProceduralSignatureBitmap(signatureMarkerContours, randomizationRadius, signatureStrokeWidth, seed = index.toLong())
+                } else {
+                    signatureBitmap
+                }
+            }
+        } else {
+            // Lógica Firma Secundaria (solo si hay más de 2 páginas y estamos en el medio)
+            if (isSignatureSecondaryEnabled) {
+                if (signatureSecondaryCloudBitmaps.isNotEmpty()) {
+                    return signatureSecondaryCloudBitmaps[Random(index.toLong()).nextInt(signatureSecondaryCloudBitmaps.size)]
+                } else if (signatureSecondaryBitmap != null) {
+                    return if (signatureMarkerContoursSecondary.isNotEmpty()) {
+                        generateProceduralSignatureBitmap(signatureMarkerContoursSecondary, randomizationRadiusSecondary, signatureStrokeWidthSecondary, seed = index.toLong())
+                    } else {
+                        signatureSecondaryBitmap
+                    }
+                }
+            }
+            // Fallback a principal si no hay secundaria y es necesario
+            return null
+        }
+        return null
+    }
+
     private fun updateSignaturePositionRelative() {
-        if (!isSignatureEnabled || signatureBitmap == null) return
+        if (!isSignatureEnabled) return
+        val currentSigBitmap = getSignatureForPage(currentPageIndex) ?: return
 
         val mmToPx = 2.83f
         val s2State = stamp2State
@@ -532,12 +598,14 @@ class PdfPreviewFragment : Fragment() {
             baseRotation = if (currentPageIndex == 0) signatureRotation else signatureRotationSecondary
         }
 
-        // Determinar qué firma usar según la página
-        val currentSigBitmap = if (currentPageIndex == 0) signatureBitmap else (signatureSecondaryBitmap ?: signatureBitmap)
-        val currentSigOffsetX = if (currentPageIndex == 0) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
-        val currentSigOffsetY = if (currentPageIndex == 0) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
-        val currentSigScale = if (currentPageIndex == 0) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
-        val currentSigRotation = if (currentPageIndex == 0) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
+        // Determinar parámetros según la página
+        val totalPages = pageBitmaps.size
+        val isFirstOrLast = currentPageIndex == 0 || (currentPageIndex == totalPages - 1 && totalPages > 1)
+
+        val currentSigOffsetX = if (isFirstOrLast) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
+        val currentSigOffsetY = if (isFirstOrLast) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
+        val currentSigScale = if (isFirstOrLast) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
+        val currentSigRotation = if (isFirstOrLast) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
 
         val signatureScaleFloat = currentSigScale / 100f
 
@@ -606,7 +674,7 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Update Signature Overlay (Linked to Stamp 2)
-        val bitmapToShowSignature = if (currentPageIndex == 0) signatureBitmap else (signatureSecondaryBitmap ?: signatureBitmap)
+        val bitmapToShowSignature = getSignatureForPage(currentPageIndex)
         if (isSignatureEnabled && signatureState != null && bitmapToShowSignature != null) {
             updateSignaturePositionRelative()
             binding.signatureOverlayView.visibility = View.VISIBLE
@@ -755,20 +823,20 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Draw Signature
-        val showPrimary = index == 0 && isSignatureEnabled
-        val showSecondary = index > 0 && (isSignatureSecondaryEnabled || isSignatureEnabled)
-        val currentSigBitmap = if (index == 0) signatureBitmap else (signatureSecondaryBitmap ?: signatureBitmap)
+        val totalPages = pageBitmaps.size
+        val isFirstOrLast = index == 0 || (index == totalPages - 1 && totalPages > 1)
+        val currentSigBitmap = getSignatureForPage(index)
 
-        if ((showPrimary || showSecondary) && currentSigBitmap != null) {
+        if (isSignatureEnabled && currentSigBitmap != null) {
             canvas.save()
 
             val mmToPx = 2.83f
             val previewToPdfScale = 595f / 1000f
 
-            val currentSigOffsetX = if (index == 0) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
-            val currentSigOffsetY = if (index == 0) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
-            val currentSigScale = if (index == 0) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
-            val currentSigRotation = if (index == 0) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
+            val currentSigOffsetX = if (isFirstOrLast) signatureOffsetX else (if (isSignatureSecondaryEnabled) signatureOffsetXSecondary else signatureOffsetX)
+            val currentSigOffsetY = if (isFirstOrLast) signatureOffsetY else (if (isSignatureSecondaryEnabled) signatureOffsetYSecondary else signatureOffsetY)
+            val currentSigScale = if (isFirstOrLast) signatureScale else (if (isSignatureSecondaryEnabled) signatureScaleSecondary else signatureScale)
+            val currentSigRotation = if (isFirstOrLast) signatureRotation else (if (isSignatureSecondaryEnabled) signatureRotationSecondary else signatureRotation)
 
             val signatureScaleFloat = currentSigScale / 100f
 
@@ -832,7 +900,7 @@ class PdfPreviewFragment : Fragment() {
         }
     }
 
-    private fun generateProceduralSignatureBitmap(markerContours: List<List<PointF>>, radiusParam: Float, strokeWidthParam: Float): Bitmap? {
+    private fun generateProceduralSignatureBitmap(markerContours: List<List<PointF>>, radiusParam: Float, strokeWidthParam: Float, seed: Long = System.currentTimeMillis()): Bitmap? {
         if (markerContours.isEmpty()) return null
 
         val bitmap = Bitmap.createBitmap(SIGNATURE_CANVAS_WIDTH.toInt(), SIGNATURE_CANVAS_HEIGHT.toInt(), Bitmap.Config.ARGB_8888)
@@ -846,7 +914,7 @@ class PdfPreviewFragment : Fragment() {
             strokeJoin = Paint.Join.ROUND
         }
 
-        val signatureContours = generateProceduralSignaturePoints(markerContours, radiusParam, strokeWidthParam)
+        val signatureContours = generateProceduralSignaturePoints(markerContours, radiusParam, strokeWidthParam, seed)
         signatureContours.forEach { contour ->
             if (contour.size > 1) {
                 for (i in 0 until contour.size - 1) {
@@ -863,18 +931,19 @@ class PdfPreviewFragment : Fragment() {
 
     data class SignaturePoint(val x: Float, val y: Float, val width: Float)
 
-    private fun generateProceduralSignaturePoints(markerContours: List<List<PointF>>, radiusParam: Float, strokeWidthParam: Float): List<List<SignaturePoint>> {
+    private fun generateProceduralSignaturePoints(markerContours: List<List<PointF>>, radiusParam: Float, strokeWidthParam: Float, seed: Long): List<List<SignaturePoint>> {
         if (markerContours.isEmpty()) {
             return emptyList()
         }
 
         val signatureContours = mutableListOf<List<SignaturePoint>>()
+        val pageRandom = Random(seed)
 
         markerContours.forEach { contour ->
             if (contour.size >= 2) {
                 val randomPoints = contour.map { marker ->
-                    val angle = random.nextDouble() * 2 * Math.PI
-                    val radius = random.nextDouble() * radiusParam
+                    val angle = pageRandom.nextDouble() * 2 * Math.PI
+                    val radius = pageRandom.nextDouble() * radiusParam
                     val x = marker.x + (radius * Math.cos(angle)).toFloat()
                     val y = marker.y + (radius * Math.sin(angle)).toFloat()
                     PointF(x, y)
