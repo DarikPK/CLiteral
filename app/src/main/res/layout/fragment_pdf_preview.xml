@@ -94,7 +94,9 @@
         <com.example.imageextractor.StampOverlayView
             android:id="@+id/signature_overlay_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
 
     </FrameLayout>
 

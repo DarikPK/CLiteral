@@ -21,6 +21,12 @@ class StampOverlayView @JvmOverloads constructor(
     private var rotation = 0f
 
     private var onStampUpdateListener: ((Float, Float, Float) -> Unit)? = null
+    private var isInteractive = true
+
+    fun setIsInteractive(interactive: Boolean) {
+        this.isInteractive = interactive
+        invalidate()
+    }
 
     private val stampMatrix = Matrix()
     private val imageMatrix = Matrix()
@@ -71,19 +77,21 @@ class StampOverlayView @JvmOverloads constructor(
 
             canvas.drawBitmap(it, totalMatrix, paint)
 
-            val points = floatArrayOf(it.width.toFloat(), it.height.toFloat())
-            totalMatrix.mapPoints(points)
-            val handleX = points[0]
-            val handleY = points[1]
+            if (isInteractive) {
+                val points = floatArrayOf(it.width.toFloat(), it.height.toFloat())
+                totalMatrix.mapPoints(points)
+                val handleX = points[0]
+                val handleY = points[1]
 
-            canvas.drawCircle(handleX, handleY, handleRadius, handlePaint)
-            canvas.drawCircle(handleX, handleY, handleRadius, handleBorderPaint)
+                canvas.drawCircle(handleX, handleY, handleRadius, handlePaint)
+                canvas.drawCircle(handleX, handleY, handleRadius, handleBorderPaint)
+            }
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (stampBitmap == null || visibility != VISIBLE) return false
+        if (!isInteractive || stampBitmap == null || visibility != VISIBLE) return false
 
         val transformedPoint = getTransformedPoint(event.x, event.y)
         val x = transformedPoint.x

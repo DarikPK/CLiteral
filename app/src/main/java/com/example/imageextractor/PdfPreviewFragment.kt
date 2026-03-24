@@ -268,10 +268,10 @@ class PdfPreviewFragment : Fragment() {
 
 
         binding.stampOverlayView.bringToFront()
-        binding.stamp2OverlayView.bringToFront()
         binding.signatureOverlayView.bringToFront()
+        binding.stamp2OverlayView.bringToFront()
         // Deshabilitar interactividad del overlay de firma
-        binding.signatureOverlayView.setOnTouchListener { _, _ -> true }
+        binding.signatureOverlayView.setIsInteractive(false)
     }
 
     private fun setupToolbar() {
@@ -514,12 +514,14 @@ class PdfPreviewFragment : Fragment() {
             binding.stamp2OverlayView.visibility = View.GONE
         }
 
-        // Signature overlay is removed from this fragment
+        // Update Signature Overlay (Linked to Stamp 2)
         val bitmapToShowSignature = signatureBitmap
         if (isSignatureEnabled && signatureState != null && bitmapToShowSignature != null) {
+            updateSignaturePositionRelative()
             binding.signatureOverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation, imageMatrix)
+            // Usar la rotación base sincronizada sin jitter para la previsualización
+            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureRotation, imageMatrix)
         } else {
             binding.signatureOverlayView.visibility = View.GONE
         }
