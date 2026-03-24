@@ -38,6 +38,12 @@ class RegistrarManagementFragment : Fragment() {
         setupToolbar()
         loadSettings()
         setupListeners()
+
+        // Si regresamos de configurar firma, mostrar detalles directamente
+        if (sharedPrefs.getBoolean("is_editing_registrar", false)) {
+            binding.initialOptionsLayout.visibility = View.GONE
+            binding.registrarDetailsLayout.visibility = View.VISIBLE
+        }
     }
 
     private fun setupToolbar() {
@@ -95,6 +101,7 @@ class RegistrarManagementFragment : Fragment() {
 
     private fun clearRegistrarFields() {
         sharedPrefs.edit().apply {
+            putBoolean("is_editing_registrar", true)
             remove("firebase_profile_id")
             putString("stamp2_name", "")
             putString("stamp2_position", "")
@@ -123,6 +130,8 @@ class RegistrarManagementFragment : Fragment() {
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
+                signatureImageUris = sharedPrefs.getString("signature_image_uris", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImageUrisSecondary = sharedPrefs.getString("signature_image_uris_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
                 stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
@@ -165,6 +174,7 @@ class RegistrarManagementFragment : Fragment() {
         binding.initialOptionsLayout.visibility = View.GONE
         binding.registrarDetailsLayout.visibility = View.VISIBLE
         sharedPrefs.edit().apply {
+            putBoolean("is_editing_registrar", true)
             putString("firebase_profile_id", profile.id)
             putString("stamp2_name", profile.name)
             putString("stamp2_position", profile.position)
@@ -176,6 +186,8 @@ class RegistrarManagementFragment : Fragment() {
             putString("signature_markers_secondary", profile.signatureMarkersSecondary)
             putFloat("signature_rotation_tolerance_secondary", profile.signatureRotationToleranceSecondary)
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
+            putString("signature_image_uris", profile.signatureImageUris.joinToString("|"))
+            putString("signature_image_uris_secondary", profile.signatureImageUrisSecondary.joinToString("|"))
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
             putFloat("stamp2_wear_size", profile.stamp2WearSize)
@@ -188,6 +200,7 @@ class RegistrarManagementFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // No limpiar is_editing_registrar aquí para que persista al volver de firmas
         _binding = null
     }
 }

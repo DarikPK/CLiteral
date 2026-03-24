@@ -39,6 +39,9 @@ data class RegistrarProfile(
     val signatureMarkersSecondary: String = "", // Serialized markers string
     val signatureRotationToleranceSecondary: Float = 0f,
     val signatureWhiteThresholdSecondary: Float = 210f,
+    // Registro de firmas cargadas (URIs)
+    val signatureImageUris: List<String> = emptyList(),
+    val signatureImageUrisSecondary: List<String> = emptyList(),
     // Opcional: Otros ajustes de sello como tamaño de fuente, etc.
     val stamp2FontSize: String = "13",
     val stamp2WearIntensity: Float = 30f,

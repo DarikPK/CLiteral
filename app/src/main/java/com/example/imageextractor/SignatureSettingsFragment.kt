@@ -57,9 +57,16 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private val pickImageLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
+        ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
+            val contentResolver = requireContext().contentResolver
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            try {
+                contentResolver.takePersistableUriPermission(it, takeFlags)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             showImportSettingsDialog(it)
         }
     }
@@ -80,12 +87,18 @@ class SignatureSettingsFragment : Fragment() {
                 saveFloat("signature_white_threshold" + suffix, threshold)
                 try {
                     val contentResolver = requireContext().contentResolver
-                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
                     contentResolver.takePersistableUriPermission(uri, takeFlags)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
+
+                val currentUris = sharedPrefs.getString("signature_image_uris" + suffix, "") ?: ""
+                if (!currentUris.contains(uri.toString())) {
+                    val newUris = if (currentUris.isBlank()) uri.toString() else "$currentUris|${uri}"
+                    sharedPrefs.edit().putString("signature_image_uris" + suffix, newUris).apply()
+                }
+
                 saveString("signature_image_uri" + suffix, uri.toString())
 
                 binding.signatureCanvasView.clearCanvas(switchMode = true)
@@ -220,13 +233,23 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun updateButtonLabels() {
+        val isLoadedMode = sharedPrefs.getBoolean("signature_type_loaded" + suffix, false)
         val hasImage = sharedPrefs.getString("signature_image_uri" + suffix, null) != null
 
-        if (hasImage) {
+        if (isLoadedMode) {
+            // Modo Firmas Cargadas
             binding.primaryActionButton.visibility = View.GONE
             binding.proceduralControlsLayout.visibility = View.GONE
             binding.editActionsLayout.visibility = View.GONE
+            binding.selectImageButton.visibility = View.VISIBLE
+            binding.loadedSignaturesButton.visibility = View.VISIBLE
+            // Mostrar u ocultar lienzo según si hay imagen
+            binding.signatureCanvasView.visibility = if (hasImage) View.VISIBLE else View.GONE
         } else {
+            // Modo Firmas Autogeneradas
+            binding.selectImageButton.visibility = View.GONE
+            binding.loadedSignaturesButton.visibility = View.GONE
+            binding.signatureCanvasView.visibility = View.VISIBLE
             binding.primaryActionButton.visibility = View.VISIBLE
             binding.proceduralControlsLayout.visibility = View.VISIBLE
             if (binding.signatureCanvasView.mode == SignatureCanvasView.Mode.DRAW) {
@@ -288,37 +311,32 @@ class SignatureSettingsFragment : Fragment() {
 
         binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
             binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
+            binding.selectImageButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             saveBoolean("signature_type_loaded" + suffix, isChecked)
+            updateButtonLabels()
         }
 
         binding.loadedSignaturesButton.setOnClickListener {
-            // Acción para firmas cargadas
-            Toast.makeText(context, "Mostrando firmas cargadas...", Toast.LENGTH_SHORT).show()
+            val urisString = sharedPrefs.getString("signature_image_uris" + suffix, "") ?: ""
+            val uris = urisString.split("|").filter { it.isNotBlank() }
+            if (uris.isEmpty()) {
+                Toast.makeText(context, "No hay firmas cargadas para este registrador.", Toast.LENGTH_SHORT).show()
+            } else {
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Firmas Cargadas")
+                    .setItems(uris.toTypedArray()) { _, which ->
+                        val selectedUri = uris[which]
+                        saveString("signature_image_uri" + suffix, selectedUri)
+                        loadAndDisplaySignatureImage(Uri.parse(selectedUri), sharedPrefs.getFloat("signature_white_threshold" + suffix, 210f))
+                        updateButtonLabels()
+                    }
+                    .setNegativeButton("Cerrar", null)
+                    .show()
+            }
         }
 
         binding.selectImageButton.setOnClickListener {
-            val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-
-            when {
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    permission
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    pickImageLauncher.launch("image/*")
-                }
-                shouldShowRequestPermissionRationale(permission) -> {
-                    // Explain to the user why we need the permission
-                    Toast.makeText(requireContext(), "Se necesita permiso para acceder a las imágenes.", Toast.LENGTH_LONG).show()
-                    requestPermissionLauncher.launch(permission)
-                }
-                else -> {
-                    requestPermissionLauncher.launch(permission)
-                }
-            }
+            pickImageLauncher.launch(arrayOf("image/*"))
         }
 
 

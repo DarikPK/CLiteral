@@ -168,6 +168,7 @@ class PdfSettingsFragment : Fragment() {
 
 
         binding.registrarManagementButton.setOnClickListener {
+            sharedPrefs.edit().putBoolean("is_editing_registrar", false).apply()
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
         }
     }
