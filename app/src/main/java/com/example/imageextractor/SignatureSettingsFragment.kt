@@ -158,7 +158,6 @@ class SignatureSettingsFragment : Fragment() {
         binding.signatureScaleSlider.value = sharedPrefs.getFloat("signature_scale", 100f)
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation", 0f)
         binding.signatureStrokeWidthSlider.value = sharedPrefs.getFloat("signature_stroke_width", 5f)
-        binding.signatureWhiteThresholdSlider.value = sharedPrefs.getFloat("signature_white_threshold", 210f)
         binding.signatureOffsetXEditText.setText(sharedPrefs.getString("signature_offset_x", "0"))
         binding.signatureOffsetYEditText.setText(sharedPrefs.getString("signature_offset_y", "0"))
 
@@ -309,7 +308,6 @@ class SignatureSettingsFragment : Fragment() {
             saveFloat("signature_stroke_width", value)
             binding.signatureCanvasView.setStrokeBaseWidth(value)
         }
-        binding.signatureWhiteThresholdSlider.addOnChangeListener { _, value, _ -> saveFloat("signature_white_threshold", value) }
         binding.signatureOffsetXEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_x", text.toString()) }
         binding.signatureOffsetYEditText.doOnTextChanged { text, _, _, _ -> saveString("signature_offset_y", text.toString()) }
 
