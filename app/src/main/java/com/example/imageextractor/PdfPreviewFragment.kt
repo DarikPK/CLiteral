@@ -406,6 +406,9 @@ class PdfPreviewFragment : Fragment() {
 
         // Sello 2
         if (isStamp2Enabled && stamp2Bitmap != null) {
+            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val savedRotation = sharedPrefs.getString("stamp2_rotation", stamp2Rotation.toString())?.toFloatOrNull() ?: stamp2Rotation
+
             val dx = stamp2OffsetX * mmToPx
             val dy = stamp2OffsetY * mmToPx
             val scale = 1f
@@ -415,7 +418,7 @@ class PdfPreviewFragment : Fragment() {
             val centerY = pageH / 2
             val x = centerX + dx - stampWidth / 2
             val y = centerY + dy - stampHeight / 2
-            stamp2State = StampState(x, y, scale, stamp2Rotation)
+            stamp2State = StampState(x, y, scale, savedRotation)
         }
 
         // Firma - Vinculada al centro del Sello 2
@@ -531,8 +534,8 @@ class PdfPreviewFragment : Fragment() {
             updateSignaturePositionRelative()
             binding.signatureOverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            // Usar la rotación del estado vinculada + 90 visuales para previsualización
-            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation + 90f, imageMatrix)
+            // Usar la rotación del estado vinculada - 90 visuales para previsualización
+            binding.signatureOverlayView.setStamp(bitmapToShowSignature, signatureState!!.x, signatureState!!.y, signatureState!!.scale, signatureState!!.rotation - 90f, imageMatrix)
         } else {
             binding.signatureOverlayView.visibility = View.GONE
         }
@@ -672,39 +675,54 @@ class PdfPreviewFragment : Fragment() {
             canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
         }
 
-        // Draw Signature (from bitmap, either procedural or image-based)
-        if (isSignatureEnabled && signatureState != null && signatureBitmap != null) {
+        // Draw Signature (Linked as a block to Stamp 2)
+        if (isSignatureEnabled && stamp2State != null && signatureBitmap != null && stamp2Bitmap != null) {
             canvas.save()
 
-            // Calculate final dimensions and position in PDF coordinates
-            val scaledScale = signatureState!!.scale * previewToPdfScale
-            val finalWidth = signatureBitmap!!.width * scaledScale
-            val finalHeight = signatureBitmap!!.height * scaledScale
-            val finalX = signatureState!!.x * previewToPdfScale
-            val finalY = signatureState!!.y * previewToPdfScale
+            val mmToPx = 2.83f
+            val previewToPdfScale = 595f / 1000f
+            val signatureScaleFloat = signatureScale / 100f
 
-            // Define the destination rectangle on the PDF canvas
-            val dstRect = RectF(finalX, finalY, finalX + finalWidth, finalY + finalHeight)
+            // 1. Calcular la rotación real que tiene el sello en esta página (base + jitter)
+            var finalStampRotation = stamp2State!!.rotation
+            if (stamp2VariableRotation && wornStamp2Bitmap != null) {
+                val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
+                finalStampRotation += randomRotation
+            }
 
-            // Cargar tolerancia de rotación de firma
+            // 2. Calcular la posición rotada de la firma relativa al sello en coordenadas PDF
+            val s2CenterX_Pdf = (stamp2State!!.x + (stamp2Bitmap!!.width * stamp2State!!.scale) / 2f) * previewToPdfScale
+            val s2CenterY_Pdf = (stamp2State!!.y + (stamp2Bitmap!!.height * stamp2State!!.scale) / 2f) * previewToPdfScale
+
+            val dx_Pdf = signatureOffsetX * mmToPx * previewToPdfScale
+            val dy_Pdf = signatureOffsetY * mmToPx * previewToPdfScale
+
+            val angleRad = Math.toRadians(finalStampRotation.toDouble())
+            val cos = Math.cos(angleRad).toFloat()
+            val sin = Math.sin(angleRad).toFloat()
+
+            val rotatedDx = dx_Pdf * cos - dy_Pdf * sin
+            val rotatedDy = dx_Pdf * sin + dy_Pdf * cos
+
+            // 3. Posición final de la firma en el PDF
+            val sigWidth_Pdf = signatureBitmap!!.width * signatureScaleFloat * previewToPdfScale
+            val sigHeight_Pdf = signatureBitmap!!.height * signatureScaleFloat * previewToPdfScale
+            val sigX = s2CenterX_Pdf + rotatedDx - sigWidth_Pdf / 2f
+            val sigY = s2CenterY_Pdf + rotatedDy - sigHeight_Pdf / 2f
+
+            val dstRect = RectF(sigX, sigY, sigX + sigWidth_Pdf, sigY + sigHeight_Pdf)
+
+            // 4. Rotación de la firma: Rotación del sello + Tolerancia propia - 90 visuales
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             val sigTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f)
             val randomSigRotation = if (sigTolerance > 0) (Random().nextFloat() * 2 * sigTolerance) - sigTolerance else 0f
 
-            // Rotación base (sincronizada con Sello 2) + Aleatoriedad.
-            // Los +90 se aplican VISUALMENTE al dibujar, no al rotar el lienzo para mantener origen.
-            val finalSigRotation = signatureState!!.rotation + randomSigRotation
+            val finalSigRotation = finalStampRotation + randomSigRotation - 90f
 
-            // Rotate the canvas around the center of the destination rectangle
-            canvas.rotate(finalSigRotation + 90f, dstRect.centerX(), dstRect.centerY())
-
-            // Define the source rectangle (the entire bitmap)
+            canvas.rotate(finalSigRotation, dstRect.centerX(), dstRect.centerY())
             val srcRect = Rect(0, 0, signatureBitmap!!.width, signatureBitmap!!.height)
-
-            // Draw the bitmap into the destination rectangle, this prevents clipping issues
             canvas.drawBitmap(signatureBitmap!!, srcRect, dstRect, highQualityPaint)
 
-            // Restore canvas to its original state
             canvas.restore()
         }
     }
@@ -1157,7 +1175,7 @@ class PdfPreviewFragment : Fragment() {
             }
         }
 
-        // Save Stamp 2 position
+        // Save Stamp 2 position and rotation
         stamp2State?.let {
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             val editor = sharedPrefs.edit()
@@ -1182,6 +1200,7 @@ class PdfPreviewFragment : Fragment() {
 
             editor.putString("stamp2_offset_x", offsetXInMm.toInt().toString())
             editor.putString("stamp2_offset_y", offsetYInMm.toInt().toString())
+            editor.putString("stamp2_rotation", it.rotation.toInt().toString())
             editor.apply()
         }
 
