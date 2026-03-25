@@ -37,6 +37,7 @@ class SignatureSettingsFragment : Fragment() {
 
     private var tempImageUri: String? = null
     private var tempWhiteThreshold: Float = 210f
+    private var editingSignatureIndex: Int = -1
 
     private val sharedPrefs by lazy {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
@@ -315,6 +316,7 @@ class SignatureSettingsFragment : Fragment() {
             binding.signatureCanvasView.clearCanvas(switchMode = true)
             binding.deletePointsButton.isChecked = false
             binding.signatureCanvasView.isDeleteMode = false
+            editingSignatureIndex = -1
 
             binding.signatureCanvasView.tag = null
             updateButtonLabels()
@@ -341,6 +343,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            saveBoolean("signature_type_loaded" + suffix, isChecked)
             binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             binding.selectImageButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             // El botón de guardar ahora siempre será visible según el plan para permitir guardar configuraciones
@@ -357,6 +360,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.selectImageButton.setOnClickListener {
+            editingSignatureIndex = -1
             pickImageLauncher.launch("image/*")
         }
 
@@ -500,11 +504,19 @@ class SignatureSettingsFragment : Fragment() {
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
-                val currentList = currentBase64String.split("|").filter { it.isNotBlank() }
-                val newList = currentList + dataToSave
-                val newBase64String = newList.joinToString("|")
+                val currentList = currentBase64String.split("|").filter { it.isNotBlank() }.toMutableList()
+
+                if (editingSignatureIndex != -1 && editingSignatureIndex < currentList.size) {
+                    currentList[editingSignatureIndex] = dataToSave
+                    Toast.makeText(context, "Firma actualizada.", Toast.LENGTH_SHORT).show()
+                } else {
+                    currentList.add(dataToSave)
+                    editingSignatureIndex = currentList.size - 1
+                    Toast.makeText(context, "Firma guardada en la carpeta.", Toast.LENGTH_LONG).show()
+                }
+
+                val newBase64String = currentList.joinToString("|")
                 sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
-                Toast.makeText(context, "Firma guardada en la carpeta de firmas.", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -572,7 +584,7 @@ class SignatureSettingsFragment : Fragment() {
                 }
 
                 setOnClickListener {
-                    loadSignatureFromBase64(data)
+                    loadSignatureFromBase64(data, index)
                     dialog.dismiss()
                 }
             }
@@ -612,9 +624,10 @@ class SignatureSettingsFragment : Fragment() {
         dialog.show()
     }
 
-    private fun loadSignatureFromBase64(data: String) {
+    private fun loadSignatureFromBase64(data: String, index: Int) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                editingSignatureIndex = index
                 // Separar base64, tamaño y offsets
                 val parts = data.split(":")
                 val base64 = parts[0]
