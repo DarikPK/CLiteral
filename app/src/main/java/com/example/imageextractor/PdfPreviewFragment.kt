@@ -598,10 +598,13 @@ class PdfPreviewFragment : Fragment() {
             val isLoadedMode = sharedPrefs.getBoolean("signature_type_loaded", false)
             if (isLoadedMode && signatureCloudList.isNotEmpty()) {
                 val sigIndex = if (index == 0) firstPageSignatureIndex else lastPageSignatureIndex
-                if (sigIndex != -1 && sigIndex < signatureCloudList.size) {
-                    return signatureCloudList[sigIndex]
+                val baseSig = if (sigIndex != -1 && sigIndex < signatureCloudList.size) {
+                    signatureCloudList[sigIndex]
+                } else {
+                    signatureCloudList[Random(index.toLong()).nextInt(signatureCloudList.size)]
                 }
-                return signatureCloudList[Random(index.toLong()).nextInt(signatureCloudList.size)]
+                // PRIORIZAR SIEMPRE LOS OFFSETS Y ESCALA DE LA CONFIGURACIÓN GENERAL
+                return baseSig.copy(scale = signatureScale, offsetX = signatureOffsetX, offsetY = signatureOffsetY)
             } else {
                 // Procedural o imagen única
                 val bitmap = if (!signatureImageUri.isNullOrBlank()) {
@@ -617,7 +620,9 @@ class PdfPreviewFragment : Fragment() {
             // Lógica Firma Secundaria
             val isLoadedModeSec = sharedPrefs.getBoolean("signature_type_loaded_secondary", false)
             if (isLoadedModeSec && signatureSecondaryCloudList.isNotEmpty()) {
-                return signatureSecondaryCloudList[Random(index.toLong()).nextInt(signatureSecondaryCloudList.size)]
+                val baseSig = signatureSecondaryCloudList[Random(index.toLong()).nextInt(signatureSecondaryCloudList.size)]
+                // PRIORIZAR SIEMPRE LOS OFFSETS Y ESCALA DE LA CONFIGURACIÓN GENERAL SECUNDARIA
+                return baseSig.copy(scale = signatureScaleSecondary, offsetX = signatureOffsetXSecondary, offsetY = signatureOffsetYSecondary)
             } else {
                 val bitmap = if (!signatureImageUriSecondary.isNullOrBlank()) {
                     signatureSecondaryBitmap

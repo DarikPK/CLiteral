@@ -139,12 +139,14 @@ class RegistrarManagementFragment : Fragment() {
                 signatureScale = sharedPrefs.getFloat("signature_scale", 100f),
                 signatureOffsetX = sharedPrefs.getString("signature_offset_x", "0") ?: "0",
                 signatureOffsetY = sharedPrefs.getString("signature_offset_y", "-19") ?: "-19",
+                signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false),
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
                 signatureScaleSecondary = sharedPrefs.getFloat("signature_scale_secondary", 100f),
                 signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0") ?: "0",
                 signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "-19") ?: "-19",
+                signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false),
                 signatureImageUris = sharedPrefs.getString("signature_image_uris", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 signatureImageUrisSecondary = sharedPrefs.getString("signature_image_uris_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 signatureImagesBase64 = sharedPrefs.getString("signature_images_base64", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
@@ -203,12 +205,14 @@ class RegistrarManagementFragment : Fragment() {
             putFloat("signature_scale", profile.signatureScale)
             putString("signature_offset_x", profile.signatureOffsetX)
             putString("signature_offset_y", profile.signatureOffsetY)
+            putBoolean("signature_type_loaded", profile.signatureTypeLoaded)
             putString("signature_markers_secondary", profile.signatureMarkersSecondary)
             putFloat("signature_rotation_tolerance_secondary", profile.signatureRotationToleranceSecondary)
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
             putFloat("signature_scale_secondary", profile.signatureScaleSecondary)
             putString("signature_offset_x_secondary", profile.signatureOffsetXSecondary)
             putString("signature_offset_y_secondary", profile.signatureOffsetYSecondary)
+            putBoolean("signature_type_loaded_secondary", profile.signatureTypeLoadedSecondary)
             putString("signature_image_uris", profile.signatureImageUris.joinToString("|"))
             putString("signature_image_uris_secondary", profile.signatureImageUrisSecondary.joinToString("|"))
             putString("signature_images_base64", profile.signatureImagesBase64.joinToString("|"))
