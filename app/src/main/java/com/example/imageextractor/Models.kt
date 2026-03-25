@@ -66,5 +66,11 @@ data class RegistrarProfile(
     // Opcional: Otros ajustes de sello como tamaño de fuente, etc.
     val stamp2FontSize: String = "13",
     val stamp2WearIntensity: Float = 30f,
-    val stamp2WearSize: Float = 50f
+    val stamp2WearSize: Float = 50f,
+    // Variabilidad Sello 2
+    val stamp2VariableRotation: Boolean = true,
+    val stamp2Rotation: String = "0",
+    val stamp2RotationTolerance: String = "5",
+    val stamp2TranslationToleranceX: String = "0",
+    val stamp2TranslationToleranceY: String = "0"
 )

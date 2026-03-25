@@ -57,6 +57,12 @@ class RegistrarManagementFragment : Fragment() {
         binding.registrarNameEditText.setText(sharedPrefs.getString("stamp2_name", ""))
         binding.registrarPositionEditText.setText(sharedPrefs.getString("stamp2_position", ""))
         binding.registrarAreaEditText.setText(sharedPrefs.getString("stamp2_area", ""))
+
+        binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
+        binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
+        binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
+        binding.stamp2TranslationToleranceXEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_x", "0"))
+        binding.stamp2TranslationToleranceYEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_y", "0"))
     }
 
     private fun setupListeners() {
@@ -82,6 +88,24 @@ class RegistrarManagementFragment : Fragment() {
         }
         binding.registrarAreaEditText.doOnTextChanged { text, _, _, _ ->
             sharedPrefs.edit().putString("stamp2_area", text.toString()).apply()
+        }
+
+        binding.stamp2VariableRotationCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            sharedPrefs.edit().putBoolean("stamp2_variable_rotation", isChecked).apply()
+        }
+        binding.stamp2RotationEditText.doOnTextChanged { text, _, _, _ ->
+            sharedPrefs.edit().putString("stamp2_rotation", text.toString())
+                .putFloat("signature_rotation", text.toString().toFloatOrNull() ?: 0f)
+                .apply()
+        }
+        binding.stamp2RotationToleranceEditText.doOnTextChanged { text, _, _, _ ->
+            sharedPrefs.edit().putString("stamp2_rotation_tolerance", text.toString()).apply()
+        }
+        binding.stamp2TranslationToleranceXEditText.doOnTextChanged { text, _, _, _ ->
+            sharedPrefs.edit().putString("stamp2_translation_tolerance_x", text.toString()).apply()
+        }
+        binding.stamp2TranslationToleranceYEditText.doOnTextChanged { text, _, _, _ ->
+            sharedPrefs.edit().putString("stamp2_translation_tolerance_y", text.toString()).apply()
         }
 
         binding.configPrimarySignatureButton.setOnClickListener {
@@ -163,7 +187,12 @@ class RegistrarManagementFragment : Fragment() {
                 signatureImagesBase64Secondary = sharedPrefs.getString("signature_images_base64_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
-                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
+                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f),
+                stamp2VariableRotation = sharedPrefs.getBoolean("stamp2_variable_rotation", true),
+                stamp2Rotation = sharedPrefs.getString("stamp2_rotation", "0") ?: "0",
+                stamp2RotationTolerance = sharedPrefs.getString("stamp2_rotation_tolerance", "5") ?: "5",
+                stamp2TranslationToleranceX = sharedPrefs.getString("stamp2_translation_tolerance_x", "0") ?: "0",
+                stamp2TranslationToleranceY = sharedPrefs.getString("stamp2_translation_tolerance_y", "0") ?: "0"
             )
 
             val result = firebaseManager.saveProfile(profile)
@@ -240,6 +269,11 @@ class RegistrarManagementFragment : Fragment() {
             putString("stamp2_font_size", profile.stamp2FontSize)
             putFloat("stamp2_wear_intensity", profile.stamp2WearIntensity)
             putFloat("stamp2_wear_size", profile.stamp2WearSize)
+            putBoolean("stamp2_variable_rotation", profile.stamp2VariableRotation)
+            putString("stamp2_rotation", profile.stamp2Rotation)
+            putString("stamp2_rotation_tolerance", profile.stamp2RotationTolerance)
+            putString("stamp2_translation_tolerance_x", profile.stamp2TranslationToleranceX)
+            putString("stamp2_translation_tolerance_y", profile.stamp2TranslationToleranceY)
             apply()
         }
 
