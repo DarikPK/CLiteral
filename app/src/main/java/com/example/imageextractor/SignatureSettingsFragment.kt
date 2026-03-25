@@ -211,7 +211,7 @@ class SignatureSettingsFragment : Fragment() {
         binding.selectImageButton.visibility = if (isLoadedMode) View.VISIBLE else View.GONE
         binding.saveSignatureToCloudButton.visibility = View.VISIBLE
 
-        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, false)
+        binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, true)
         val scale = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
         binding.signatureScaleSlider.value = scale
         binding.signatureScaleEditText.setText(scale.toInt().toString())

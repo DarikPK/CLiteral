@@ -236,7 +236,7 @@ class PdfPreviewFragment : Fragment() {
         showInPdf = arguments?.getBoolean("showInPdf", true) ?: true
 
         // --- CARGAR FIRMA PRINCIPAL ---
-        isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
+        isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", true)
         val base64String = sharedPrefs.getString("signature_images_base64", "") ?: ""
         signatureCloudList = base64String.split("|").filter { it.isNotBlank() }.mapNotNull { data ->
             try {
@@ -276,7 +276,7 @@ class PdfPreviewFragment : Fragment() {
         signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f)
 
         // --- CARGAR FIRMA SECUNDARIA ---
-        isSignatureSecondaryEnabled = sharedPrefs.getBoolean("signature_enabled_secondary", false)
+        isSignatureSecondaryEnabled = sharedPrefs.getBoolean("signature_enabled_secondary", true)
         val base64StringSec = sharedPrefs.getString("signature_images_base64_secondary", "") ?: ""
         signatureSecondaryCloudList = base64StringSec.split("|").filter { it.isNotBlank() }.mapNotNull { data ->
             try {
