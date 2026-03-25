@@ -132,6 +132,11 @@ class RegistrarManagementFragment : Fragment() {
             putString("stamp2_name", "")
             putString("stamp2_position", "")
             putString("stamp2_area", "")
+            putString("stamp2_rotation", "0")
+            putString("stamp2_rotation_tolerance", "5")
+            putString("stamp2_translation_tolerance_x", "0")
+            putString("stamp2_translation_tolerance_y", "0")
+            putBoolean("stamp2_variable_rotation", true)
             // Limpiar firmas y registros Base64
             remove("signature_markers")
             remove("signature_image_uri")

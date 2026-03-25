@@ -585,8 +585,13 @@ class PdfPreviewFragment : Fragment() {
             repeat(pageBitmaps.size) { i ->
                 // Aplicar variabilidad de rotación y traslación para cada página
                 val randomRotation = if (stamp2VariableRotation) (random.nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance else 0f
-                val randomTranslationX = (random.nextFloat() * 2 * stamp2TranslationToleranceX) - stamp2TranslationToleranceX
-                val randomTranslationY = (random.nextFloat() * 2 * stamp2TranslationToleranceY) - stamp2TranslationToleranceY
+                // La tolerancia se ingresa en pt (puntos), convertimos a px del canvas (1000px de ancho)
+                // 1 pt = 1/72 pulgada. Canvas ancho = 595 pt aprox. (A4 a 72 dpi)
+                // El canvas de previsualización es de 1000px.
+                // Factor pt to px_canvas = 1000 / 595 = ~1.68px por pt
+                val ptToPxCanvas = 1000f / 595f
+                val randomTranslationX = ((random.nextFloat() * 2 * stamp2TranslationToleranceX) - stamp2TranslationToleranceX) * ptToPxCanvas
+                val randomTranslationY = ((random.nextFloat() * 2 * stamp2TranslationToleranceY) - stamp2TranslationToleranceY) * ptToPxCanvas
 
                 stamp2States.add(StampState(
                     x = baseX + randomTranslationX,
@@ -1459,39 +1464,10 @@ class PdfPreviewFragment : Fragment() {
 
     private fun saveFinalStates() {
         // La firma ahora se guarda exclusivamente desde SignatureSettingsFragment para consistencia
-        // pero podemos guardar el desplazamiento relativo si el usuario la moviera interactivamente (opcional)
 
-        // Guardamos solo el estado de la página actual como base para la próxima vez (opcional, para mantener coherencia con el comportamiento previo de guardado automático)
-        if (currentPageIndex in stamp2States.indices) {
-            val it = stamp2States[currentPageIndex]
-            val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            val editor = sharedPrefs.edit()
-
-            val pageW = 1000f
-            val pageH = pageW / (595f / 842f)
-            val centerX = pageW / 2
-            val centerY = pageH / 2
-            val mmToPx = 2.83f
-
-            val stampWidth = stamp2Bitmap!!.width * it.scale
-            val stampHeight = stamp2Bitmap!!.height * it.scale
-
-            val finalStampCenterX = it.x + stampWidth / 2
-            val finalStampCenterY = it.y + stampHeight / 2
-
-            val offsetXInPx = finalStampCenterX - centerX
-            val offsetYInPx = finalStampCenterY - centerY
-
-            val offsetXInMm = offsetXInPx / mmToPx
-            val offsetYInMm = offsetYInPx / mmToPx
-
-            editor.putString("stamp2_offset_x", offsetXInMm.toInt().toString())
-            editor.putString("stamp2_offset_y", offsetYInMm.toInt().toString())
-            // Nota: La rotación base guardada no incluirá el jitter si lo estamos guardando aquí.
-            // Pero para el Sello 2, el usuario quería que el último ángulo ingresado sea la base.
-            editor.putString("stamp2_rotation", it.rotation.toInt().toString())
-            editor.apply()
-        }
+        // NOTA: Hemos desactivado el guardado automático de la posición del Sello 2 desde aquí
+        // para evitar que el 'jitter' aleatorio de cada página se guarde como la posición base oficial,
+        // lo que causaría un desplazamiento progresivo del sello cada vez que se abre la previsualización.
     }
 
 
