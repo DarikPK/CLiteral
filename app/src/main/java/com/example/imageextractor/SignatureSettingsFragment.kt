@@ -411,7 +411,8 @@ class SignatureSettingsFragment : Fragment() {
         saveFloat("signature_rotation" + suffix, rotation)
 
         saveFloat("signature_rotation_tolerance" + suffix, binding.signatureRotationToleranceSlider.value)
-        saveFloat("signature_stroke_width" + suffix, binding.signatureStrokeWidthSlider.value)
+        val strokeWidth = binding.signatureStrokeWidthSlider.value
+        saveFloat("signature_stroke_width" + suffix, strokeWidth)
 
         val offsetX = binding.signatureOffsetXEditText.text.toString().ifBlank { "0" }
         val offsetY = binding.signatureOffsetYEditText.text.toString().ifBlank { "-19" }

@@ -140,6 +140,10 @@ class RegistrarManagementFragment : Fragment() {
                 signatureOffsetX = sharedPrefs.getString("signature_offset_x", "0") ?: "0",
                 signatureOffsetY = sharedPrefs.getString("signature_offset_y", "-19") ?: "-19",
                 signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false),
+                signatureEnabled = sharedPrefs.getBoolean("signature_enabled", false),
+                signatureStrokeWidth = sharedPrefs.getFloat("signature_stroke_width", 5f),
+                signatureNumMarkers = sharedPrefs.getInt("signature_num_markers", 15),
+                signatureMarkerSize = sharedPrefs.getFloat("signature_marker_size", 10f),
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
@@ -147,6 +151,10 @@ class RegistrarManagementFragment : Fragment() {
                 signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0") ?: "0",
                 signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "-19") ?: "-19",
                 signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false),
+                signatureEnabledSecondary = sharedPrefs.getBoolean("signature_enabled_secondary", false),
+                signatureStrokeWidthSecondary = sharedPrefs.getFloat("signature_stroke_width_secondary", 5f),
+                signatureNumMarkersSecondary = sharedPrefs.getInt("signature_num_markers_secondary", 15),
+                signatureMarkerSizeSecondary = sharedPrefs.getFloat("signature_marker_size_secondary", 10f),
                 signatureImageUris = sharedPrefs.getString("signature_image_uris", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 signatureImageUrisSecondary = sharedPrefs.getString("signature_image_uris_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 signatureImagesBase64 = sharedPrefs.getString("signature_images_base64", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
@@ -206,6 +214,10 @@ class RegistrarManagementFragment : Fragment() {
             putString("signature_offset_x", profile.signatureOffsetX)
             putString("signature_offset_y", profile.signatureOffsetY)
             putBoolean("signature_type_loaded", profile.signatureTypeLoaded)
+            putBoolean("signature_enabled", profile.signatureEnabled)
+            putFloat("signature_stroke_width", profile.signatureStrokeWidth)
+            putInt("signature_num_markers", profile.signatureNumMarkers)
+            putFloat("signature_marker_size", profile.signatureMarkerSize)
             putString("signature_markers_secondary", profile.signatureMarkersSecondary)
             putFloat("signature_rotation_tolerance_secondary", profile.signatureRotationToleranceSecondary)
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
@@ -213,6 +225,10 @@ class RegistrarManagementFragment : Fragment() {
             putString("signature_offset_x_secondary", profile.signatureOffsetXSecondary)
             putString("signature_offset_y_secondary", profile.signatureOffsetYSecondary)
             putBoolean("signature_type_loaded_secondary", profile.signatureTypeLoadedSecondary)
+            putBoolean("signature_enabled_secondary", profile.signatureEnabledSecondary)
+            putFloat("signature_stroke_width_secondary", profile.signatureStrokeWidthSecondary)
+            putInt("signature_num_markers_secondary", profile.signatureNumMarkersSecondary)
+            putFloat("signature_marker_size_secondary", profile.signatureMarkerSizeSecondary)
             putString("signature_image_uris", profile.signatureImageUris.joinToString("|"))
             putString("signature_image_uris_secondary", profile.signatureImageUrisSecondary.joinToString("|"))
             putString("signature_images_base64", profile.signatureImagesBase64.joinToString("|"))

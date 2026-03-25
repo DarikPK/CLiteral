@@ -567,8 +567,11 @@ class PdfPreviewFragment : Fragment() {
 
         // Firma - Vinculada al centro del Sello 2
         if (isSignatureEnabled || isSignatureSecondaryEnabled) {
-            val initialScale = (if (isSignatureEnabled) signatureScale else signatureScaleSecondary) / 100f
-            signatureState = StampState(0f, 0f, initialScale, signatureRotation)
+            val totalPages = pageBitmaps.size
+            val isFirstOrLast = currentPageIndex == 0 || (currentPageIndex == totalPages - 1 && totalPages > 1)
+            val initialScale = (if (isFirstOrLast) signatureScale else signatureScaleSecondary) / 100f
+            val initialRotation = if (isFirstOrLast) signatureRotation else signatureRotationSecondary
+            signatureState = StampState(0f, 0f, initialScale, initialRotation)
             updateSignaturePositionRelative()
         }
     }
