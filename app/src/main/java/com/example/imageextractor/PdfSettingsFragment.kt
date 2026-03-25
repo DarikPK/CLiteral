@@ -476,16 +476,10 @@ class PdfSettingsFragment : Fragment() {
             // Visibility
             putBoolean("showInPdf", sharedPrefs.getBoolean("show_in_pdf", true))
 
-            // Signature Data
-            val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", false)
+            // Signature Data (se leen directamente de SharedPreferences en PdfPreviewFragment,
+            // pero pasamos estos por compatibilidad si se usaran)
+            val isSignatureEnabled = sharedPrefs.getBoolean("signature_enabled", true)
             putBoolean("isSignatureEnabled", isSignatureEnabled)
-            if (isSignatureEnabled) {
-                putString("signatureImageUri", sharedPrefs.getString("signature_image_uri", null))
-                putFloat("signatureOffsetX", sharedPrefs.getString("signature_offset_x", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("signatureOffsetY", sharedPrefs.getString("signature_offset_y", "0")?.toFloatOrNull() ?: 0f)
-                putFloat("signatureScale", sharedPrefs.getFloat("signature_scale", 100f))
-                putFloat("signatureRotation", sharedPrefs.getFloat("signature_rotation", 0f))
-            }
         }
         findNavController().navigate(R.id.action_pdfSettingsFragment_to_pdfPreviewFragment, bundle)
     }

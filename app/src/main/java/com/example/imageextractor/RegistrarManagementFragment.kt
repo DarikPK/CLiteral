@@ -136,7 +136,8 @@ class RegistrarManagementFragment : Fragment() {
                 signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
                 signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
                 signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
-                signatureScale = sharedPrefs.getFloat("signature_scale", 100f),
+                signatureSizeX = sharedPrefs.getFloat("signature_size_x", 50f),
+                signatureSizeY = sharedPrefs.getFloat("signature_size_y", 20f),
                 signatureOffsetX = sharedPrefs.getString("signature_offset_x", "0") ?: "0",
                 signatureOffsetY = sharedPrefs.getString("signature_offset_y", "-19") ?: "-19",
                 signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false),
@@ -147,7 +148,8 @@ class RegistrarManagementFragment : Fragment() {
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
-                signatureScaleSecondary = sharedPrefs.getFloat("signature_scale_secondary", 100f),
+                signatureSizeXSecondary = sharedPrefs.getFloat("signature_size_x_secondary", 50f),
+                signatureSizeYSecondary = sharedPrefs.getFloat("signature_size_y_secondary", 20f),
                 signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0") ?: "0",
                 signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "-19") ?: "-19",
                 signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false),
@@ -210,7 +212,8 @@ class RegistrarManagementFragment : Fragment() {
             putString("signature_markers", profile.signatureMarkers)
             putFloat("signature_rotation_tolerance", profile.signatureRotationTolerance)
             putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
-            putFloat("signature_scale", profile.signatureScale)
+            putFloat("signature_size_x", profile.signatureSizeX)
+            putFloat("signature_size_y", profile.signatureSizeY)
             putString("signature_offset_x", profile.signatureOffsetX)
             putString("signature_offset_y", profile.signatureOffsetY)
             putBoolean("signature_type_loaded", profile.signatureTypeLoaded)
@@ -221,7 +224,8 @@ class RegistrarManagementFragment : Fragment() {
             putString("signature_markers_secondary", profile.signatureMarkersSecondary)
             putFloat("signature_rotation_tolerance_secondary", profile.signatureRotationToleranceSecondary)
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
-            putFloat("signature_scale_secondary", profile.signatureScaleSecondary)
+            putFloat("signature_size_x_secondary", profile.signatureSizeXSecondary)
+            putFloat("signature_size_y_secondary", profile.signatureSizeYSecondary)
             putString("signature_offset_x_secondary", profile.signatureOffsetXSecondary)
             putString("signature_offset_y_secondary", profile.signatureOffsetYSecondary)
             putBoolean("signature_type_loaded_secondary", profile.signatureTypeLoadedSecondary)

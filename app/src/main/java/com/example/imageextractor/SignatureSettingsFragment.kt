@@ -212,9 +212,10 @@ class SignatureSettingsFragment : Fragment() {
         binding.saveSignatureToCloudButton.visibility = View.VISIBLE
 
         binding.signatureEnabledCheckbox.isChecked = sharedPrefs.getBoolean("signature_enabled" + suffix, true)
-        val scale = sharedPrefs.getFloat("signature_scale" + suffix, 100f)
-        binding.signatureScaleSlider.value = scale
-        binding.signatureScaleEditText.setText(scale.toInt().toString())
+        val sizeX = sharedPrefs.getFloat("signature_size_x" + suffix, 50f)
+        val sizeY = sharedPrefs.getFloat("signature_size_y" + suffix, 20f)
+        binding.signatureSizeXEditText.setText(sizeX.toString())
+        binding.signatureSizeYEditText.setText(sizeY.toString())
 
         binding.signatureRotationSlider.value = sharedPrefs.getFloat("signature_rotation" + suffix, 0f)
         binding.signatureRotationToleranceSlider.value = sharedPrefs.getFloat("signature_rotation_tolerance" + suffix, 0f)
@@ -366,19 +367,6 @@ class SignatureSettingsFragment : Fragment() {
 
         binding.signatureEnabledCheckbox.setOnCheckedChangeListener { _, isChecked -> /* No auto-save */ }
 
-        binding.signatureScaleSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                binding.signatureScaleEditText.setText(value.toInt().toString())
-            }
-        }
-
-        binding.signatureScaleEditText.doOnTextChanged { text, _, _, fromUser ->
-            val scale = text.toString().toFloatOrNull() ?: 100f
-            if (scale in 1f..300f) {
-                binding.signatureScaleSlider.value = scale
-            }
-        }
-
         binding.signatureRotationSlider.addOnChangeListener { _, value, _ -> /* No auto-save */ }
         binding.signatureRotationToleranceSlider.addOnChangeListener { _, value, _ -> /* No auto-save */ }
         binding.signatureStrokeWidthSlider.addOnChangeListener { _, value, _ ->
@@ -404,8 +392,10 @@ class SignatureSettingsFragment : Fragment() {
         saveBoolean("signature_type_loaded" + suffix, isLoadedMode)
         saveBoolean("signature_enabled" + suffix, binding.signatureEnabledCheckbox.isChecked)
 
-        val scale = binding.signatureScaleSlider.value
-        saveFloat("signature_scale" + suffix, scale)
+        val sizeX = binding.signatureSizeXEditText.text.toString().toFloatOrNull() ?: 50f
+        val sizeY = binding.signatureSizeYEditText.text.toString().toFloatOrNull() ?: 20f
+        saveFloat("signature_size_x" + suffix, sizeX)
+        saveFloat("signature_size_y" + suffix, sizeY)
 
         val rotation = binding.signatureRotationSlider.value
         saveFloat("signature_rotation" + suffix, rotation)
@@ -449,7 +439,7 @@ class SignatureSettingsFragment : Fragment() {
 
         // 2. Si estamos en modo cargadas y hay un bitmap, guardarlo como una nueva entrada en la carpeta
         if (isLoadedMode) {
-            saveCurrentSignatureToBase64(scale, offsetX, offsetY)
+            saveCurrentSignatureToBase64(sizeX, sizeY, offsetX, offsetY)
         } else {
             Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
         }
@@ -491,7 +481,7 @@ class SignatureSettingsFragment : Fragment() {
         sharedPrefs.edit().putInt(key, value).apply()
     }
 
-    private fun saveCurrentSignatureToBase64(scale: Float, offsetX: String, offsetY: String) {
+    private fun saveCurrentSignatureToBase64(sizeX: Float, sizeY: Float, offsetX: String, offsetY: String) {
         val bitmap = binding.signatureCanvasView.getSignatureBitmap()
         if (bitmap == null) {
             Toast.makeText(context, "No hay firma para guardar.", Toast.LENGTH_SHORT).show()
@@ -503,10 +493,10 @@ class SignatureSettingsFragment : Fragment() {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
             // Usar NO_WRAP para evitar problemas con separadores |
             val base64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
-            // Codificar escala y offsets: base64:scale:offsetX:offsetY
+            // Codificar tamaño y offsets: base64:sizeX:sizeY:offsetX:offsetY
             val ox = if (offsetX.isBlank()) "0" else offsetX
             val oy = if (offsetY.isBlank()) "0" else offsetY
-            val dataToSave = "$base64:$scale:$ox:$oy"
+            val dataToSave = "$base64:$sizeX:$sizeY:$ox:$oy"
 
             withContext(Dispatchers.Main) {
                 val currentBase64String = sharedPrefs.getString("signature_images_base64" + suffix, "") ?: ""
@@ -625,12 +615,13 @@ class SignatureSettingsFragment : Fragment() {
     private fun loadSignatureFromBase64(data: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Separar base64, escala y offsets
+                // Separar base64, tamaño y offsets
                 val parts = data.split(":")
                 val base64 = parts[0]
-                val scale = if (parts.size > 1) parts[1].toFloatOrNull() else null
-                val offsetX = if (parts.size > 2) parts[2] else null
-                val offsetY = if (parts.size > 3) parts[3] else null
+                val sizeX = if (parts.size > 1) parts[1].toFloatOrNull() else null
+                val sizeY = if (parts.size > 2) parts[2].toFloatOrNull() else null
+                val offsetX = if (parts.size > 3) parts[3] else null
+                val offsetY = if (parts.size > 4) parts[4] else null
 
                 val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.NO_WRAP)
                 val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
@@ -647,9 +638,12 @@ class SignatureSettingsFragment : Fragment() {
                         tempImageUri = localUri.toString()
                         binding.signatureCanvasView.setSignatureBitmap(bitmap)
 
-                        scale?.let {
-                            binding.signatureScaleSlider.value = it
-                            binding.signatureScaleEditText.setText(it.toInt().toString())
+                        sizeX?.let {
+                            binding.signatureSizeXEditText.setText(it.toString())
+                        }
+
+                        sizeY?.let {
+                            binding.signatureSizeYEditText.setText(it.toString())
                         }
 
                         offsetX?.let {

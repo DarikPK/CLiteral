@@ -35,7 +35,8 @@ data class RegistrarProfile(
     val signatureMarkers: String = "", // Serialized markers string
     val signatureRotationTolerance: Float = 0f,
     val signatureWhiteThreshold: Float = 210f,
-    val signatureScale: Float = 100f,
+    val signatureSizeX: Float = 50f,
+    val signatureSizeY: Float = 20f,
     val signatureOffsetX: String = "0",
     val signatureOffsetY: String = "0",
     val signatureTypeLoaded: Boolean = false,
@@ -47,7 +48,8 @@ data class RegistrarProfile(
     val signatureMarkersSecondary: String = "", // Serialized markers string
     val signatureRotationToleranceSecondary: Float = 0f,
     val signatureWhiteThresholdSecondary: Float = 210f,
-    val signatureScaleSecondary: Float = 100f,
+    val signatureSizeXSecondary: Float = 50f,
+    val signatureSizeYSecondary: Float = 20f,
     val signatureOffsetXSecondary: String = "0",
     val signatureOffsetYSecondary: String = "0",
     val signatureTypeLoadedSecondary: Boolean = false,

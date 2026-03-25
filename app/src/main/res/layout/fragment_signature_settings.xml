@@ -178,42 +178,45 @@
                 android:text="Añadir Firma en todas las páginas"
                 android:layout_marginTop="16dp"/>
 
+            <TextView
+                style="@style/TextAppearance.Material3.TitleMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dimensiones de la Firma"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"/>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="16dp"
-                android:gravity="center_vertical">
+                android:orientation="horizontal">
 
-                <TextView
+                <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Escala de la Firma (%)"
-                    style="@style/TextAppearance.Material3.LabelMedium"/>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="100dp"
-                    android:layout_height="wrap_content"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense">
+                    android:layout_marginEnd="4dp"
+                    android:hint="Ancho (mm)">
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/signature_scale_edit_text"
+                        android:id="@+id/signature_size_x_edit_text"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:gravity="center"
-                        android:text="100"/>
+                        android:inputType="numberDecimal" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="Alto (mm)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/signature_size_y_edit_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/signature_scale_slider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="1.0"
-                android:valueTo="300.0"
-                android:stepSize="1.0"
-                android:value="100.0" />
 
             <TextView
                 android:layout_width="wrap_content"
