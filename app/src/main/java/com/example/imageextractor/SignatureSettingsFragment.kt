@@ -343,7 +343,7 @@ class SignatureSettingsFragment : Fragment() {
         }
 
         binding.signatureTypeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            saveBoolean("signature_type_loaded" + suffix, isChecked)
+            sharedPrefs.edit().putBoolean("signature_type_loaded" + suffix, isChecked).commit()
             binding.loadedSignaturesButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             binding.selectImageButton.visibility = if (isChecked) View.VISIBLE else View.GONE
             // El botón de guardar ahora siempre será visible según el plan para permitir guardar configuraciones
@@ -391,6 +391,7 @@ class SignatureSettingsFragment : Fragment() {
     }
 
     private fun saveAllSettingsAndSignature() {
+        saveCurrentProfileToFirebase()
         // 1. Persistir configuraciones de la UI en SharedPreferences
         val isLoadedMode = binding.signatureTypeSwitch.isChecked
         saveBoolean("signature_type_loaded" + suffix, isLoadedMode)
@@ -460,6 +461,56 @@ class SignatureSettingsFragment : Fragment() {
         saveString("signature_markers" + suffix, markersString)
     }
 
+    private fun saveCurrentProfileToFirebase() {
+        val profileId = sharedPrefs.getString("firebase_profile_id", "") ?: ""
+        if (profileId.isEmpty()) return
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val profile = RegistrarProfile(
+                id = profileId,
+                name = sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO") ?: "NOMBRE APELLIDO",
+                position = sharedPrefs.getString("stamp2_position", "CARGO") ?: "CARGO",
+                area = sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL") ?: "ZONA REGISTRAL",
+                office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
+
+                signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
+                signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
+                signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
+                signatureSizeX = sharedPrefs.getFloat("signature_size_x", 50f),
+                signatureSizeY = sharedPrefs.getFloat("signature_size_y", 20f),
+                signatureOffsetX = sharedPrefs.getString("signature_offset_x", "0") ?: "0",
+                signatureOffsetY = sharedPrefs.getString("signature_offset_y", "-19") ?: "-19",
+                signatureTypeLoaded = sharedPrefs.getBoolean("signature_type_loaded", false),
+                signatureEnabled = sharedPrefs.getBoolean("signature_enabled", true),
+                signatureStrokeWidth = sharedPrefs.getFloat("signature_stroke_width", 5f),
+                signatureNumMarkers = sharedPrefs.getInt("signature_num_markers", 15),
+                signatureMarkerSize = sharedPrefs.getFloat("signature_marker_size", 10f),
+
+                signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
+                signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
+                signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
+                signatureSizeXSecondary = sharedPrefs.getFloat("signature_size_x_secondary", 50f),
+                signatureSizeYSecondary = sharedPrefs.getFloat("signature_size_y_secondary", 20f),
+                signatureOffsetXSecondary = sharedPrefs.getString("signature_offset_x_secondary", "0") ?: "0",
+                signatureOffsetYSecondary = sharedPrefs.getString("signature_offset_y_secondary", "-19") ?: "-19",
+                signatureTypeLoadedSecondary = sharedPrefs.getBoolean("signature_type_loaded_secondary", false),
+                signatureEnabledSecondary = sharedPrefs.getBoolean("signature_enabled_secondary", true),
+                signatureStrokeWidthSecondary = sharedPrefs.getFloat("signature_stroke_width_secondary", 5f),
+                signatureNumMarkersSecondary = sharedPrefs.getInt("signature_num_markers_secondary", 15),
+                signatureMarkerSizeSecondary = sharedPrefs.getFloat("signature_marker_size_secondary", 10f),
+
+                signatureImageUris = sharedPrefs.getString("signature_image_uris", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImageUrisSecondary = sharedPrefs.getString("signature_image_uris_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImagesBase64 = sharedPrefs.getString("signature_images_base64", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                signatureImagesBase64Secondary = sharedPrefs.getString("signature_images_base64_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
+                stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
+                stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
+                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
+            )
+            firebaseManager.saveProfile(profile)
+        }
+    }
+
     // SharedPreferences helpers
     private fun saveString(key: String, value: String) {
         sharedPrefs.edit().putString(key, value).apply()
@@ -516,7 +567,8 @@ class SignatureSettingsFragment : Fragment() {
                 }
 
                 val newBase64String = currentList.joinToString("|")
-                sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).apply()
+                sharedPrefs.edit().putString("signature_images_base64" + suffix, newBase64String).commit()
+                saveCurrentProfileToFirebase()
             }
         }
     }
@@ -589,6 +641,27 @@ class SignatureSettingsFragment : Fragment() {
                 }
             }
 
+            // --- BOTÓN EDITAR ---
+            val editButton = android.widget.ImageButton(requireContext()).apply {
+                id = android.view.View.generateViewId()
+                layoutParams = android.widget.RelativeLayout.LayoutParams(
+                    60, 60
+                ).apply {
+                    addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP)
+                    addRule(android.widget.RelativeLayout.ALIGN_PARENT_START)
+                }
+                setImageResource(android.R.drawable.ic_menu_edit)
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER)
+                setColorFilter(android.graphics.Color.BLUE)
+                setPadding(0, 0, 0, 0)
+                setOnClickListener {
+                    loadSignatureFromBase64(data, index)
+                    dialog.dismiss()
+                }
+            }
+
+            // --- BOTÓN ELIMINAR ---
             val deleteButton = android.widget.ImageButton(requireContext()).apply {
                 layoutParams = android.widget.RelativeLayout.LayoutParams(
                     60, 60
@@ -618,6 +691,7 @@ class SignatureSettingsFragment : Fragment() {
             }
 
             itemLayout.addView(imageView)
+            itemLayout.addView(editButton)
             itemLayout.addView(deleteButton)
             gridLayout.addView(itemLayout)
         }
@@ -668,7 +742,7 @@ class SignatureSettingsFragment : Fragment() {
                         }
 
                         updateButtonLabels()
-                        Toast.makeText(context, "Firma cargada.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Firma cargada para edición.", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
