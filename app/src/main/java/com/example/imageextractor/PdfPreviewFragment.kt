@@ -45,8 +45,10 @@ class PdfPreviewFragment : Fragment() {
     private var currentPageIndex = 0
 
     private var cleanStampBitmap: Bitmap? = null
+    // Bitmaps del sello 1 con desgaste independiente para la primera y última página
     private var firstPageWornStampBitmap: Bitmap? = null
     private var lastPageWornStampBitmap: Bitmap? = null
+    // Estados (posición, rotación, escala) independientes para el sello 1
     private var firstPageStampState: StampState? = null
     private var lastPageStampState: StampState? = null
 
@@ -533,6 +535,7 @@ class PdfPreviewFragment : Fragment() {
             val xPos = pageW - stampWidth - 25
             val yPos = pageH - stampHeight - 25
 
+            // Sello 1 - Página Inicial: Cálculo independiente de rotación
             firstPageStampState = StampState(
                 x = maxOf(0f, xPos),
                 y = maxOf(0f, yPos),
@@ -540,6 +543,7 @@ class PdfPreviewFragment : Fragment() {
                 rotation = random.nextFloat() * (2 * stampMaxRotation) - stampMaxRotation
             )
 
+            // Sello 1 - Página Final: Si hay más de una página, se crea un estado separado con su propia rotación aleatoria
             if (pageBitmaps.size > 1) {
                 lastPageStampState = StampState(
                     x = maxOf(0f, xPos),
@@ -1207,11 +1211,13 @@ class PdfPreviewFragment : Fragment() {
                 Toast.makeText(context, "Aplicando desgaste...", Toast.LENGTH_SHORT).show()
             }
 
-            // Apply wear to Stamp 1
+            // Aplicar desgaste al Sello 1 de forma independiente usando semillas distintas
             cleanStampBitmap?.let {
                 val normalizedIntensity = stampWearIntensity / 100.0f
                 val normalizedSize = stampWearSize / 100.0f
+                // Semilla base para la primera página
                 firstPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis())
+                // Semilla + 1 para la última página, garantizando un patrón de desgaste visualmente diferente
                 if (pageBitmaps.size > 1) {
                     lastPageWornStampBitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 1)
                 } else {
