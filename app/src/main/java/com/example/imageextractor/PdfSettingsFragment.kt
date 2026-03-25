@@ -380,6 +380,8 @@ class PdfSettingsFragment : Fragment() {
                 putBoolean("stamp2VariableRotation", sharedPrefs.getBoolean("stamp2_variable_rotation", true))
                 putFloat("stamp2Rotation", sharedPrefs.getString("stamp2_rotation", "0")?.toFloatOrNull() ?: 0f)
                 putFloat("stamp2RotationTolerance", sharedPrefs.getString("stamp2_rotation_tolerance", "5")?.toFloatOrNull() ?: 5f)
+                putFloat("stamp2TranslationToleranceX", sharedPrefs.getString("stamp2_translation_tolerance_x", "0")?.toFloatOrNull() ?: 0f)
+                putFloat("stamp2TranslationToleranceY", sharedPrefs.getString("stamp2_translation_tolerance_y", "0")?.toFloatOrNull() ?: 0f)
                 putFloat("stamp2WearIntensity", sharedPrefs.getFloat("stamp2_wear_intensity", 30f))
                 putFloat("stamp2WearSize", sharedPrefs.getFloat("stamp2_wear_size", 50f))
                 putFloat("stamp2DotCount", getFloatPreferenceSafely("stamp2DotCount", "stamp2_dot_count", 3f))

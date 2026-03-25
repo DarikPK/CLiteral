@@ -63,6 +63,8 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2VariableRotationCheckbox.isChecked = sharedPrefs.getBoolean("stamp2_variable_rotation", true)
         binding.stamp2RotationEditText.setText(sharedPrefs.getString("stamp2_rotation", "0"))
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
+        binding.stamp2TranslationToleranceXEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_x", "0"))
+        binding.stamp2TranslationToleranceYEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_y", "0"))
         binding.stamp2DotCountEditText.setText(getStringPreferenceSafely("stamp2DotCount", "stamp2_dot_count", "3"))
         binding.stamp2DotSizeEditText.setText(getStringPreferenceSafely("stamp2DotSize", "stamp2_dot_size", "13"))
         binding.stamp2PointTextSeparationEditText.setText(sharedPrefs.getString("stamp2_point_text_separation", "5"))
@@ -91,6 +93,8 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2VariableRotationCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp2_variable_rotation", isChecked) }
         binding.stamp2RotationEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation", text.toString()) }
         binding.stamp2RotationToleranceEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_rotation_tolerance", text.toString()) }
+        binding.stamp2TranslationToleranceXEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_translation_tolerance_x", text.toString()) }
+        binding.stamp2TranslationToleranceYEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2_translation_tolerance_y", text.toString()) }
 
         // First click listeners to clear default text
         setupFirstClickListener(binding.stamp2NameEditText)

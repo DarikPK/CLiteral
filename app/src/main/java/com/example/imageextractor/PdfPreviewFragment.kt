@@ -55,7 +55,7 @@ class PdfPreviewFragment : Fragment() {
     // Sello 2
     private var stamp2Bitmap: Bitmap? = null
     private var wornStamp2Bitmap: Bitmap? = null
-    private var stamp2State: StampState? = null
+    private val stamp2States = mutableListOf<StampState>()
     private var isStamp2Enabled: Boolean = false
     private lateinit var stamp2Name: String
     private lateinit var stamp2Position: String
@@ -66,6 +66,8 @@ class PdfPreviewFragment : Fragment() {
     private var stamp2VariableRotation: Boolean = false
     private var stamp2Rotation: Float = 0f
     private var stamp2RotationTolerance: Float = 5f
+    private var stamp2TranslationToleranceX: Float = 0f
+    private var stamp2TranslationToleranceY: Float = 0f
     private var stamp2WearIntensity: Float = 30f
     private var stamp2WearSize: Float = 50f
     private var stamp2DotCount: Int = 3
@@ -200,6 +202,8 @@ class PdfPreviewFragment : Fragment() {
                 stamp2VariableRotation = it.getBoolean("stamp2VariableRotation", true)
                 stamp2Rotation = it.getFloat("stamp2Rotation", 0f)
                 stamp2RotationTolerance = it.getFloat("stamp2RotationTolerance", 5f)
+                stamp2TranslationToleranceX = it.getFloat("stamp2TranslationToleranceX", 0f)
+                stamp2TranslationToleranceY = it.getFloat("stamp2TranslationToleranceY", 0f)
                 stamp2WearIntensity = it.getFloat("stamp2WearIntensity", 30f)
                 stamp2WearSize = it.getFloat("stamp2WearSize", 50f)
                 stamp2DotCount = it.getFloat("stamp2DotCount", 3f).toInt()
@@ -352,12 +356,14 @@ class PdfPreviewFragment : Fragment() {
         })
 
         binding.stamp2OverlayView.setOnStampUpdateListener { x, y, rotation ->
-            stamp2State?.let {
-                it.x = x
-                it.y = y
-                it.rotation = rotation
+            if (currentPageIndex in stamp2States.indices) {
+                val state = stamp2States[currentPageIndex]
+                state.x = x
+                state.y = y
+                state.rotation = rotation
+                updateSignaturePositionRelative()
+                updateStampOverlay()
             }
-            updateStampOverlay()
         }
 
 
@@ -560,7 +566,7 @@ class PdfPreviewFragment : Fragment() {
             }
         }
 
-        // Sello 2
+        // Sello 2 - Estados independientes por página
         if (isStamp2Enabled && stamp2Bitmap != null) {
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             val savedRotation = sharedPrefs.getString("stamp2_rotation", stamp2Rotation.toString())?.toFloatOrNull() ?: stamp2Rotation
@@ -572,9 +578,23 @@ class PdfPreviewFragment : Fragment() {
             val stampHeight = stamp2Bitmap!!.height * scale
             val centerX = pageW / 2
             val centerY = pageH / 2
-            val x = centerX + dx - stampWidth / 2
-            val y = centerY + dy - stampHeight / 2
-            stamp2State = StampState(x, y, scale, savedRotation)
+            val baseX = centerX + dx - stampWidth / 2
+            val baseY = centerY + dy - stampHeight / 2
+
+            stamp2States.clear()
+            repeat(pageBitmaps.size) { i ->
+                // Aplicar variabilidad de rotación y traslación para cada página
+                val randomRotation = if (stamp2VariableRotation) (random.nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance else 0f
+                val randomTranslationX = (random.nextFloat() * 2 * stamp2TranslationToleranceX) - stamp2TranslationToleranceX
+                val randomTranslationY = (random.nextFloat() * 2 * stamp2TranslationToleranceY) - stamp2TranslationToleranceY
+
+                stamp2States.add(StampState(
+                    x = baseX + randomTranslationX,
+                    y = baseY + randomTranslationY,
+                    scale = scale,
+                    rotation = savedRotation + randomRotation
+                ))
+            }
         }
 
         // Firma - Vinculada al centro del Sello 2
@@ -664,7 +684,7 @@ class PdfPreviewFragment : Fragment() {
         val currentSigBitmap = sigData.bitmap
 
         val mmToPx = 2.83f
-        val s2State = stamp2State
+        val s2State = if (currentPageIndex in stamp2States.indices) stamp2States[currentPageIndex] else null
         val s2Bitmap = stamp2Bitmap
 
         val baseCenterX: Float
@@ -747,10 +767,11 @@ class PdfPreviewFragment : Fragment() {
 
         // Update Stamp 2 Overlay
         val bitmapToShow2 = wornStamp2Bitmap ?: stamp2Bitmap
-        if (isStamp2Enabled && stamp2State != null && bitmapToShow2 != null) {
+        val s2State = if (currentPageIndex in stamp2States.indices) stamp2States[currentPageIndex] else null
+        if (isStamp2Enabled && s2State != null && bitmapToShow2 != null) {
             binding.stamp2OverlayView.visibility = View.VISIBLE
             val imageMatrix = binding.pdfPageZoomableImageView.getDrawMatrix()
-            binding.stamp2OverlayView.setStamp(bitmapToShow2, stamp2State!!.x, stamp2State!!.y, stamp2State!!.scale, stamp2State!!.rotation, imageMatrix)
+            binding.stamp2OverlayView.setStamp(bitmapToShow2, s2State.x, s2State.y, s2State.scale, s2State.rotation, imageMatrix)
         } else {
             binding.stamp2OverlayView.visibility = View.GONE
         }
@@ -897,19 +918,16 @@ class PdfPreviewFragment : Fragment() {
 
         // Draw Stamp 2
         val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
-        if (isStamp2Enabled && stamp2State != null && finalStamp2Bitmap != null) {
+        val s2State = if (index in stamp2States.indices) stamp2States[index] else null
+        if (isStamp2Enabled && s2State != null && finalStamp2Bitmap != null) {
             val matrix = Matrix()
-            val scaledScale = stamp2State!!.scale * previewToPdfScale
+            val scaledScale = s2State.scale * previewToPdfScale
 
-            // Usar rotación del estado interactivo (manual) del Sello 2
-            var finalRotation = stamp2State!!.rotation
-            if (stamp2VariableRotation && wornStamp2Bitmap != null) {
-                val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
-                finalRotation += randomRotation
-            }
+            // Usar rotación del estado interactivo (manual) del Sello 2 para esta página específica
+            val finalRotation = s2State.rotation
             matrix.postScale(scaledScale, scaledScale)
             matrix.postRotate(finalRotation, finalStamp2Bitmap.width * scaledScale / 2, finalStamp2Bitmap.height * scaledScale / 2)
-            matrix.postTranslate(stamp2State!!.x * previewToPdfScale, stamp2State!!.y * previewToPdfScale)
+            matrix.postTranslate(s2State.x * previewToPdfScale, s2State.y * previewToPdfScale)
             canvas.drawBitmap(finalStamp2Bitmap, matrix, highQualityPaint)
         }
 
@@ -931,7 +949,7 @@ class PdfPreviewFragment : Fragment() {
             val currentSigSizeX = sigData.sizeX
             val currentSigSizeY = sigData.sizeY
 
-            val s2State = stamp2State
+            val s2State = if (index in stamp2States.indices) stamp2States[index] else null
             val s2Bitmap = stamp2Bitmap
 
             val baseCenterX_Pdf: Float
@@ -939,13 +957,8 @@ class PdfPreviewFragment : Fragment() {
             val baseRotation: Float
 
             if (isStamp2Enabled && s2State != null && s2Bitmap != null) {
-                // 1. Calcular la rotación real que tiene el sello en esta página (base + jitter)
-                var finalStampRotation = s2State.rotation
-                if (stamp2VariableRotation && wornStamp2Bitmap != null) {
-                    val randomRotation = (Random().nextFloat() * 2 * stamp2RotationTolerance) - stamp2RotationTolerance
-                    finalStampRotation += randomRotation
-                }
-                baseRotation = finalStampRotation
+                // 1. La rotación base ya incluye la variabilidad aplicada en initializeStampStates o el ajuste manual
+                baseRotation = s2State.rotation
 
                 baseCenterX_Pdf = (s2State.x + (s2Bitmap.width * s2State.scale) / 2f) * previewToPdfScale
                 baseCenterY_Pdf = (s2State.y + (s2Bitmap.height * s2State.scale) / 2f) * previewToPdfScale
@@ -1448,10 +1461,9 @@ class PdfPreviewFragment : Fragment() {
         // La firma ahora se guarda exclusivamente desde SignatureSettingsFragment para consistencia
         // pero podemos guardar el desplazamiento relativo si el usuario la moviera interactivamente (opcional)
 
-        // Save Stamp 2 position and rotation
-
-        // Save Stamp 2 position and rotation
-        stamp2State?.let {
+        // Guardamos solo el estado de la página actual como base para la próxima vez (opcional, para mantener coherencia con el comportamiento previo de guardado automático)
+        if (currentPageIndex in stamp2States.indices) {
+            val it = stamp2States[currentPageIndex]
             val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
             val editor = sharedPrefs.edit()
 
@@ -1475,6 +1487,8 @@ class PdfPreviewFragment : Fragment() {
 
             editor.putString("stamp2_offset_x", offsetXInMm.toInt().toString())
             editor.putString("stamp2_offset_y", offsetYInMm.toInt().toString())
+            // Nota: La rotación base guardada no incluirá el jitter si lo estamos guardando aquí.
+            // Pero para el Sello 2, el usuario quería que el último ángulo ingresado sea la base.
             editor.putString("stamp2_rotation", it.rotation.toInt().toString())
             editor.apply()
         }
