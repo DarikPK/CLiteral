@@ -194,41 +194,6 @@
             </LinearLayout>
 
 
-            <TextView
-                style="@style/TextAppearance.Material3.TitleMedium"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Efecto de Desgaste"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Intensidad de Desgaste"
-                style="@style/TextAppearance.Material3.LabelMedium"
-                android:layout_marginTop="8dp"/>
-            <com.google.android.material.slider.Slider
-                android:id="@+id/stamp2_wear_intensity_slider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0.0"
-                android:valueTo="100.0"
-                android:stepSize="1.0" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tamaño de Desgaste"
-                style="@style/TextAppearance.Material3.LabelMedium"
-                android:layout_marginTop="16dp"/>
-            <com.google.android.material.slider.Slider
-                android:id="@+id/stamp2_wear_size_slider"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:valueFrom="0.0"
-                android:valueTo="100.0"
-                android:stepSize="1.0" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"

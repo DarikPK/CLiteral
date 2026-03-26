@@ -98,10 +98,6 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2BrightnessEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Brightness", text.toString()) }
         binding.stamp2ContrastEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp2Contrast", text.toString()) }
 
-        // Auto-save for Sliders
-        binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_intensity", value) }
-        binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ -> saveFloat("stamp2_wear_size", value) }
-
         binding.saveCloudButton.setOnClickListener { saveProfileToFirebase() }
         binding.loadCloudButton.setOnClickListener { showLoadProfilesDialog() }
     }

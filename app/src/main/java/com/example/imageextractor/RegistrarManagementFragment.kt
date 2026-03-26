@@ -63,6 +63,9 @@ class RegistrarManagementFragment : Fragment() {
         binding.stamp2RotationToleranceEditText.setText(sharedPrefs.getString("stamp2_rotation_tolerance", "5"))
         binding.stamp2TranslationToleranceXEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_x", "0"))
         binding.stamp2TranslationToleranceYEditText.setText(sharedPrefs.getString("stamp2_translation_tolerance_y", "0"))
+
+        binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
+        binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
     }
 
     private fun setupListeners() {
@@ -106,6 +109,13 @@ class RegistrarManagementFragment : Fragment() {
         }
         binding.stamp2TranslationToleranceYEditText.doOnTextChanged { text, _, _, _ ->
             sharedPrefs.edit().putString("stamp2_translation_tolerance_y", text.toString()).apply()
+        }
+
+        binding.stamp2WearIntensitySlider.addOnChangeListener { _, value, _ ->
+            sharedPrefs.edit().putFloat("stamp2_wear_intensity", value).apply()
+        }
+        binding.stamp2WearSizeSlider.addOnChangeListener { _, value, _ ->
+            sharedPrefs.edit().putFloat("stamp2_wear_size", value).apply()
         }
 
         binding.configPrimarySignatureButton.setOnClickListener {
@@ -158,9 +168,9 @@ class RegistrarManagementFragment : Fragment() {
         lifecycleScope.launch {
             val profile = RegistrarProfile(
                 id = sharedPrefs.getString("firebase_profile_id", "") ?: "",
-                name = sharedPrefs.getString("stamp2_name", "NOMBRE APELLIDO") ?: "NOMBRE APELLIDO",
-                position = sharedPrefs.getString("stamp2_position", "CARGO") ?: "CARGO",
-                area = sharedPrefs.getString("stamp2_area", "ZONA REGISTRAL") ?: "ZONA REGISTRAL",
+                name = sharedPrefs.getString("stamp2_name", "") ?: "",
+                position = sharedPrefs.getString("stamp2_position", "") ?: "",
+                area = sharedPrefs.getString("stamp2_area", "") ?: "",
                 office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
                 signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
                 signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),

@@ -54,7 +54,7 @@ class PdfPreviewFragment : Fragment() {
 
     // Sello 2
     private var stamp2Bitmap: Bitmap? = null
-    private var wornStamp2Bitmap: Bitmap? = null
+    private val wornStamp2Bitmaps = mutableListOf<Bitmap?>()
     private val stamp2States = mutableListOf<StampState>()
     private var isStamp2Enabled: Boolean = false
     private lateinit var stamp2Name: String
@@ -771,7 +771,8 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Update Stamp 2 Overlay
-        val bitmapToShow2 = wornStamp2Bitmap ?: stamp2Bitmap
+        val wornBitmap2 = if (currentPageIndex in wornStamp2Bitmaps.indices) wornStamp2Bitmaps[currentPageIndex] else null
+        val bitmapToShow2 = wornBitmap2 ?: stamp2Bitmap
         val s2State = if (currentPageIndex in stamp2States.indices) stamp2States[currentPageIndex] else null
         if (isStamp2Enabled && s2State != null && bitmapToShow2 != null) {
             binding.stamp2OverlayView.visibility = View.VISIBLE
@@ -922,7 +923,8 @@ class PdfPreviewFragment : Fragment() {
         }
 
         // Draw Stamp 2
-        val finalStamp2Bitmap = wornStamp2Bitmap ?: stamp2Bitmap
+        val wornBitmap2 = if (index in wornStamp2Bitmaps.indices) wornStamp2Bitmaps[index] else null
+        val finalStamp2Bitmap = wornBitmap2 ?: stamp2Bitmap
         val s2State = if (index in stamp2States.indices) stamp2States[index] else null
         if (isStamp2Enabled && s2State != null && finalStamp2Bitmap != null) {
             val matrix = Matrix()
@@ -1166,7 +1168,7 @@ class PdfPreviewFragment : Fragment() {
             isAntiAlias = true
         }
 
-        // 2. Prepare text lines (no dots) - Se eliminó uppercase() para respetar minusculas
+        // 2. Prepare text lines (no dots) - Se mantiene el formato original de mayúsculas/minúsculas
         val textLines = listOf(
             stamp2Name,
             stamp2Position,
@@ -1243,14 +1245,22 @@ class PdfPreviewFragment : Fragment() {
                 }
             }
 
-            // Apply wear to Stamp 2
+            // Aplicar desgaste al Sello 2 de forma independiente para cada página
             stamp2Bitmap?.let {
-                // Reducir el impacto a un tercio del tercio (1/9)
+                // Reducir el impacto para el Sello 2
                 val adjustedIntensity = stamp2WearIntensity / 9.0f
                 val adjustedSize = stamp2WearSize / 9.0f
                 val normalizedIntensity = (adjustedIntensity / 2.0f) / 100.0f
                 val normalizedSize = (adjustedSize / 2.0f) / 100.0f
-                wornStamp2Bitmap = applyInkWear(it, normalizedIntensity, normalizedSize, System.currentTimeMillis() + 2) // Different seed
+
+                wornStamp2Bitmaps.forEach { it?.recycle() }
+                wornStamp2Bitmaps.clear()
+
+                repeat(pageBitmaps.size) { i ->
+                    // Semilla única para cada página (basada en tiempo + índice)
+                    val seed = System.currentTimeMillis() + 2 + i
+                    wornStamp2Bitmaps.add(applyInkWear(it, normalizedIntensity, normalizedSize, seed))
+                }
             }
 
             withContext(Dispatchers.Main) {
@@ -1453,8 +1463,8 @@ class PdfPreviewFragment : Fragment() {
         lastPageWornStampBitmap = null
         stamp2Bitmap?.recycle()
         stamp2Bitmap = null
-        wornStamp2Bitmap?.recycle()
-        wornStamp2Bitmap = null
+        wornStamp2Bitmaps.forEach { it?.recycle() }
+        wornStamp2Bitmaps.clear()
         signatureBitmap?.recycle()
         signatureBitmap = null
         signatureSecondaryBitmap?.recycle()
