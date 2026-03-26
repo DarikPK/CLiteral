@@ -66,10 +66,6 @@ class Stamp2SettingsFragment : Fragment() {
         binding.stamp2BrightnessEditText.setText(getStringPreferenceSafely("stamp2Brightness", "stamp2_brightness", "50"))
         binding.stamp2ContrastEditText.setText(getStringPreferenceSafely("stamp2Contrast", "stamp2_contrast", "50"))
 
-
-        binding.stamp2WearIntensitySlider.value = sharedPrefs.getFloat("stamp2_wear_intensity", 30f)
-        binding.stamp2WearSizeSlider.value = sharedPrefs.getFloat("stamp2_wear_size", 50f)
-
         // Initialize first click tracker based on default values
         if (binding.stamp2NameEditText.text.toString() == "NOMBRE APELLIDO") firstClickTracker.add(binding.stamp2NameEditText.id)
         if (binding.stamp2PositionEditText.text.toString() == "CARGO") firstClickTracker.add(binding.stamp2PositionEditText.id)
