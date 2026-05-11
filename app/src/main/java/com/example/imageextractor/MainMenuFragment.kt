@@ -36,8 +36,8 @@ class MainMenuFragment : Fragment() {
             findNavController().navigate(R.id.action_mainMenuFragment_to_pdfSettingsFragment)
         }
 
-        binding.buttonToAnimations.setOnClickListener {
-            findNavController().navigate(R.id.action_mainMenuFragment_to_waitingAnimationsFragment)
+        binding.buttonToVoucher.setOnClickListener {
+            findNavController().navigate(R.id.action_mainMenuFragment_to_voucherFragment)
         }
     }
 

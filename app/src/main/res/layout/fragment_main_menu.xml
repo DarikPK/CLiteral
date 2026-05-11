@@ -41,10 +41,10 @@
             android:layout_marginTop="8dp"/>
 
         <Button
-            android:id="@+id/button_to_animations"
+            android:id="@+id/button_to_voucher"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Animaciones de espera"
+            android:text="Generar Voucher"
             android:layout_marginTop="8dp"/>
 
     </LinearLayout>

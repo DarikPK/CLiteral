@@ -20,8 +20,8 @@
             android:id="@+id/action_mainMenuFragment_to_pdfSettingsFragment"
             app:destination="@id/pdfSettingsFragment" />
         <action
-            android:id="@+id/action_mainMenuFragment_to_waitingAnimationsFragment"
-            app:destination="@id/waitingAnimationsFragment" />
+            android:id="@+id/action_mainMenuFragment_to_voucherFragment"
+            app:destination="@id/voucherFragment" />
     </fragment>
 
     <fragment
@@ -149,9 +149,9 @@
     </fragment>
 
     <fragment
-        android:id="@+id/waitingAnimationsFragment"
-        android:name="com.example.imageextractor.WaitingAnimationsFragment"
-        android:label="Animaciones de Espera"
-        tools:layout="@layout/fragment_waiting_animations" />
+        android:id="@+id/voucherFragment"
+        android:name="com.example.imageextractor.VoucherFragment"
+        android:label="Generar Voucher"
+        tools:layout="@layout/fragment_voucher" />
 
 </navigation>

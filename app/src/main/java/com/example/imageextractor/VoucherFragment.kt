@@ -1,22 +1,22 @@
 package com.example.imageextractor
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.example.imageextractor.databinding.FragmentWaitingAnimationsBinding
+import androidx.fragment.app.Fragment
+import com.example.imageextractor.databinding.FragmentVoucherBinding
 
-class WaitingAnimationsFragment : Fragment() {
+class VoucherFragment : Fragment() {
 
-    private var _binding: FragmentWaitingAnimationsBinding? = null
+    private var _binding: FragmentVoucherBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentWaitingAnimationsBinding.inflate(inflater, container, false)
+        _binding = FragmentVoucherBinding.inflate(inflater, container, false)
         return binding.root
     }
 
