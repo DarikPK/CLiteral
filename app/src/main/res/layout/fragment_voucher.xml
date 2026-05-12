@@ -8,6 +8,7 @@
     tools:context=".VoucherFragment">
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true">
@@ -19,7 +20,50 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- El "Papel" del Voucher -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btn_effects"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Efectos"
+                    android:layout_marginEnd="8dp"
+                    app:icon="@android:drawable/ic_menu_edit" />
+
+                <Button
+                    android:id="@+id/btn_share"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Compartir"
+                    app:icon="@android:drawable/ic_menu_share" />
+
+            </LinearLayout>
+
+            <!-- Contenedor para capturar -->
+            <FrameLayout
+                android:id="@+id/voucher_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="20dp"
+                android:background="#E0E0E0">
+
+                <ImageView
+                    android:id="@+id/iv_processed_voucher"
+                    android:layout_width="320dp"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:adjustViewBounds="true"
+                    android:elevation="4dp"/>
+
+                <!-- El "Papel" del Voucher -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cv_voucher"
             <androidx.cardview.widget.CardView
                 android:layout_width="320dp"
                 android:layout_height="wrap_content"
@@ -282,7 +326,8 @@
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+                </androidx.cardview.widget.CardView>
+            </FrameLayout>
 
         </LinearLayout>
 
