@@ -1,18 +1,285 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#E0E0E0"
     tools:context=".VoucherFragment">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Generar Voucher (Próximamente)"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- El "Papel" del Voucher -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="320dp"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#FFFFFF"
+                app:cardCornerRadius="2dp"
+                app:cardElevation="4dp"
+                app:cardUseCompatPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <!-- Encabezado -->
+                    <TextView
+                        android:id="@+id/tv_zona"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="ZONA REGISTRAL Nº IX"
+                        android:textColor="#000000"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_oficina"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="OFICINA REGISTRAL DE LIMA"
+                        android:textColor="#000000"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_ruc"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="RUC Nro. 20260998898"
+                        android:textColor="#000000"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="------------------------------------------"
+                        android:gravity="center"
+                        android:textColor="#000000"
+                        android:fontFamily="monospace"/>
+
+                    <!-- Datos Operación -->
+                    <TextView
+                        android:id="@+id/tv_local"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Local: Santa Anita"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_recibo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Recibo N° . : 2025-191-8801"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_fecha"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Fecha/Hora: 09/09/2025 09:14:02"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_cajero"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Cajero: MONTERO MANRIQUE, MARIA DE FATIMA"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="------------------------------------------"
+                        android:gravity="center"
+                        android:textColor="#000000"
+                        android:fontFamily="monospace"/>
+
+                    <!-- Detalle Servicio -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="SOLICITUD DE PUBLICIDAD REGISTRAL"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_servicio"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="PREDIOS- CERTI. LITERAL - PREDIOS"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_publicidad"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="PUBLICIDAD N°: 2025-4809963"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_destino"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="DESTINO: LIMA"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_partida"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Partida: 49048530"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_ficha"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Ficha: 0000000000"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_tomo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Tomo/Folio: 000000 /000000"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_paginas"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Paginas: 7"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_copias"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Copias: 1"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_monto"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Monto S/ 59.60"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp" />
+
+                    <TextView
+                        android:id="@+id/tv_monto_total"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Monto Total S/ 59.60"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="------------------------------------------"
+                        android:gravity="center"
+                        android:textColor="#000000"
+                        android:fontFamily="monospace"/>
+
+                    <!-- Datos Presentante -->
+                    <TextView
+                        android:id="@+id/tv_presentante"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="PRESENTANTE: LACHIRA SIAPO, PAUL DAVID"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_correo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="CORREO: DAVID.LACHIRA@GMAIL.COM"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <TextView
+                        android:id="@+id/tv_dni"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="DNI. - 46736604"
+                        android:textColor="#000000"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="20dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="(1)"
+                        android:textColor="#000000"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
