@@ -26,39 +26,41 @@ class VoucherFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Por ahora inicializamos con los datos de la imagen de referencia
-        // pero preparados para ser dinámicos
-        setupInitialData()
+        setupDynamicData()
     }
 
-    private fun setupInitialData() {
+    private fun setupDynamicData() {
+        val args = arguments
         val currentDate = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())
 
         binding.apply {
-            tvZona.text = "ZONA REGISTRAL Nº IX"
-            tvOficina.text = "OFICINA REGISTRAL DE LIMA"
-            tvRuc.text = "RUC Nro. 20260998898"
+            tvZona.text = args?.getString("zona") ?: "ZONA REGISTRAL Nº IX"
+            tvOficina.text = args?.getString("oficina") ?: "OFICINA REGISTRAL DE LIMA"
 
-            tvLocal.text = "Local: Santa Anita"
-            tvRecibo.text = "Recibo N° . : 2025-191-8801"
+            val rucRaw = args?.getString("ruc") ?: "20260998898"
+            tvRuc.text = if (rucRaw.startsWith("RUC")) rucRaw else "RUC Nro. $rucRaw"
+
+            tvLocal.text = "Local: ${args?.getString("local") ?: "Santa Anita"}"
+            tvRecibo.text = "Recibo N° . : ${args?.getString("recibo") ?: "2025-191-8801"}"
             tvFecha.text = "Fecha/Hora: $currentDate"
-            tvCajero.text = "Cajero: MONTERO MANRIQUE, MARIA DE FATIMA"
+            tvCajero.text = "Cajero: ${args?.getString("cajero") ?: "MONTERO MANRIQUE, MARIA DE FATIMA"}"
 
             tvServicio.text = "PREDIOS- CERTI. LITERAL - PREDIOS"
             tvPublicidad.text = "PUBLICIDAD N°: 2025-4809963"
-            tvDestino.text = "DESTINO: LIMA"
-            tvPartida.text = "Partida: 49048530"
+            tvDestino.text = "DESTINO: ${args?.getString("destino") ?: "LIMA"}"
+            tvPartida.text = "Partida: ${args?.getString("partida") ?: "49048530"}"
             tvFicha.text = "Ficha: 0000000000"
             tvTomo.text = "Tomo/Folio: 000000 /000000"
-            tvPaginas.text = "Paginas: 7"
+            tvPaginas.text = "Paginas: ${args?.getString("paginas") ?: "7"}"
             tvCopias.text = "Copias: 1"
-            tvMonto.text = "Monto S/ 59.60"
 
-            tvMontoTotal.text = "Monto Total S/ 59.60"
+            val montoRaw = args?.getString("monto") ?: "59.60"
+            tvMonto.text = "Monto S/ $montoRaw"
+            tvMontoTotal.text = "Monto Total S/ $montoRaw"
 
-            tvPresentante.text = "PRESENTANTE: LACHIRA SIAPO, PAUL DAVID"
-            tvCorreo.text = "CORREO: DAVID.LACHIRA@GMAIL.COM"
-            tvDni.text = "DNI. - 46736604"
+            tvPresentante.text = "PRESENTANTE: ${args?.getString("presentante") ?: "LACHIRA SIAPO, PAUL DAVID"}"
+            tvCorreo.text = "CORREO: ${args?.getString("correo") ?: "DAVID.LACHIRA@GMAIL.COM"}"
+            tvDni.text = "DNI. - ${args?.getString("dni") ?: "46736604"}"
         }
     }
 

@@ -37,7 +37,7 @@ class MainMenuFragment : Fragment() {
         }
 
         binding.buttonToVoucher.setOnClickListener {
-            findNavController().navigate(R.id.action_mainMenuFragment_to_voucherFragment)
+            findNavController().navigate(R.id.action_mainMenuFragment_to_voucherConfigFragment)
         }
     }
 

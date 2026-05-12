@@ -69,8 +69,10 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="------------------------------------------"
+                        android:text="-----------------------------------"
                         android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="none"
                         android:textColor="#000000"
                         android:fontFamily="monospace"/>
 
@@ -114,8 +116,10 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="------------------------------------------"
+                        android:text="-----------------------------------"
                         android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="none"
                         android:textColor="#000000"
                         android:fontFamily="monospace"/>
 
@@ -229,8 +233,10 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="------------------------------------------"
+                        android:text="-----------------------------------"
                         android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="none"
                         android:textColor="#000000"
                         android:fontFamily="monospace"/>
 

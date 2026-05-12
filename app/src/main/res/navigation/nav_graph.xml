@@ -20,8 +20,8 @@
             android:id="@+id/action_mainMenuFragment_to_pdfSettingsFragment"
             app:destination="@id/pdfSettingsFragment" />
         <action
-            android:id="@+id/action_mainMenuFragment_to_voucherFragment"
-            app:destination="@id/voucherFragment" />
+            android:id="@+id/action_mainMenuFragment_to_voucherConfigFragment"
+            app:destination="@id/voucherConfigFragment" />
     </fragment>
 
     <fragment
@@ -149,9 +149,32 @@
     </fragment>
 
     <fragment
+        android:id="@+id/voucherConfigFragment"
+        android:name="com.example.imageextractor.VoucherConfigFragment"
+        android:label="Configurar Voucher"
+        tools:layout="@layout/fragment_voucher_config">
+        <action
+            android:id="@+id/action_voucherConfigFragment_to_voucherFragment"
+            app:destination="@id/voucherFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/voucherFragment"
         android:name="com.example.imageextractor.VoucherFragment"
         android:label="Generar Voucher"
-        tools:layout="@layout/fragment_voucher" />
+        tools:layout="@layout/fragment_voucher">
+        <argument android:name="zona" app:argType="string" android:defaultValue="ZONA REGISTRAL Nº IX" />
+        <argument android:name="oficina" app:argType="string" android:defaultValue="OFICINA REGISTRAL DE LIMA" />
+        <argument android:name="ruc" app:argType="string" android:defaultValue="20260998898" />
+        <argument android:name="local" app:argType="string" android:defaultValue="Santa Anita" />
+        <argument android:name="recibo" app:argType="string" android:defaultValue="2025-191-8801" />
+        <argument android:name="cajero" app:argType="string" android:defaultValue="MONTERO MANRIQUE, MARIA DE FATIMA" />
+        <argument android:name="partida" app:argType="string" android:defaultValue="49048530" />
+        <argument android:name="paginas" app:argType="string" android:defaultValue="7" />
+        <argument android:name="monto" app:argType="string" android:defaultValue="59.60" />
+        <argument android:name="presentante" app:argType="string" android:defaultValue="LACHIRA SIAPO, PAUL DAVID" />
+        <argument android:name="correo" app:argType="string" android:defaultValue="DAVID.LACHIRA@GMAIL.COM" />
+        <argument android:name="dni" app:argType="string" android:defaultValue="46736604" />
+    </fragment>
 
 </navigation>
