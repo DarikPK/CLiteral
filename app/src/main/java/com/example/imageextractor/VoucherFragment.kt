@@ -22,9 +22,8 @@ class VoucherFragment : Fragment() {
     private val binding get() = _binding!!
     private var processedBitmap: Bitmap? = null
 
-    // Variables para persistir efectos
     private var currentWrinkles = 30
-    private var currentInkWear = 20
+    private var currentInkWear = 40
     private var currentAging = 15
     private var currentWearIntensity = 40
     private var currentWearSize = 3
@@ -98,83 +97,118 @@ class VoucherFragment : Fragment() {
 
     private fun applyRealismEffects() {
         val originalView = binding.cvVoucher
-        val bitmap = Bitmap.createBitmap(originalView.width, originalView.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        originalView.draw(canvas)
+        val width = originalView.width
+        val height = originalView.height
 
-        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
-        val resultCanvas = Canvas(result)
+        if (width <= 0 || height <= 0) return
+
+        val originalBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val originalCanvas = Canvas(originalBitmap)
+        originalView.draw(originalCanvas)
+
+        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        // 1. Efecto Amarilleo (Papel viejo)
-        if (currentAging > 0) {
-            val agingColor = Color.argb((currentAging * 1.5).toInt(), 255, 230, 150)
-            resultCanvas.drawColor(agingColor)
+        // 1. Color Base (con Amarilleo)
+        val baseColor = if (currentAging > 0) {
+            // Mezcla de crema/sepia según intensidad
+            val alpha = (currentAging * 2.55).toInt().coerceIn(0, 255)
+            Color.argb(255, 255, (255 - (alpha * 0.1)).toInt(), (255 - (alpha * 0.3)).toInt())
         } else {
-            resultCanvas.drawColor(Color.WHITE)
+            Color.WHITE
         }
+        canvas.drawColor(baseColor)
 
-        // 2. Dibujar el contenido original
+        // 2. Dibujar Contenido Original con modo MULTIPLY para teñir con el fondo
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
-        resultCanvas.drawBitmap(bitmap, 0f, 0f, paint)
+        canvas.drawBitmap(originalBitmap, 0f, 0f, paint)
         paint.xfermode = null
 
-        // 3. Efecto de Desgaste de Tinta (Ruido)
+        val random = Random(42)
+
+        // 3. Desgaste de Tinta (Hacerla más clara/grisácea irregularmente)
         if (currentInkWear > 0) {
-            val noisePaint = Paint()
-            noisePaint.alpha = (currentInkWear * 0.8).toInt()
-            noisePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
-            val random = Random()
-            for (i in 0 until (bitmap.width * bitmap.height / 100)) {
-                val x = random.nextInt(bitmap.width).toFloat()
-                val y = random.nextInt(bitmap.height).toFloat()
-                resultCanvas.drawPoint(x, y, noisePaint)
+            val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            inkPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.LIGHTEN)
+            // Color de la hoja para "borrar" tinta
+            inkPaint.color = baseColor
+            inkPaint.alpha = (currentInkWear * 1.5).toInt().coerceIn(0, 255)
+
+            for (i in 0 until (width * height / 5000) * currentInkWear / 10) {
+                val x = random.nextInt(width).toFloat()
+                val y = random.nextInt(height).toFloat()
+                val radius = random.nextFloat() * 20f + 5f
+                canvas.drawCircle(x, y, radius, inkPaint)
             }
         }
 
-        // 4. Efecto de Desgaste "Tipo Sello" (Perforación)
+        // 4. Desgaste Físico / Ruido Orgánico (Manchas blancas/claras)
         if (currentWearIntensity > 0) {
             val wearPaint = Paint(Paint.ANTI_ALIAS_FLAG)
             wearPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
-            val random = Random(123)
-            val numDots = (bitmap.width * bitmap.height / 1000) * currentWearIntensity / 50
-            for (i in 0 until numDots) {
-                val x = random.nextInt(bitmap.width).toFloat()
-                val y = random.nextInt(bitmap.height).toFloat()
-                val size = random.nextFloat() * currentWearSize
-                resultCanvas.drawCircle(x, y, size, wearPaint)
+
+            for (i in 0 until (width * height / 10000) * currentWearIntensity / 5) {
+                val x = random.nextInt(width).toFloat()
+                val y = random.nextInt(height).toFloat()
+
+                // Formas más orgánicas que simples puntos
+                val path = Path()
+                val size = (random.nextFloat() * currentWearSize * 4) + 2
+                path.addOval(x, y, x + size * 1.5f, y + size, Path.Direction.CW)
+
+                canvas.save()
+                canvas.rotate(random.nextInt(360).toFloat(), x, y)
+                canvas.drawPath(path, wearPaint)
+                canvas.restore()
             }
         }
 
-        // 5. Efecto de Complexión/Arrugas
+        // 5. Arrugas y Dobleces (Líneas orgánicas con luz y sombra)
         if (currentWrinkles > 0) {
             val wrinklePaint = Paint(Paint.ANTI_ALIAS_FLAG)
             wrinklePaint.style = Paint.Style.STROKE
-            wrinklePaint.strokeWidth = 2f
-            val random = Random(42)
-            for (i in 0 until currentWrinkles / 5) {
+            wrinklePaint.strokeWidth = 1.5f
+
+            for (i in 0 until currentWrinkles / 10 + 1) {
                 val path = Path()
-                val startX = random.nextInt(result.width).toFloat()
-                val startY = random.nextInt(result.height).toFloat()
+                val startX = random.nextInt(width).toFloat()
+                val startY = random.nextInt(height).toFloat()
                 path.moveTo(startX, startY)
-                path.lineTo(startX + random.nextInt(100) - 50, startY + random.nextInt(100) - 50)
 
-                wrinklePaint.color = Color.argb((currentWrinkles * 0.5).toInt(), 0, 0, 0)
-                resultCanvas.drawPath(path, wrinklePaint)
+                // Crear línea sinuosa
+                var lastX = startX
+                var lastY = startY
+                val segments = 5
+                for (j in 0 until segments) {
+                    val nextX = lastX + random.nextInt(200) - 100
+                    val nextY = lastY + random.nextInt(200) - 100
+                    path.quadTo(lastX, lastY, nextX, nextY)
+                    lastX = nextX
+                    lastY = nextY
+                }
 
+                // Sombra de la arruga
+                wrinklePaint.color = Color.argb((currentWrinkles * 0.4).toInt(), 0, 0, 0)
+                canvas.drawPath(path, wrinklePaint)
+
+                // Luz de la arruga (desplazada 1px)
+                canvas.save()
+                canvas.translate(1f, 1f)
                 wrinklePaint.color = Color.argb((currentWrinkles * 0.3).toInt(), 255, 255, 255)
-                resultCanvas.drawPath(path, wrinklePaint)
+                canvas.drawPath(path, wrinklePaint)
+                canvas.restore()
             }
         }
 
-        // 6. Sombra de complexión
+        // 6. Sombra de Complexión (Gradiente que simula papel no plano)
         if (currentShadow) {
             val shadowPaint = Paint()
-            val gradient = LinearGradient(0f, 0f, result.width.toFloat(), result.height.toFloat(),
-                intArrayOf(Color.TRANSPARENT, Color.argb(40, 0, 0, 0), Color.TRANSPARENT),
-                floatArrayOf(0.2f, 0.5f, 0.8f), Shader.TileMode.CLAMP)
+            val gradient = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(),
+                intArrayOf(Color.TRANSPARENT, Color.argb(50, 0, 0, 0), Color.TRANSPARENT),
+                floatArrayOf(0.1f, 0.45f, 0.9f), Shader.TileMode.CLAMP)
             shadowPaint.shader = gradient
-            resultCanvas.drawRect(0f, 0f, result.width.toFloat(), result.height.toFloat(), shadowPaint)
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shadowPaint)
         }
 
         processedBitmap = result
