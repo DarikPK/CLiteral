@@ -33,6 +33,7 @@ data class RegistrarProfile(
     val area: String = "",
     val office: String = "",
     val signatureMarkers: String = "", // Serialized markers string
+    val signatureRotation: Float = 0f,
     val signatureRotationTolerance: Float = 0f,
     val signatureWhiteThreshold: Float = 210f,
     val signatureSizeX: Float = 50f,
@@ -46,6 +47,7 @@ data class RegistrarProfile(
     val signatureMarkerSize: Float = 10f,
     // Firma secundaria (para páginas posteriores)
     val signatureMarkersSecondary: String = "", // Serialized markers string
+    val signatureRotationSecondary: Float = 0f,
     val signatureRotationToleranceSecondary: Float = 0f,
     val signatureWhiteThresholdSecondary: Float = 210f,
     val signatureSizeXSecondary: Float = 50f,

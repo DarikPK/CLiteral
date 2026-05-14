@@ -149,16 +149,38 @@ class RegistrarManagementFragment : Fragment() {
             putBoolean("stamp2_variable_rotation", true)
             // Limpiar firmas y registros Base64
             remove("signature_markers")
+            remove("signature_rotation")
+            remove("signature_rotation_tolerance")
+            remove("signature_white_threshold")
+            remove("signature_size_x")
+            remove("signature_size_y")
+            remove("signature_offset_x")
+            remove("signature_offset_y")
             remove("signature_image_uri")
             remove("signature_image_uris")
             remove("signature_images_base64")
             remove("signature_type_loaded")
+            remove("signature_enabled")
+            remove("signature_stroke_width")
+            remove("signature_num_markers")
+            remove("signature_marker_size")
 
             remove("signature_markers_secondary")
+            remove("signature_rotation_secondary")
+            remove("signature_rotation_tolerance_secondary")
+            remove("signature_white_threshold_secondary")
+            remove("signature_size_x_secondary")
+            remove("signature_size_y_secondary")
+            remove("signature_offset_x_secondary")
+            remove("signature_offset_y_secondary")
             remove("signature_image_uri_secondary")
             remove("signature_image_uris_secondary")
             remove("signature_images_base64_secondary")
             remove("signature_type_loaded_secondary")
+            remove("signature_enabled_secondary")
+            remove("signature_stroke_width_secondary")
+            remove("signature_num_markers_secondary")
+            remove("signature_marker_size_secondary")
             apply()
         }
         loadSettings()
@@ -173,6 +195,7 @@ class RegistrarManagementFragment : Fragment() {
                 area = sharedPrefs.getString("stamp2_area", "") ?: "",
                 office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
                 signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
+                signatureRotation = sharedPrefs.getFloat("signature_rotation", 0f),
                 signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
                 signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
                 signatureSizeX = sharedPrefs.getFloat("signature_size_x", 50f),
@@ -185,6 +208,7 @@ class RegistrarManagementFragment : Fragment() {
                 signatureNumMarkers = sharedPrefs.getInt("signature_num_markers", 15),
                 signatureMarkerSize = sharedPrefs.getFloat("signature_marker_size", 10f),
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
+                signatureRotationSecondary = sharedPrefs.getFloat("signature_rotation_secondary", 0f),
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
                 signatureSizeXSecondary = sharedPrefs.getFloat("signature_size_x_secondary", 50f),
@@ -254,6 +278,7 @@ class RegistrarManagementFragment : Fragment() {
             putString("stamp2_area", profile.area)
             putString("oficina", profile.office)
             putString("signature_markers", profile.signatureMarkers)
+            putFloat("signature_rotation", profile.signatureRotation)
             putFloat("signature_rotation_tolerance", profile.signatureRotationTolerance)
             putFloat("signature_white_threshold", profile.signatureWhiteThreshold)
             putFloat("signature_size_x", profile.signatureSizeX)
@@ -266,6 +291,7 @@ class RegistrarManagementFragment : Fragment() {
             putInt("signature_num_markers", profile.signatureNumMarkers)
             putFloat("signature_marker_size", profile.signatureMarkerSize)
             putString("signature_markers_secondary", profile.signatureMarkersSecondary)
+            putFloat("signature_rotation_secondary", profile.signatureRotationSecondary)
             putFloat("signature_rotation_tolerance_secondary", profile.signatureRotationToleranceSecondary)
             putFloat("signature_white_threshold_secondary", profile.signatureWhiteThresholdSecondary)
             putFloat("signature_size_x_secondary", profile.signatureSizeXSecondary)

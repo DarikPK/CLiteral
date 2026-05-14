@@ -261,6 +261,7 @@ class SignatureSettingsFragment : Fragment() {
                 }
             }
         } else {
+            binding.signatureCanvasView.clearCanvas(switchMode = true)
             updateButtonLabels()
         }
     }
@@ -446,6 +447,7 @@ class SignatureSettingsFragment : Fragment() {
         if (isLoadedMode) {
             saveCurrentSignatureToBase64(sizeX, sizeY, offsetX, offsetY)
         } else {
+            saveCurrentProfileToFirebase()
             Toast.makeText(context, "Configuración guardada.", Toast.LENGTH_SHORT).show()
         }
 
@@ -474,6 +476,7 @@ class SignatureSettingsFragment : Fragment() {
                 office = sharedPrefs.getString("oficina", "LIMA") ?: "LIMA",
 
                 signatureMarkers = sharedPrefs.getString("signature_markers", "") ?: "",
+                signatureRotation = sharedPrefs.getFloat("signature_rotation", 0f),
                 signatureRotationTolerance = sharedPrefs.getFloat("signature_rotation_tolerance", 0f),
                 signatureWhiteThreshold = sharedPrefs.getFloat("signature_white_threshold", 210f),
                 signatureSizeX = sharedPrefs.getFloat("signature_size_x", 50f),
@@ -487,6 +490,7 @@ class SignatureSettingsFragment : Fragment() {
                 signatureMarkerSize = sharedPrefs.getFloat("signature_marker_size", 10f),
 
                 signatureMarkersSecondary = sharedPrefs.getString("signature_markers_secondary", "") ?: "",
+                signatureRotationSecondary = sharedPrefs.getFloat("signature_rotation_secondary", 0f),
                 signatureRotationToleranceSecondary = sharedPrefs.getFloat("signature_rotation_tolerance_secondary", 0f),
                 signatureWhiteThresholdSecondary = sharedPrefs.getFloat("signature_white_threshold_secondary", 210f),
                 signatureSizeXSecondary = sharedPrefs.getFloat("signature_size_x_secondary", 50f),
@@ -505,7 +509,12 @@ class SignatureSettingsFragment : Fragment() {
                 signatureImagesBase64Secondary = sharedPrefs.getString("signature_images_base64_secondary", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList(),
                 stamp2FontSize = sharedPrefs.getString("stamp2_font_size", "13") ?: "13",
                 stamp2WearIntensity = sharedPrefs.getFloat("stamp2_wear_intensity", 30f),
-                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f)
+                stamp2WearSize = sharedPrefs.getFloat("stamp2_wear_size", 50f),
+                stamp2VariableRotation = sharedPrefs.getBoolean("stamp2_variable_rotation", true),
+                stamp2Rotation = sharedPrefs.getString("stamp2_rotation", "0") ?: "0",
+                stamp2RotationTolerance = sharedPrefs.getString("stamp2_rotation_tolerance", "5") ?: "5",
+                stamp2TranslationToleranceX = sharedPrefs.getString("stamp2_translation_tolerance_x", "0") ?: "0",
+                stamp2TranslationToleranceY = sharedPrefs.getString("stamp2_translation_tolerance_y", "0") ?: "0"
             )
             firebaseManager.saveProfile(profile)
         }
