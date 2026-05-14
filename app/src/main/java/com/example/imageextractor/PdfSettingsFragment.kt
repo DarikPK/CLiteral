@@ -223,6 +223,11 @@ class PdfSettingsFragment : Fragment() {
                 binding.stampDayTextView.text = dayOfMonth.toString()
                 binding.stampMonthSpinner.setSelection(month)
                 binding.stampYearEditText.setText(year.toString())
+
+                saveString("stamp_day", dayOfMonth.toString())
+                saveInt("stamp_month_position", month)
+                saveString("stamp_year", year.toString())
+
                 validateTime() // Re-validate time when date changes
             }
         }

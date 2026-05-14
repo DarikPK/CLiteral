@@ -96,7 +96,7 @@ class VoucherFragment : Fragment() {
             tvFecha.text = "Fecha/Hora: ${args?.getString("fecha") ?: currentDate}"
             tvCajero.text = "Cajero: ${args?.getString("cajero") ?: "MONTERO MANRIQUE, MARIA DE FATIMA"}"
             tvServicio.text = "PREDIOS- CERTI. LITERAL - PREDIOS"
-            tvPublicidad.text = "PUBLICIDAD N°: 2025-4809963"
+            tvPublicidad.text = "PUBLICIDAD N°: ${args?.getString("publicidad") ?: "2025-4809963"}"
             tvDestino.text = "DESTINO: ${args?.getString("destino") ?: "LIMA"}"
             tvPartida.text = "Partida: ${args?.getString("partida") ?: "49048530"}"
             tvPaginas.text = "Paginas: ${args?.getString("paginas") ?: "7"}"
