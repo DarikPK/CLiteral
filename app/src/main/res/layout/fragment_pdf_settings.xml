@@ -32,29 +32,42 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
-                style="@style/TextAppearance.Material3.TitleMedium"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/expand_folders_header"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Seleccionar Partida para PDF"
-                android:layout_marginBottom="8dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    style="@style/TextAppearance.Material3.TitleMedium"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Seleccionar Partida para PDF" />
+
+                <ImageView
+                    android:id="@+id/iv_expand_folders"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_expand_more"
+                    app:tint="?attr/colorOnSurface" />
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_captured_folders"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false"
+                android:visibility="gone"
                 tools:listitem="@layout/folder_list_item"
-                tools:itemCount="3"/>
-
-            <Button
-                android:id="@+id/btn_show_older_folders"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:text="Mostrar partidas más antiguas"
-                android:layout_marginBottom="16dp"/>
+                tools:itemCount="3"
+                android:layout_marginBottom="8dp"/>
 
             <Button
                 android:id="@+id/btn_generate_pdf"

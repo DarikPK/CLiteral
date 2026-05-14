@@ -194,10 +194,9 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
         }
 
-        binding.btnShowOlderFolders.setOnClickListener {
-            isListExpanded = true
-            updateFolderList()
-            binding.btnShowOlderFolders.visibility = View.GONE
+        binding.expandFoldersHeader.setOnClickListener {
+            isListExpanded = !isListExpanded
+            updateFolderListVisibility()
         }
 
         binding.btnGeneratePdf.setOnClickListener {
@@ -366,13 +365,23 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun updateFolderList() {
-        val foldersToShow = if (isListExpanded || allFolders.size <= 3) {
-            allFolders
-        } else {
-            allFolders.take(3)
+        folderAdapter.submitList(allFolders)
+
+        // Seleccionar la última por defecto (la primera de la lista si está ordenada temporalmente)
+        if (selectedFolder == null && allFolders.isNotEmpty()) {
+            selectedFolder = allFolders[0]
+            folderAdapter.setSingleSelectedPosition(0)
         }
-        folderAdapter.submitList(foldersToShow)
-        binding.btnShowOlderFolders.visibility = if (!isListExpanded && allFolders.size > 3) View.VISIBLE else View.GONE
+    }
+
+    private fun updateFolderListVisibility() {
+        if (isListExpanded) {
+            binding.rvCapturedFolders.visibility = View.VISIBLE
+            binding.ivExpandFolders.animate().rotation(180f).setDuration(200).start()
+        } else {
+            binding.rvCapturedFolders.visibility = View.GONE
+            binding.ivExpandFolders.animate().rotation(0f).setDuration(200).start()
+        }
     }
 
     private fun navigateToPreview(folder: ImageFolder) {
