@@ -15,13 +15,20 @@ import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.sin
 
 class VoucherFragment : Fragment() {
 
     private var _binding: FragmentVoucherBinding? = null
     private val binding get() = _binding!!
     private var processedBitmap: Bitmap? = null
+
+    // Variables para persistir efectos
+    private var currentWrinkles = 30
+    private var currentInkWear = 20
+    private var currentAging = 15
+    private var currentWearIntensity = 40
+    private var currentWearSize = 3
+    private var currentShadow = true
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -36,9 +43,23 @@ class VoucherFragment : Fragment() {
         setupDynamicData()
 
         binding.btnEffects.setOnClickListener {
-            val dialog = VoucherEffectsDialogFragment()
-            dialog.onApplyListener = { wrinkles, inkWear, aging, hasShadow ->
-                applyRealismEffects(wrinkles, inkWear, aging, hasShadow)
+            val dialog = VoucherEffectsDialogFragment().apply {
+                initialWrinkles = currentWrinkles
+                initialInkWear = currentInkWear
+                initialAging = currentAging
+                initialWearIntensity = currentWearIntensity
+                initialWearSize = currentWearSize
+                initialShadow = currentShadow
+
+                onApplyListener = { w, i, a, wi, ws, s ->
+                    currentWrinkles = w
+                    currentInkWear = i
+                    currentAging = a
+                    currentWearIntensity = wi
+                    currentWearSize = ws
+                    currentShadow = s
+                    applyRealismEffects()
+                }
             }
             dialog.show(parentFragmentManager, "VoucherEffects")
         }
@@ -75,7 +96,7 @@ class VoucherFragment : Fragment() {
         }
     }
 
-    private fun applyRealismEffects(wrinkles: Int, inkWear: Int, aging: Int, hasShadow: Boolean) {
+    private fun applyRealismEffects() {
         val originalView = binding.cvVoucher
         val bitmap = Bitmap.createBitmap(originalView.width, originalView.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -86,22 +107,22 @@ class VoucherFragment : Fragment() {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         // 1. Efecto Amarilleo (Papel viejo)
-        if (aging > 0) {
-            val agingColor = Color.argb((aging * 1.5).toInt(), 255, 230, 150)
+        if (currentAging > 0) {
+            val agingColor = Color.argb((currentAging * 1.5).toInt(), 255, 230, 150)
             resultCanvas.drawColor(agingColor)
         } else {
             resultCanvas.drawColor(Color.WHITE)
         }
 
-        // 2. Dibujar el contenido original con transparencia leve para mezclar
+        // 2. Dibujar el contenido original
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
         resultCanvas.drawBitmap(bitmap, 0f, 0f, paint)
         paint.xfermode = null
 
-        // 3. Efecto de Desgaste de Tinta (Ruido/Grisáceo)
-        if (inkWear > 0) {
+        // 3. Efecto de Desgaste de Tinta (Ruido)
+        if (currentInkWear > 0) {
             val noisePaint = Paint()
-            noisePaint.alpha = (inkWear * 0.8).toInt()
+            noisePaint.alpha = (currentInkWear * 0.8).toInt()
             noisePaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
             val random = Random()
             for (i in 0 until (bitmap.width * bitmap.height / 100)) {
@@ -111,29 +132,43 @@ class VoucherFragment : Fragment() {
             }
         }
 
-        // 4. Efecto de Complexión/Arrugas (Simulado con sombras y luces)
-        if (wrinkles > 0) {
+        // 4. Efecto de Desgaste "Tipo Sello" (Perforación)
+        if (currentWearIntensity > 0) {
+            val wearPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            wearPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            val random = Random(123)
+            val numDots = (bitmap.width * bitmap.height / 1000) * currentWearIntensity / 50
+            for (i in 0 until numDots) {
+                val x = random.nextInt(bitmap.width).toFloat()
+                val y = random.nextInt(bitmap.height).toFloat()
+                val size = random.nextFloat() * currentWearSize
+                resultCanvas.drawCircle(x, y, size, wearPaint)
+            }
+        }
+
+        // 5. Efecto de Complexión/Arrugas
+        if (currentWrinkles > 0) {
             val wrinklePaint = Paint(Paint.ANTI_ALIAS_FLAG)
             wrinklePaint.style = Paint.Style.STROKE
             wrinklePaint.strokeWidth = 2f
-            val random = Random(42) // Semilla fija para consistencia
-            for (i in 0 until wrinkles / 5) {
+            val random = Random(42)
+            for (i in 0 until currentWrinkles / 5) {
                 val path = Path()
                 val startX = random.nextInt(result.width).toFloat()
                 val startY = random.nextInt(result.height).toFloat()
                 path.moveTo(startX, startY)
                 path.lineTo(startX + random.nextInt(100) - 50, startY + random.nextInt(100) - 50)
 
-                wrinklePaint.color = Color.argb((wrinkles * 0.5).toInt(), 0, 0, 0)
+                wrinklePaint.color = Color.argb((currentWrinkles * 0.5).toInt(), 0, 0, 0)
                 resultCanvas.drawPath(path, wrinklePaint)
 
-                wrinklePaint.color = Color.argb((wrinkles * 0.3).toInt(), 255, 255, 255)
+                wrinklePaint.color = Color.argb((currentWrinkles * 0.3).toInt(), 255, 255, 255)
                 resultCanvas.drawPath(path, wrinklePaint)
             }
         }
 
-        // 5. Sombra de complexión (Gradiente suave para simular doblez)
-        if (hasShadow) {
+        // 6. Sombra de complexión
+        if (currentShadow) {
             val shadowPaint = Paint()
             val gradient = LinearGradient(0f, 0f, result.width.toFloat(), result.height.toFloat(),
                 intArrayOf(Color.TRANSPARENT, Color.argb(40, 0, 0, 0), Color.TRANSPARENT),
@@ -160,20 +195,20 @@ class VoucherFragment : Fragment() {
         try {
             val cachePath = File(requireContext().cacheDir, "images")
             cachePath.mkdirs()
-            val stream = FileOutputStream("$cachePath/voucher.png")
+            val file = File(cachePath, "voucher.png")
+            val stream = FileOutputStream(file)
             bitmapToShare.compress(Bitmap.CompressFormat.PNG, 100, stream)
             stream.close()
 
-            val imagePath = File(requireContext().cacheDir, "images")
-            val newFile = File(imagePath, "voucher.png")
-            val contentUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", newFile)
+            val contentUri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", file)
 
             if (contentUri != null) {
-                val shareIntent = Intent()
-                shareIntent.action = Intent.ACTION_SEND
-                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                shareIntent.setDataAndType(contentUri, requireContext().contentResolver.getType(contentUri))
-                shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri)
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    putExtra(Intent.EXTRA_STREAM, contentUri)
+                    type = "image/png"
+                }
                 startActivity(Intent.createChooser(shareIntent, "Compartir Voucher"))
             }
         } catch (e: Exception) {

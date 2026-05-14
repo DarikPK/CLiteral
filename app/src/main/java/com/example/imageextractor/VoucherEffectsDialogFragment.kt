@@ -12,7 +12,14 @@ class VoucherEffectsDialogFragment : BottomSheetDialogFragment() {
     private var _binding: DialogVoucherEffectsBinding? = null
     private val binding get() = _binding!!
 
-    var onApplyListener: ((Int, Int, Int, Boolean) -> Unit)? = null
+    var onApplyListener: ((Int, Int, Int, Int, Int, Boolean) -> Unit)? = null
+
+    var initialWrinkles = 30
+    var initialInkWear = 20
+    var initialAging = 15
+    var initialWearIntensity = 40
+    var initialWearSize = 3
+    var initialShadow = true
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -25,11 +32,21 @@ class VoucherEffectsDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Cargar valores actuales
+        binding.sliderWrinkles.value = initialWrinkles.toFloat()
+        binding.sliderInkWear.value = initialInkWear.toFloat()
+        binding.sliderAging.value = initialAging.toFloat()
+        binding.sliderWearIntensity.value = initialWearIntensity.toFloat()
+        binding.sliderWearSize.value = initialWearSize.toFloat()
+        binding.switchShadow.isChecked = initialShadow
+
         binding.btnApplyEffects.setOnClickListener {
             onApplyListener?.invoke(
                 binding.sliderWrinkles.value.toInt(),
                 binding.sliderInkWear.value.toInt(),
                 binding.sliderAging.value.toInt(),
+                binding.sliderWearIntensity.value.toInt(),
+                binding.sliderWearSize.value.toInt(),
                 binding.switchShadow.isChecked
             )
             dismiss()
