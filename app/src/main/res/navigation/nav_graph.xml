@@ -168,6 +168,7 @@
         <argument android:name="ruc" app:argType="string" android:defaultValue="20260998898" />
         <argument android:name="local" app:argType="string" android:defaultValue="Santa Anita" />
         <argument android:name="recibo" app:argType="string" android:defaultValue="2025-191-8801" />
+        <argument android:name="fecha" app:argType="string" android:defaultValue="09/09/2025 09:14:02" />
         <argument android:name="cajero" app:argType="string" android:defaultValue="MONTERO MANRIQUE, MARIA DE FATIMA" />
         <argument android:name="partida" app:argType="string" android:defaultValue="49048530" />
         <argument android:name="paginas" app:argType="string" android:defaultValue="7" />

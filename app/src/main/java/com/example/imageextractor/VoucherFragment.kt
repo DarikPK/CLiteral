@@ -93,7 +93,7 @@ class VoucherFragment : Fragment() {
             tvRuc.text = if (rucRaw.startsWith("RUC")) rucRaw else "RUC Nro. $rucRaw"
             tvLocal.text = "Local: ${args?.getString("local") ?: "Santa Anita"}"
             tvRecibo.text = "Recibo N° . : ${args?.getString("recibo") ?: "2025-191-8801"}"
-            tvFecha.text = "Fecha/Hora: $currentDate"
+            tvFecha.text = "Fecha/Hora: ${args?.getString("fecha") ?: currentDate}"
             tvCajero.text = "Cajero: ${args?.getString("cajero") ?: "MONTERO MANRIQUE, MARIA DE FATIMA"}"
             tvServicio.text = "PREDIOS- CERTI. LITERAL - PREDIOS"
             tvPublicidad.text = "PUBLICIDAD N°: 2025-4809963"

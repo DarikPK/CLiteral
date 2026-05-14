@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentVoucherConfigBinding
+import java.text.SimpleDateFormat
+import java.util.*
 
 class VoucherConfigFragment : Fragment() {
 
@@ -24,6 +26,10 @@ class VoucherConfigFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Inicializar con fecha/hora actual si se desea
+        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+        binding.etFecha.setText(sdf.format(Date()))
+
         binding.btnGenerateVoucher.setOnClickListener {
             val bundle = Bundle().apply {
                 putString("zona", binding.etZona.text.toString())
@@ -31,6 +37,7 @@ class VoucherConfigFragment : Fragment() {
                 putString("ruc", binding.etRuc.text.toString())
                 putString("local", binding.etLocal.text.toString())
                 putString("recibo", binding.etRecibo.text.toString())
+                putString("fecha", binding.etFecha.text.toString())
                 putString("cajero", binding.etCajero.text.toString())
                 putString("partida", binding.etPartida.text.toString())
                 putString("paginas", binding.etPaginas.text.toString())
