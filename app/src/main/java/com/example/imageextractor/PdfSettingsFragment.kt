@@ -597,10 +597,6 @@ class PdfSettingsFragment : Fragment() {
                 toggleSortMode()
                 true
             }
-            R.id.action_preview -> {
-                validateAndProceed()
-                true
-            }
             else -> super.onOptionsItemSelected(item)
         }
     }
