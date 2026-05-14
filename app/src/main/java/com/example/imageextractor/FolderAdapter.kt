@@ -20,20 +20,38 @@ class FolderAdapter(
         private val binding: FolderListItemBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        private var selectedPosition = RecyclerView.NO_POSITION
+
         init {
             itemView.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onItemClick(getItem(adapterPosition))
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onItemClick(getItem(position))
+
+                    if (!isSelectionMode) {
+                        val oldSelected = selectedPosition
+                        selectedPosition = position
+                        notifyItemChanged(oldSelected)
+                        notifyItemChanged(selectedPosition)
+                    }
                 }
             }
         }
 
-        fun bind(folder: ImageFolder) {
+        fun bind(folder: ImageFolder, isSelected: Boolean) {
             val imageCount = folder.imageFiles.size // Cambiado de imagePaths a imageFiles
-            binding.detailsText.text = "${folder.partidaId} - $imageCount ${if (imageCount == 1) "Imagen" else "Imágenes"}"
+            binding.detailsText.text = "${folder.partidaId} - $imageCount ${if (imageCount == 1) "Hoja" else "Hojas"}"
 
             binding.checkboxSelect.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
-            binding.checkboxSelect.isChecked = selectedItems.contains(folder.partidaId)
+            binding.checkboxSelect.isChecked = if (isSelectionMode) selectedItems.contains(folder.partidaId) else isSelected
+
+            // Si no estamos en modo selección múltiple, el checkbox puede servir como indicador visual
+            if (!isSelectionMode) {
+                binding.checkboxSelect.visibility = View.VISIBLE
+                binding.checkboxSelect.isClickable = false // El clic lo maneja la raíz
+            }
+
+            itemView.setBackgroundColor(if (isSelected) 0x1A000000 else 0)
         }
     }
 
@@ -42,8 +60,23 @@ class FolderAdapter(
         return FolderViewHolder(binding)
     }
 
+    private var singleSelectedPosition = RecyclerView.NO_POSITION
+
     override fun onBindViewHolder(holder: FolderViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val isSelected = if (isSelectionMode) {
+            selectedItems.contains(getItem(position).partidaId)
+        } else {
+            position == singleSelectedPosition
+        }
+        holder.bind(getItem(position), isSelected)
+    }
+
+    // Sobrecargar onItemClick para manejar la selección simple visualmente
+    fun setSingleSelectedPosition(position: Int) {
+        val old = singleSelectedPosition
+        singleSelectedPosition = position
+        notifyItemChanged(old)
+        notifyItemChanged(singleSelectedPosition)
     }
 
     fun setMode(isSelectionMode: Boolean) {

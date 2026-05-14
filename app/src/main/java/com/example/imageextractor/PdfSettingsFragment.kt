@@ -28,6 +28,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.recyclerview.widget.LinearLayoutManager
 
 class PdfSettingsFragment : Fragment() {
 
@@ -41,6 +42,11 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private var currentSortMode = "alphanumeric" // or "temporal"
+
+    private lateinit var folderAdapter: FolderAdapter
+    private var allFolders: List<ImageFolder> = emptyList()
+    private var selectedFolder: ImageFolder? = null
+    private var isListExpanded = false
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
         if (isGranted) {
@@ -76,12 +82,28 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        currentSortMode = sharedPrefs.getString("partida_sort_mode", "alphanumeric") ?: "alphanumeric"
         setupToolbar()
+        setupRecyclerView()
         setupMonthSpinner()
         setupDynamicFields()
         loadSettings()
         setupListeners()
-        currentSortMode = sharedPrefs.getString("partida_sort_mode", "alphanumeric") ?: "alphanumeric"
+        loadFolders()
+    }
+
+    private fun setupRecyclerView() {
+        folderAdapter = FolderAdapter(
+            onItemClick = { folder ->
+                selectedFolder = folder
+                val pos = folderAdapter.currentList.indexOf(folder)
+                folderAdapter.setSingleSelectedPosition(pos)
+                Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
+            },
+            onSelectionChanged = { /* No usado aquí para selección múltiple */ }
+        )
+        binding.rvCapturedFolders.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvCapturedFolders.adapter = folderAdapter
     }
 
     private fun setupToolbar() {
@@ -170,6 +192,16 @@ class PdfSettingsFragment : Fragment() {
         binding.registrarManagementButton.setOnClickListener {
             sharedPrefs.edit().putBoolean("is_editing_registrar", false).apply()
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
+        }
+
+        binding.btnShowOlderFolders.setOnClickListener {
+            isListExpanded = true
+            updateFolderList()
+            binding.btnShowOlderFolders.visibility = View.GONE
+        }
+
+        binding.btnGeneratePdf.setOnClickListener {
+            validateAndProceed()
         }
     }
 
@@ -314,29 +346,33 @@ class PdfSettingsFragment : Fragment() {
                 .show()
             return
         }
-        showPartidaSelectionDialog()
+
+        val folder = selectedFolder
+        if (folder == null) {
+            Toast.makeText(requireContext(), "Por favor, seleccione una partida de la lista superior", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        navigateToPreview(folder)
     }
 
-    private fun showPartidaSelectionDialog() {
+    private fun loadFolders() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val folders = getCapturedFolders()
+            allFolders = getCapturedFolders()
             withContext(Dispatchers.Main) {
-                if (folders.isEmpty()) {
-                    Toast.makeText(context, "No se encontraron partidas capturadas.", Toast.LENGTH_SHORT).show()
-                    return@withContext
-                }
-
-                val partidaIds = folders.map { it.partidaId }.toTypedArray()
-                android.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Seleccionar Partida")
-                    .setItems(partidaIds) { _, which ->
-                        val selectedFolder = folders[which]
-                        navigateToPreview(selectedFolder)
-                    }
-                    .setNegativeButton("Cancelar", null)
-                    .show()
+                updateFolderList()
             }
         }
+    }
+
+    private fun updateFolderList() {
+        val foldersToShow = if (isListExpanded || allFolders.size <= 3) {
+            allFolders
+        } else {
+            allFolders.take(3)
+        }
+        folderAdapter.submitList(foldersToShow)
+        binding.btnShowOlderFolders.visibility = if (!isListExpanded && allFolders.size > 3) View.VISIBLE else View.GONE
     }
 
     private fun navigateToPreview(folder: ImageFolder) {
@@ -574,6 +610,7 @@ class PdfSettingsFragment : Fragment() {
         sharedPrefs.edit().putString("partida_sort_mode", currentSortMode).apply()
         val message = if (currentSortMode == "alphanumeric") "Orden Alfanumérico" else "Orden Temporal (Reciente primero)"
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        loadFolders()
     }
 
     override fun onDestroyView() {
