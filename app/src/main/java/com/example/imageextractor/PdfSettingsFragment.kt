@@ -96,6 +96,7 @@ class PdfSettingsFragment : Fragment() {
         folderAdapter = FolderAdapter(
             onItemClick = { folder ->
                 selectedFolder = folder
+                binding.tvSelectedPartidaHint.text = folder.partidaId
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
                 Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
@@ -370,6 +371,7 @@ class PdfSettingsFragment : Fragment() {
         // Seleccionar la última por defecto (la primera de la lista si está ordenada temporalmente)
         if (selectedFolder == null && allFolders.isNotEmpty()) {
             selectedFolder = allFolders[0]
+            binding.tvSelectedPartidaHint.text = allFolders[0].partidaId
             folderAdapter.setSingleSelectedPosition(0)
         }
     }
