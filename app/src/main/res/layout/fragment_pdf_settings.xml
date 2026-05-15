@@ -38,28 +38,34 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
+                android:padding="12dp"
+                android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?attr/selectableItemBackground">
+                android:background="@drawable/popup_background">
 
-                <TextView
-                    style="@style/TextAppearance.Material3.TitleMedium"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Seleccionar Partida para PDF" />
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tv_selected_partida_hint"
-                    style="@style/TextAppearance.Material3.BodySmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:text="Ninguna"
-                    android:textColor="?attr/colorPrimary"
-                    android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Partida"
+                        android:textSize="12sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+
+                    <TextView
+                        android:id="@+id/tv_selected_partida_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ninguna"
+                        android:textSize="16sp"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
                 <ImageView
                     android:id="@+id/iv_expand_folders"
