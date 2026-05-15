@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentVoucherConfigBinding
@@ -32,6 +33,10 @@ class VoucherConfigFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         loadDataFromPdfSettings()
+
+        binding.etMonto.doOnTextChanged { text, _, _, _ ->
+            sharedPrefs.edit().putString("voucher_monto", text.toString()).apply()
+        }
 
         binding.btnGenerateVoucher.setOnClickListener {
             val bundle = Bundle().apply {
@@ -100,6 +105,10 @@ class VoucherConfigFragment : Fragment() {
         if (selPages > 0) {
             binding.etPaginas.setText(selPages.toString())
         }
+
+        // 6. Monto Persistente
+        val savedMonto = sharedPrefs.getString("voucher_monto", "59.60")
+        binding.etMonto.setText(savedMonto)
     }
 
     override fun onDestroyView() {
