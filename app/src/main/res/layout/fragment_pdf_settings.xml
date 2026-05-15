@@ -39,10 +39,11 @@
                 android:layout_marginBottom="8dp"
                 android:hint="Partida">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <AutoCompleteTextView
                     android:id="@+id/tv_selected_partida_hint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:inputType="none"
                     android:editable="false"
                     android:focusable="false"
                     android:clickable="true"
