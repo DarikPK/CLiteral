@@ -101,9 +101,16 @@ class VoucherFragment : Fragment() {
             tvDestino.text = "DESTINO: ${args?.getString("destino") ?: "LIMA"}"
             tvPartida.text = "Partida: ${args?.getString("partida") ?: "49048530"}"
             tvPaginas.text = "Paginas: ${args?.getString("paginas") ?: "7"}"
+
             val montoRaw = args?.getString("monto") ?: "59.60"
-            tvMonto.text = "Monto S/ $montoRaw"
-            tvMontoTotal.text = "Monto Total S/ $montoRaw"
+            val montoFormatted = try {
+                String.format(Locale.US, "%.2f", montoRaw.toDouble())
+            } catch (e: Exception) {
+                montoRaw
+            }
+
+            tvMonto.text = "Monto S/ $montoFormatted"
+            tvMontoTotal.text = "Monto Total S/ $montoFormatted"
             tvPresentante.text = "PRESENTANTE: ${args?.getString("presentante") ?: "LACHIRA SIAPO, PAUL DAVID"}"
             tvCorreo.text = "CORREO: ${args?.getString("correo") ?: "DAVID.LACHIRA@GMAIL.COM"}"
             tvDni.text = "DNI. - ${args?.getString("dni") ?: "46736604"}"
