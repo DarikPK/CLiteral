@@ -232,6 +232,13 @@ class PdfSettingsFragment : Fragment() {
         binding.dynamicAno.setText(year.toString())
         selectedDate.set(year, month, day)
 
+        // Asegurar que los valores por defecto estén persistidos para el Voucher
+        if (!sharedPrefs.contains("stamp_day")) saveString("stamp_day", day.toString())
+        if (!sharedPrefs.contains("stamp_month_position")) saveInt("stamp_month_position", month)
+        if (!sharedPrefs.contains("stamp_year")) saveString("stamp_year", year.toString())
+        if (!sharedPrefs.contains("dynamic_hora")) saveString("dynamic_hora", "08:00:00")
+        if (!sharedPrefs.contains("dynamic_ano")) saveString("dynamic_ano", year.toString())
+
         // Los ajustes de imagen y márgenes ahora se cargan en PageImageSettingsFragment
         // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampFontSizeEditText.setText(sharedPrefs.getString("stamp_font_size", "220"))
