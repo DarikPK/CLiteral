@@ -33,11 +33,14 @@
             android:padding="16dp">
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/expand_folders_layout"
                 style="@style/Widget.Material3.TextInputLayout.FilledBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:hint="Partida">
+                android:hint="Partida"
+                android:clickable="true"
+                android:focusable="true">
 
                 <AutoCompleteTextView
                     android:id="@+id/tv_selected_partida_hint"

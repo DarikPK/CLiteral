@@ -100,6 +100,11 @@ class PdfSettingsFragment : Fragment() {
                 binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
+
+                // Colapsar lista al seleccionar
+                isListExpanded = false
+                updateFolderListVisibility()
+
                 Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
             },
             onSelectionChanged = { /* No usado aquí para selección múltiple */ }
@@ -136,10 +141,13 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.tvSelectedPartidaHint.setOnClickListener {
+        val toggleList = {
             isListExpanded = !isListExpanded
             updateFolderListVisibility()
         }
+
+        binding.tvSelectedPartidaHint.setOnClickListener { toggleList() }
+        binding.expandFoldersLayout.setOnClickListener { toggleList() }
 
         // Auto-save for all EditTexts
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
