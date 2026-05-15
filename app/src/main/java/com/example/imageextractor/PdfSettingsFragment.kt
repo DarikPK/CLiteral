@@ -101,6 +101,12 @@ class PdfSettingsFragment : Fragment() {
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
 
+                // Persistir selección para el Voucher
+                sharedPrefs.edit()
+                    .putString("selected_partida_id", folder.partidaId)
+                    .putInt("selected_partida_pages", imageCount)
+                    .apply()
+
                 // Colapsar lista al seleccionar
                 isListExpanded = false
                 updateFolderListVisibility()
@@ -384,6 +390,12 @@ class PdfSettingsFragment : Fragment() {
             val imageCount = folder.imageFiles.size
             binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
             folderAdapter.setSingleSelectedPosition(0)
+
+            // Persistir selección por defecto para el Voucher
+            sharedPrefs.edit()
+                .putString("selected_partida_id", folder.partidaId)
+                .putInt("selected_partida_pages", imageCount)
+                .apply()
         }
     }
 

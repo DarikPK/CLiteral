@@ -45,6 +45,7 @@ class VoucherConfigFragment : Fragment() {
                 putString("correo", binding.etCorreo.text.toString())
                 putString("dni", binding.etDni.text.toString())
                 putString("publicidad", binding.etPublicidad.text.toString())
+                putString("tipo_partida", sharedPrefs.getString("dynamic_tipo_partida", "PREDIOS"))
             }
             findNavController().navigate(R.id.action_voucherConfigFragment_to_voucherFragment, bundle)
         }
@@ -52,6 +53,12 @@ class VoucherConfigFragment : Fragment() {
 
     private fun loadDataFromPdfSettings() {
         val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+
+        // 0. Tipo de Partida (para el servicio)
+        val tipoPartidaPos = sharedPrefs.getInt("dynamic_tipo_partida_position", 0)
+        val tipoPartidaArray = resources.getStringArray(R.array.tipo_partida_array)
+        val tipoPartidaText = if (tipoPartidaPos < tipoPartidaArray.size) tipoPartidaArray[tipoPartidaPos] else "PREDIOS"
+        sharedPrefs.edit().putString("dynamic_tipo_partida", tipoPartidaText).apply()
 
         // 1. Fecha y Hora (tal cual la del menú Generar PDF)
         val now = Calendar.getInstance()
@@ -78,6 +85,18 @@ class VoucherConfigFragment : Fragment() {
         val dNumPub = sharedPrefs.getString("dynamic_numero_publicidad", "")
         if (!dNumPub.isNullOrBlank()) {
             binding.etPublicidad.setText("$dAno-$dNumPub")
+        }
+
+        // 4. Partida Seleccionada
+        val selPartida = sharedPrefs.getString("selected_partida_id", "")
+        if (!selPartida.isNullOrBlank()) {
+            binding.etPartida.setText(selPartida)
+        }
+
+        // 5. Cantidad de Páginas
+        val selPages = sharedPrefs.getInt("selected_partida_pages", 0)
+        if (selPages > 0) {
+            binding.etPaginas.setText(selPages.toString())
         }
     }
 
