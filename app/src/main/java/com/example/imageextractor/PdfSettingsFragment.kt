@@ -96,7 +96,8 @@ class PdfSettingsFragment : Fragment() {
         folderAdapter = FolderAdapter(
             onItemClick = { folder ->
                 selectedFolder = folder
-                binding.tvSelectedPartidaHint.text = folder.partidaId
+                val imageCount = folder.imageFiles.size
+                binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
                 Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
@@ -135,8 +136,12 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        binding.tvSelectedPartidaHint.setOnClickListener {
+            isListExpanded = !isListExpanded
+            updateFolderListVisibility()
+        }
+
         // Auto-save for all EditTexts
-        // binding.stampDayEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_day", text.toString()) } // Replaced by DatePicker
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
         binding.stampFontSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_font_size", text.toString()) }
         binding.stampSizeEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_size", text.toString()) }
@@ -195,10 +200,6 @@ class PdfSettingsFragment : Fragment() {
             findNavController().navigate(R.id.action_pdfSettingsFragment_to_registrarManagementFragment)
         }
 
-        binding.expandFoldersHeader.setOnClickListener {
-            isListExpanded = !isListExpanded
-            updateFolderListVisibility()
-        }
 
         binding.btnGeneratePdf.setOnClickListener {
             validateAndProceed()
@@ -370,8 +371,10 @@ class PdfSettingsFragment : Fragment() {
 
         // Seleccionar la última por defecto (la primera de la lista si está ordenada temporalmente)
         if (selectedFolder == null && allFolders.isNotEmpty()) {
-            selectedFolder = allFolders[0]
-            binding.tvSelectedPartidaHint.text = allFolders[0].partidaId
+            val folder = allFolders[0]
+            selectedFolder = folder
+            val imageCount = folder.imageFiles.size
+            binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
             folderAdapter.setSingleSelectedPosition(0)
         }
     }
@@ -379,10 +382,9 @@ class PdfSettingsFragment : Fragment() {
     private fun updateFolderListVisibility() {
         if (isListExpanded) {
             binding.rvCapturedFolders.visibility = View.VISIBLE
-            binding.ivExpandFolders.animate().rotation(180f).setDuration(200).start()
+            // El componente ya maneja el ícono si usamos el endIconMode del TextInputLayout
         } else {
             binding.rvCapturedFolders.visibility = View.GONE
-            binding.ivExpandFolders.animate().rotation(0f).setDuration(200).start()
         }
     }
 
