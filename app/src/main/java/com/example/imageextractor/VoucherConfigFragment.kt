@@ -16,6 +16,10 @@ class VoucherConfigFragment : Fragment() {
     private var _binding: FragmentVoucherConfigBinding? = null
     private val binding get() = _binding!!
 
+    private val sharedPrefs by lazy {
+        requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -52,8 +56,6 @@ class VoucherConfigFragment : Fragment() {
     }
 
     private fun loadDataFromPdfSettings() {
-        val sharedPrefs = requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-
         // 0. Tipo de Partida (para el servicio)
         val tipoPartidaPos = sharedPrefs.getInt("dynamic_tipo_partida_position", 0)
         val tipoPartidaArray = resources.getStringArray(R.array.tipo_partida_array)
