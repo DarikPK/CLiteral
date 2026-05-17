@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -37,7 +38,8 @@ class VoucherConfigFragment : Fragment() {
             sharedPrefs.edit().putString("voucher_monto", text.toString()).apply()
         }
 
-        binding.btnGenerateVoucher.setOnClickListener {
+        val btn = view.findViewById<Button>(R.id.btn_generate_voucher)
+        btn.setOnClickListener {
             val b = Bundle()
             b.putString("zona", binding.etZona.text.toString())
             b.putString("oficina", binding.etOficina.text.toString())
