@@ -9,7 +9,6 @@ import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentVoucherConfigBinding
-import java.text.SimpleDateFormat
 import java.util.*
 
 class VoucherConfigFragment : Fragment() {
