@@ -475,6 +475,12 @@ class ExtractionFragment : Fragment() {
             return
         }
 
+        // Guardar como la última partida capturada para que aparezca por defecto en la generación de PDF
+        activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putString("last_captured_partida_id", numeroPartida)
+            ?.apply()
+
         deleteExistingCaptures(numeroPartida)
 
         Toast.makeText(context, "Iniciando captura automática...", Toast.LENGTH_SHORT).show()
@@ -640,6 +646,14 @@ class ExtractionFragment : Fragment() {
     }
 
     private fun captureVisibleCanvas() {
+        // Guardar la partida actual como la última capturada si existe en la configuración
+        sharedViewModel.config.value?.numeroPartida?.let { numeroPartida ->
+            activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
+                ?.edit()
+                ?.putString("last_captured_partida_id", numeroPartida)
+                ?.apply()
+        }
+
         val script = """
             (function() {
           const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');

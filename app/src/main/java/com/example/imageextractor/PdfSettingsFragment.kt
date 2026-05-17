@@ -390,13 +390,22 @@ class PdfSettingsFragment : Fragment() {
     private fun updateFolderList() {
         folderAdapter.submitList(allFolders)
 
-        // Seleccionar la última por defecto (la primera de la lista si está ordenada temporalmente)
+        // Seleccionar por defecto la última partida capturada si existe,
+        // de lo contrario la primera de la lista.
         if (selectedFolder == null && allFolders.isNotEmpty()) {
-            val folder = allFolders[0]
+            val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
+            val indexToSelect = if (lastCapturedId != null) {
+                val foundIndex = allFolders.indexOfFirst { it.partidaId == lastCapturedId }
+                if (foundIndex != -1) foundIndex else 0
+            } else {
+                0
+            }
+
+            val folder = allFolders[indexToSelect]
             selectedFolder = folder
             val imageCount = folder.imageFiles.size
             binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
-            folderAdapter.setSingleSelectedPosition(0)
+            folderAdapter.setSingleSelectedPosition(indexToSelect)
 
             // Persistir selección por defecto para el Voucher
             sharedPrefs.edit()
