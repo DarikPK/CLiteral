@@ -105,7 +105,9 @@ class ImagePreviewFragment : Fragment() {
                     paint.colorFilter = ColorMatrixColorFilter(cm)
                     canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
-                    val tempFile = File(requireContext().cacheDir, "shared_image.jpg")
+                    val shareDir = File(requireContext().cacheDir, "images")
+                    if (!shareDir.exists()) shareDir.mkdirs()
+                    val tempFile = File(shareDir, "shared_image.jpg")
                     FileOutputStream(tempFile).use { out ->
                         filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                     }
@@ -114,7 +116,9 @@ class ImagePreviewFragment : Fragment() {
                     filteredBitmap.recycle()
                 } else {
                     // Si no hay filtros, simplemente copiamos a cache con extensión jpg si es necesario o usamos el original
-                    val tempFile = File(requireContext().cacheDir, "shared_image.jpg")
+                    val shareDir = File(requireContext().cacheDir, "images")
+                    if (!shareDir.exists()) shareDir.mkdirs()
+                    val tempFile = File(shareDir, "shared_image.jpg")
                     val bitmap = BitmapFactory.decodeFile(imagePath)
                     FileOutputStream(tempFile).use { out ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
