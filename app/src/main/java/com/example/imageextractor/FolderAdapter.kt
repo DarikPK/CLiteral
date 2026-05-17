@@ -10,7 +10,8 @@ import com.example.imageextractor.databinding.FolderListItemBinding
 
 class FolderAdapter(
     private val onItemClick: (ImageFolder) -> Unit,
-    private val onSelectionChanged: (Int) -> Unit
+    private val onSelectionChanged: (Int) -> Unit,
+    private val layoutResId: Int = R.layout.folder_list_item
 ) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
     private val selectedItems = mutableSetOf<String>()
@@ -56,7 +57,8 @@ class FolderAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
-        val binding = FolderListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(layoutResId, parent, false)
+        val binding = FolderListItemBinding.bind(view)
         return FolderViewHolder(binding)
     }
 

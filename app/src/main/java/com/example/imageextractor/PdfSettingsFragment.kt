@@ -113,7 +113,8 @@ class PdfSettingsFragment : Fragment() {
 
                 Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
             },
-            onSelectionChanged = { /* No usado aquí para selección múltiple */ }
+            onSelectionChanged = { /* No usado aquí para selección múltiple */ },
+            layoutResId = R.layout.folder_dropdown_item
         )
         binding.rvCapturedFolders.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCapturedFolders.adapter = folderAdapter
