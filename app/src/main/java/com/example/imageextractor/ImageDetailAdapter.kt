@@ -13,10 +13,20 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+
 class ImageDetailAdapter(
     private val onImageClick: (String) -> Unit,
     private val onImageLongClick: (String) -> Unit
 ) : ListAdapter<String, ImageDetailAdapter.DetailViewHolder>(DiffUtilCallback()) {
+
+    private var filtersEnabled = true
+
+    fun setFiltersEnabled(enabled: Boolean) {
+        filtersEnabled = enabled
+        notifyDataSetChanged()
+    }
 
     class DetailViewHolder(
         private val binding: ImageDetailItemBinding,
@@ -24,7 +34,7 @@ class ImageDetailAdapter(
         private val onImageLongClick: (String) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(imagePath: String) {
+        fun bind(imagePath: String, filtersEnabled: Boolean) {
             val file = File(imagePath)
             if (!file.exists()) return
 
@@ -35,6 +45,20 @@ class ImageDetailAdapter(
                 .load(Uri.fromFile(file))
                 .centerCrop()
                 .into(binding.thumbnailImageView)
+
+            if (filtersEnabled) {
+                val brightness = (35f - 50f) * 5f
+                val contrast = 95f / 50f
+                val cm = ColorMatrix(floatArrayOf(
+                    contrast, 0f, 0f, 0f, brightness,
+                    0f, contrast, 0f, 0f, brightness,
+                    0f, 0f, contrast, 0f, brightness,
+                    0f, 0f, 0f, 1f, 0f
+                ))
+                binding.thumbnailImageView.colorFilter = ColorMatrixColorFilter(cm)
+            } else {
+                binding.thumbnailImageView.clearColorFilter()
+            }
 
             // Format date
             val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
@@ -61,7 +85,7 @@ class ImageDetailAdapter(
     }
 
     override fun onBindViewHolder(holder: DetailViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), filtersEnabled)
     }
 
     private class DiffUtilCallback : DiffUtil.ItemCallback<String>() {

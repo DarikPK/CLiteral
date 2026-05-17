@@ -487,6 +487,7 @@ class ExtractionFragment : Fragment() {
         activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
             ?.edit()
             ?.putString("last_captured_partida_id", numeroPartida)
+            ?.putString("selected_partida_id", numeroPartida)
             ?.putString("last_captured_area_registral", areaRegistral)
             ?.apply {
                 if (tipoMapeado != null) {
@@ -662,7 +663,9 @@ class ExtractionFragment : Fragment() {
     private fun captureVisibleCanvas() {
         // Guardar la partida actual como la última capturada si existe en la configuración
         val config = sharedViewModel.config.value
-        config?.numeroPartida?.let { numeroPartida ->
+        val numeroPartida = config?.numeroPartida
+
+        if (numeroPartida != null) {
             val areaRegistral = config.areaRegistral
             val tipoMapeado = when {
                 areaRegistral.contains("Propiedad Inmueble Predial", ignoreCase = true) -> "PREDIOS"
@@ -674,6 +677,7 @@ class ExtractionFragment : Fragment() {
             activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
                 ?.edit()
                 ?.putString("last_captured_partida_id", numeroPartida)
+                ?.putString("selected_partida_id", numeroPartida)
                 ?.putString("last_captured_area_registral", areaRegistral)
                 ?.apply {
                     if (tipoMapeado != null) {
@@ -681,32 +685,79 @@ class ExtractionFragment : Fragment() {
                     }
                 }
                 ?.apply()
+
+            // Eliminar capturas previas para que esta captura individual se considere como "el total"
+            deleteExistingCaptures(numeroPartida)
         }
 
         val script = """
-            (function() {
-          const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');
-          if (!canvases.length) {
-            console.log("No hay canvas para capturar");
-            return;
-          }
-          canvases.forEach((canvas, i) => {
-            try {
-              const dataUrl = canvas.toDataURL("image/png");
-              const a = document.createElement("a");
-              a.href = dataUrl;
-              a.download = "captura_" + Date.now() + "_" + (i+1) + ".png";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            } catch (e) {
-              console.error("Error al capturar canvas: ", e);
-            }
-          });
-        })();
+            (async function() {
+              const canvases = document.querySelectorAll('canvas:not([style*="display: none"])');
+              if (!canvases.length) {
+                console.log("No hay canvas para capturar");
+                return;
+              }
+
+              const numeroPartida = "${numeroPartida ?: ""}";
+
+              for (let i = 0; i < canvases.length; i++) {
+                  const canvas = canvases[i];
+                  let filename = "captura_" + Date.now() + "_" + (i+1) + ".png";
+
+                  if (numeroPartida) {
+                      const columnas = document.querySelectorAll('.columna-lista');
+                      let items = [];
+                      columnas.forEach(columna => {
+                          const pageButtons = Array.from(columna.querySelectorAll('.pagina .boton-pagina, .pagina a, a.boton-pagina'));
+                          if (pageButtons.length > 1) {
+                              items.push(...pageButtons.reverse());
+                          } else {
+                              items.push(...pageButtons);
+                          }
+                      });
+
+                      const N = items.length;
+                      let hojaNumero = 0;
+
+                      for (let j = 0; j < N; j++) {
+                          const item = items[j];
+                          const isSelected = item.classList.contains('boton-pagina-seleccionado') ||
+                                           item.parentElement.classList.contains('boton-pagina-seleccionado') ||
+                                           item.querySelector('.boton-pagina-seleccionado');
+
+                          if (isSelected) {
+                              hojaNumero = N - j;
+                              break;
+                          }
+                      }
+
+                      // Si no se detecta el número de hoja por selección, se asume la Hoja 1
+                      if (hojaNumero <= 0) hojaNumero = 1;
+                      filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                  }
+
+                  if (typeof AndroidBridge !== 'undefined') {
+                      AndroidBridge.setNextDownloadFilename(filename);
+                      await new Promise(r => setTimeout(r, 50));
+                  }
+
+                  try {
+                    const dataUrl = canvas.toDataURL("image/png");
+                    const a = document.createElement("a");
+                    a.href = dataUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    await new Promise(r => setTimeout(r, 200));
+                  } catch (e) {
+                    console.error("Error al capturar canvas: ", e);
+                  }
+              }
+            })();
         """.trimIndent()
-        // loadUrl is compatible with all API levels for this fire-and-forget script.
-        binding.webView.loadUrl("javascript:$script")
+
+        binding.webView.evaluateJavascript(script, null)
     }
 
     private fun navigateTo(direction: String) {

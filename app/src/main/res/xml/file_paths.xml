@@ -6,6 +6,9 @@
     <cache-path
         name="cached_images"
         path="images/" />
+    <cache-path
+        name="my_cache"
+        path="." />
     <external-path
         name="downloads"
         path="Download/" />
