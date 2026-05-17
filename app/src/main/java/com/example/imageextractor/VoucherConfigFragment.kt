@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -35,11 +34,12 @@ class VoucherConfigFragment : Fragment() {
         loadDataFromPdfSettings()
 
         binding.etMonto.doOnTextChanged { text, _, _, _ ->
-            sharedPrefs.edit().putString("voucher_monto", text.toString()).apply()
+            val editor = sharedPrefs.edit()
+            editor.putString("voucher_monto", text.toString())
+            editor.apply()
         }
 
-        val btn = view.findViewById<Button>(R.id.btn_generate_voucher)
-        btn.setOnClickListener {
+        binding.btnGenerateVoucher.setOnClickListener {
             val b = Bundle()
             b.putString("zona", binding.etZona.text.toString())
             b.putString("oficina", binding.etOficina.text.toString())
@@ -55,7 +55,8 @@ class VoucherConfigFragment : Fragment() {
             b.putString("correo", binding.etCorreo.text.toString())
             b.putString("dni", binding.etDni.text.toString())
             b.putString("publicidad", binding.etPublicidad.text.toString())
-            b.putString("tipo_partida", sharedPrefs.getString("dynamic_tipo_partida", "PREDIOS"))
+            val tp = sharedPrefs.getString("dynamic_tipo_partida", "PREDIOS")
+            b.putString("tipo_partida", tp)
             findNavController().navigate(R.id.action_voucherConfigFragment_to_voucherFragment, b)
         }
     }
@@ -64,7 +65,9 @@ class VoucherConfigFragment : Fragment() {
         val tipoPartidaPos = sharedPrefs.getInt("dynamic_tipo_partida_position", 0)
         val tipoPartidaArray = resources.getStringArray(R.array.tipo_partida_array)
         val tipoPartidaText = if (tipoPartidaPos < tipoPartidaArray.size) tipoPartidaArray[tipoPartidaPos] else "PREDIOS"
-        sharedPrefs.edit().putString("dynamic_tipo_partida", tipoPartidaText).apply()
+        val editor = sharedPrefs.edit()
+        editor.putString("dynamic_tipo_partida", tipoPartidaText)
+        editor.apply()
 
         val now = Calendar.getInstance()
         val dayStr = sharedPrefs.getString("stamp_day", String.format("%02d", now.get(Calendar.DAY_OF_MONTH)))

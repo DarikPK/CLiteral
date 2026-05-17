@@ -397,12 +397,16 @@ class PdfSettingsFragment : Fragment() {
 
         folderAdapter.submitList(allFolders)
 
-        // Seleccionar por defecto la última partida capturada si existe,
-        // de lo contrario la primera de la lista.
+        // Seleccionar por defecto la última partida seleccionada si existe,
+        // de lo contrario la última capturada, o la primera de la lista.
         if (selectedFolder == null && allFolders.isNotEmpty()) {
+            val selectedId = sharedPrefs.getString("selected_partida_id", null)
             val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
-            val indexToSelect = if (lastCapturedId != null) {
-                val foundIndex = allFolders.indexOfFirst { it.partidaId == lastCapturedId }
+
+            val targetId = selectedId ?: lastCapturedId
+
+            val indexToSelect = if (targetId != null) {
+                val foundIndex = allFolders.indexOfFirst { it.partidaId == targetId }
                 if (foundIndex != -1) foundIndex else 0
             } else {
                 0

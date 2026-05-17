@@ -487,6 +487,7 @@ class ExtractionFragment : Fragment() {
         activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
             ?.edit()
             ?.putString("last_captured_partida_id", numeroPartida)
+            ?.putString("selected_partida_id", numeroPartida)
             ?.putString("last_captured_area_registral", areaRegistral)
             ?.apply {
                 if (tipoMapeado != null) {
@@ -676,6 +677,7 @@ class ExtractionFragment : Fragment() {
             activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
                 ?.edit()
                 ?.putString("last_captured_partida_id", numeroPartida)
+                ?.putString("selected_partida_id", numeroPartida)
                 ?.putString("last_captured_area_registral", areaRegistral)
                 ?.apply {
                     if (tipoMapeado != null) {
