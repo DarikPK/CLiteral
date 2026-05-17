@@ -194,6 +194,10 @@ class PdfSettingsFragment : Fragment() {
         binding.stampOnFirstLastPageCheckbox.setOnCheckedChangeListener { _, isChecked -> saveBoolean("stamp_on_first_last", isChecked) }
 
 
+        binding.pageImageSettingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_pdfSettingsFragment_to_pageImageSettingsFragment)
+        }
+
         binding.advancedStampSettingsButton.setOnClickListener {
             val layout = binding.advancedStampSettingsLayout
             layout.visibility = if (layout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
