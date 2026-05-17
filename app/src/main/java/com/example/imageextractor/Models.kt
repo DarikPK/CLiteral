@@ -19,7 +19,8 @@ data class ImageFile(
  */
 data class ImageFolder(
     val partidaId: String,
-    val imageFiles: List<ImageFile>
+    val imageFiles: List<ImageFile>,
+    var tipoPartida: String? = null
 )
 
 /**

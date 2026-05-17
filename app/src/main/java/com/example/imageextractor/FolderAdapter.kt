@@ -41,7 +41,8 @@ class FolderAdapter(
 
         fun bind(folder: ImageFolder, isSelected: Boolean) {
             val imageCount = folder.imageFiles.size
-            binding.detailsText.text = "${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})"
+            val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+            binding.detailsText.text = "${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText"
 
             binding.checkboxSelect.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
             binding.checkboxSelect.isChecked = if (isSelectionMode) selectedItems.contains(folder.partidaId) else isSelected

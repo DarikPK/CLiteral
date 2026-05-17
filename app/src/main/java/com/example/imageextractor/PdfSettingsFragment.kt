@@ -97,7 +97,8 @@ class PdfSettingsFragment : Fragment() {
             onItemClick = { folder ->
                 selectedFolder = folder
                 val imageCount = folder.imageFiles.size
-                binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
+                val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+                binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText")
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
 
@@ -389,12 +390,28 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun updateFolderList() {
+        // Antes de enviar la lista, intentar asignar el tipo de partida basado en lo guardado
+        val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
+        val lastArea = sharedPrefs.getString("last_captured_area_registral", null)
+
+        val tipoMapeado = when {
+            lastArea?.contains("Propiedad Inmueble Predial", ignoreCase = true) == true -> "PREDIOS"
+            lastArea?.contains("Personas Juridicas", ignoreCase = true) == true -> "PJ"
+            lastArea?.contains("Personas Naturales", ignoreCase = true) == true -> "PN"
+            else -> null
+        }
+
+        allFolders.forEach { folder ->
+            if (folder.partidaId == lastCapturedId) {
+                folder.tipoPartida = tipoMapeado
+            }
+        }
+
         folderAdapter.submitList(allFolders)
 
         // Seleccionar por defecto la última partida capturada si existe,
         // de lo contrario la primera de la lista.
         if (selectedFolder == null && allFolders.isNotEmpty()) {
-            val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
             val indexToSelect = if (lastCapturedId != null) {
                 val foundIndex = allFolders.indexOfFirst { it.partidaId == lastCapturedId }
                 if (foundIndex != -1) foundIndex else 0
@@ -405,8 +422,21 @@ class PdfSettingsFragment : Fragment() {
             val folder = allFolders[indexToSelect]
             selectedFolder = folder
             val imageCount = folder.imageFiles.size
-            binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
+            val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+            binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText")
             folderAdapter.setSingleSelectedPosition(indexToSelect)
+
+            // Auto-configurar el spinner de tipo de partida si se mapeó
+            tipoMapeado?.let { tipo ->
+                val adapter = binding.dynamicTipoPartidaSpinner.adapter
+                for (i in 0 until adapter.count) {
+                    if (adapter.getItem(i).toString() == tipo) {
+                        binding.dynamicTipoPartidaSpinner.setSelection(i)
+                        saveInt("dynamic_tipo_partida_position", i)
+                        break
+                    }
+                }
+            }
 
             // Persistir selección por defecto para el Voucher
             sharedPrefs.edit()

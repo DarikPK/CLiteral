@@ -476,9 +476,11 @@ class ExtractionFragment : Fragment() {
         }
 
         // Guardar como la última partida capturada para que aparezca por defecto en la generación de PDF
+        val areaRegistral = sharedViewModel.config.value?.areaRegistral
         activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
             ?.edit()
             ?.putString("last_captured_partida_id", numeroPartida)
+            ?.putString("last_captured_area_registral", areaRegistral)
             ?.apply()
 
         deleteExistingCaptures(numeroPartida)
@@ -647,10 +649,12 @@ class ExtractionFragment : Fragment() {
 
     private fun captureVisibleCanvas() {
         // Guardar la partida actual como la última capturada si existe en la configuración
-        sharedViewModel.config.value?.numeroPartida?.let { numeroPartida ->
+        val config = sharedViewModel.config.value
+        config?.numeroPartida?.let { numeroPartida ->
             activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
                 ?.edit()
                 ?.putString("last_captured_partida_id", numeroPartida)
+                ?.putString("last_captured_area_registral", config.areaRegistral)
                 ?.apply()
         }
 
