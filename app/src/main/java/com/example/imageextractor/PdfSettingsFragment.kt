@@ -656,11 +656,15 @@ class PdfSettingsFragment : Fragment() {
 
         val result = folders.map { (partidaId, files) ->
             val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
-            ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
+            ImageFolder(
+                partidaId = partidaId,
+                imageFiles = sortedFiles,
+                lastModified = folderLastModified[partidaId] ?: 0L
+            )
         }
 
         return if (currentSortMode == "temporal") {
-            result.sortedByDescending { folderLastModified[it.partidaId] ?: 0L }
+            result.sortedByDescending { it.lastModified }
         } else {
             result.sortedBy { it.partidaId }
         }

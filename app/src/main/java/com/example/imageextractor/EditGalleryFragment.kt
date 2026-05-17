@@ -269,11 +269,15 @@ class EditGalleryFragment : Fragment() {
 
             val folderList = folders.map { (partidaId, files) ->
                 val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
-                ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
+                ImageFolder(
+                    partidaId = partidaId,
+                    imageFiles = sortedFiles,
+                    lastModified = folderLastModified[partidaId] ?: 0L
+                )
             }
 
             val sortedList = if (currentSortMode == "temporal") {
-                folderList.sortedByDescending { folderLastModified[it.partidaId] ?: 0L }
+                folderList.sortedByDescending { it.lastModified }
             } else {
                 folderList.sortedBy { it.partidaId }
             }
