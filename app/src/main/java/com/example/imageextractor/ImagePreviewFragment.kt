@@ -16,6 +16,7 @@ class ImagePreviewFragment : Fragment() {
 
     private var imageUrls: List<String> = emptyList()
     private var initialIndex: Int = 0
+    private var filtersEnabled: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +24,7 @@ class ImagePreviewFragment : Fragment() {
         arguments?.let {
             imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
             initialIndex = it.getInt("initialIndex", 0)
+            filtersEnabled = it.getBoolean("filtersEnabled", false)
         }
     }
 
@@ -77,7 +79,7 @@ class ImagePreviewFragment : Fragment() {
     }
 
     private fun setupCarousel() {
-        val adapter = ImageCarouselAdapter(imageUrls) { isZoomed ->
+        val adapter = ImageCarouselAdapter(imageUrls, filtersEnabled) { isZoomed ->
             binding.viewPager.isUserInputEnabled = !isZoomed
         }
         binding.viewPager.adapter = adapter

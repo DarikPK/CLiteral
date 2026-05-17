@@ -47,6 +47,11 @@ class ViewGalleryFragment : Fragment() {
         setupToolbar()
         setupAdapters()
         setupRecyclerView()
+
+        binding.switchFilters.setOnCheckedChangeListener { _, isChecked ->
+            detailAdapter.setFiltersEnabled(isChecked)
+            iconAdapter.setFiltersEnabled(isChecked)
+        }
     }
 
     private fun setupToolbar() {
@@ -63,6 +68,7 @@ class ViewGalleryFragment : Fragment() {
             val bundle = Bundle().apply {
                 putStringArray("imageUrls", imageUrls.toTypedArray())
                 putInt("initialIndex", imageUrls.indexOf(imagePath))
+                putBoolean("filtersEnabled", binding.switchFilters.isChecked)
             }
             findNavController().navigate(R.id.action_viewGalleryFragment_to_imagePreviewFragment, bundle)
         }
