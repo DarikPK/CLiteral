@@ -41,7 +41,7 @@ class PdfSettingsFragment : Fragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
-    private var currentSortMode = "alphanumeric" // or "temporal"
+    private var currentSortMode = "temporal" // or "alphanumeric"
 
     private lateinit var folderAdapter: FolderAdapter
     private var allFolders: List<ImageFolder> = emptyList()
@@ -82,7 +82,7 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        currentSortMode = sharedPrefs.getString("partida_sort_mode", "alphanumeric") ?: "alphanumeric"
+        currentSortMode = sharedPrefs.getString("partida_sort_mode", "temporal") ?: "temporal"
         setupToolbar()
         setupRecyclerView()
         setupMonthSpinner()

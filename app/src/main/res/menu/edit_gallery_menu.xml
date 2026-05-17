@@ -6,6 +6,11 @@
         android:title="Seleccionar Todo"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_sort"
+        android:title="Ordenar"
+        android:icon="@android:drawable/ic_menu_sort_alphabetically"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_delete_selection"
         android:title="Eliminar"
         android:icon="@android:drawable/ic_menu_delete"
