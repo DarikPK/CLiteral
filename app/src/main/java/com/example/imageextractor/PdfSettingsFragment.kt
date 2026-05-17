@@ -41,7 +41,7 @@ class PdfSettingsFragment : Fragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
-    private var currentSortMode = "alphanumeric" // or "temporal"
+    private var currentSortMode = "temporal" // or "alphanumeric"
 
     private lateinit var folderAdapter: FolderAdapter
     private var allFolders: List<ImageFolder> = emptyList()
@@ -82,7 +82,7 @@ class PdfSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        currentSortMode = sharedPrefs.getString("partida_sort_mode", "alphanumeric") ?: "alphanumeric"
+        currentSortMode = sharedPrefs.getString("partida_sort_mode", "temporal") ?: "temporal"
         setupToolbar()
         setupRecyclerView()
         setupMonthSpinner()
@@ -97,7 +97,8 @@ class PdfSettingsFragment : Fragment() {
             onItemClick = { folder ->
                 selectedFolder = folder
                 val imageCount = folder.imageFiles.size
-                binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
+                val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+                binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText")
                 val pos = folderAdapter.currentList.indexOf(folder)
                 folderAdapter.setSingleSelectedPosition(pos)
 
@@ -113,7 +114,8 @@ class PdfSettingsFragment : Fragment() {
 
                 Toast.makeText(context, "Seleccionado: ${folder.partidaId}", Toast.LENGTH_SHORT).show()
             },
-            onSelectionChanged = { /* No usado aquí para selección múltiple */ }
+            onSelectionChanged = { /* No usado aquí para selección múltiple */ },
+            layoutResId = R.layout.folder_dropdown_item
         )
         binding.rvCapturedFolders.layoutManager = LinearLayoutManager(requireContext())
         binding.rvCapturedFolders.adapter = folderAdapter
@@ -153,7 +155,7 @@ class PdfSettingsFragment : Fragment() {
         }
 
         binding.tvSelectedPartidaHint.setOnClickListener { toggleList() }
-        binding.expandFoldersLayout.setOnClickListener { toggleList() }
+        binding.expandFoldersLayout.setEndIconOnClickListener { toggleList() }
 
         // Auto-save for all EditTexts
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
@@ -388,15 +390,42 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun updateFolderList() {
+        // Antes de enviar la lista, asignar el tipo de partida guardado para cada carpeta
+        allFolders.forEach { folder ->
+            folder.tipoPartida = sharedPrefs.getString("tipo_partida_${folder.partidaId}", null)
+        }
+
         folderAdapter.submitList(allFolders)
 
-        // Seleccionar la última por defecto (la primera de la lista si está ordenada temporalmente)
+        // Seleccionar por defecto la última partida capturada si existe,
+        // de lo contrario la primera de la lista.
         if (selectedFolder == null && allFolders.isNotEmpty()) {
-            val folder = allFolders[0]
+            val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
+            val indexToSelect = if (lastCapturedId != null) {
+                val foundIndex = allFolders.indexOfFirst { it.partidaId == lastCapturedId }
+                if (foundIndex != -1) foundIndex else 0
+            } else {
+                0
+            }
+
+            val folder = allFolders[indexToSelect]
             selectedFolder = folder
             val imageCount = folder.imageFiles.size
-            binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})")
-            folderAdapter.setSingleSelectedPosition(0)
+            val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+            binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText")
+            folderAdapter.setSingleSelectedPosition(indexToSelect)
+
+            // Auto-configurar el spinner de tipo de partida basado en la carpeta seleccionada
+            folder.tipoPartida?.let { tipo ->
+                val adapter = binding.dynamicTipoPartidaSpinner.adapter
+                for (i in 0 until adapter.count) {
+                    if (adapter.getItem(i).toString() == tipo) {
+                        binding.dynamicTipoPartidaSpinner.setSelection(i)
+                        saveInt("dynamic_tipo_partida_position", i)
+                        break
+                    }
+                }
+            }
 
             // Persistir selección por defecto para el Voucher
             sharedPrefs.edit()
@@ -616,11 +645,15 @@ class PdfSettingsFragment : Fragment() {
 
         val result = folders.map { (partidaId, files) ->
             val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
-            ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
+            ImageFolder(
+                partidaId = partidaId,
+                imageFiles = sortedFiles,
+                lastModified = folderLastModified[partidaId] ?: 0L
+            )
         }
 
         return if (currentSortMode == "temporal") {
-            result.sortedByDescending { folderLastModified[it.partidaId] ?: 0L }
+            result.sortedByDescending { it.lastModified }
         } else {
             result.sortedBy { it.partidaId }
         }

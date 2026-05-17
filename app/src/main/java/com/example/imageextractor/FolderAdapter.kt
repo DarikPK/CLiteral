@@ -10,7 +10,8 @@ import com.example.imageextractor.databinding.FolderListItemBinding
 
 class FolderAdapter(
     private val onItemClick: (ImageFolder) -> Unit,
-    private val onSelectionChanged: (Int) -> Unit
+    private val onSelectionChanged: (Int) -> Unit,
+    private val layoutResId: Int = R.layout.folder_list_item
 ) : ListAdapter<ImageFolder, FolderAdapter.FolderViewHolder>(FolderDiffCallback) {
 
     private val selectedItems = mutableSetOf<String>()
@@ -40,7 +41,8 @@ class FolderAdapter(
 
         fun bind(folder: ImageFolder, isSelected: Boolean) {
             val imageCount = folder.imageFiles.size
-            binding.detailsText.text = "${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})"
+            val tipoText = folder.tipoPartida?.let { " - $it" } ?: ""
+            binding.detailsText.text = "${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText"
 
             binding.checkboxSelect.visibility = if (isSelectionMode) View.VISIBLE else View.GONE
             binding.checkboxSelect.isChecked = if (isSelectionMode) selectedItems.contains(folder.partidaId) else isSelected
@@ -56,7 +58,8 @@ class FolderAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FolderViewHolder {
-        val binding = FolderListItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(layoutResId, parent, false)
+        val binding = FolderListItemBinding.bind(view)
         return FolderViewHolder(binding)
     }
 

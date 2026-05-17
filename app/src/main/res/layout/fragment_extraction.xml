@@ -24,7 +24,7 @@
         android:contentDescription="Regresar al menú principal"
         app:fabSize="mini"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         android:visibility="gone"
         tools:visibility="visible"/>
 

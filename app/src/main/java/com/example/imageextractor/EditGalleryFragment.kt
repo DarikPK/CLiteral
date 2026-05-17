@@ -35,6 +35,11 @@ class EditGalleryFragment : Fragment() {
     private var deleteMenuItem: MenuItem? = null
     private var selectAllMenuItem: MenuItem? = null
     private var isSelectionMode = false
+    private var currentSortMode = "temporal" // or "alphanumeric"
+
+    private val sharedPrefs by lazy {
+        requireActivity().getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
+    }
 
     private lateinit var intentSenderLauncher: ActivityResultLauncher<IntentSenderRequest>
 
@@ -75,6 +80,8 @@ class EditGalleryFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        currentSortMode = sharedPrefs.getString("partida_sort_mode", "temporal") ?: "temporal"
 
         (activity as? AppCompatActivity)?.setSupportActionBar(binding.toolbar)
         (activity as? AppCompatActivity)?.supportActionBar?.title = "Partidas Capturadas"
@@ -214,10 +221,13 @@ class EditGalleryFragment : Fragment() {
     private fun loadFoldersFromStorage() {
         lifecycleScope.launch(Dispatchers.IO) {
             val folders = mutableMapOf<String, MutableList<ImageFile>>()
+            val folderLastModified = mutableMapOf<String, Long>()
+
             val projection = arrayOf(
                 MediaStore.Images.Media._ID,
                 MediaStore.Images.Media.DISPLAY_NAME,
-                MediaStore.Images.Media.DATA
+                MediaStore.Images.Media.DATA,
+                MediaStore.Images.Media.DATE_MODIFIED
             )
             // Buscamos en la carpeta específica dentro de Downloads
             val selection = "${MediaStore.Images.Media.DATA} like ? and ${MediaStore.Images.Media.DATA} like ?"
@@ -235,28 +245,46 @@ class EditGalleryFragment : Fragment() {
                 val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
                 val nameColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
                 val pathColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+                val dateColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idColumn)
                     val name = it.getString(nameColumn)
                     val path = it.getString(pathColumn)
+                    val date = it.getLong(dateColumn)
                     val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
                     val partidaId = name.substringBefore("-Hoja").trim()
                     if (partidaId.isNotEmpty()) {
                         val imageFile = ImageFile(uri, path, name)
                         folders.getOrPut(partidaId) { mutableListOf() }.add(imageFile)
+
+                        val currentMaxDate = folderLastModified[partidaId] ?: 0L
+                        if (date > currentMaxDate) {
+                            folderLastModified[partidaId] = date
+                        }
                     }
                 }
             }
 
             val folderList = folders.map { (partidaId, files) ->
                 val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
-                ImageFolder(partidaId = partidaId, imageFiles = sortedFiles)
+                ImageFolder(
+                    partidaId = partidaId,
+                    imageFiles = sortedFiles,
+                    lastModified = folderLastModified[partidaId] ?: 0L,
+                    tipoPartida = sharedPrefs.getString("tipo_partida_$partidaId", null)
+                )
+            }
+
+            val sortedList = if (currentSortMode == "temporal") {
+                folderList.sortedByDescending { it.lastModified }
+            } else {
+                folderList.sortedBy { it.partidaId }
             }
 
             withContext(Dispatchers.Main) {
-                folderAdapter.submitList(folderList)
+                folderAdapter.submitList(sortedList)
             }
         }
     }
@@ -288,8 +316,21 @@ class EditGalleryFragment : Fragment() {
                 }
                 true
             }
+            R.id.action_sort -> {
+                toggleSortMode()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun toggleSortMode() {
+        currentSortMode = if (currentSortMode == "alphanumeric") "temporal" else "alphanumeric"
+        sharedPrefs.edit().putString("partida_sort_mode", currentSortMode).apply()
+        val message = if (currentSortMode == "alphanumeric") "Orden Alfanumérico"
+                     else "Orden Temporal (Reciente primero)"
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        loadFoldersFromStorage()
     }
 
     override fun onDestroyView() {
