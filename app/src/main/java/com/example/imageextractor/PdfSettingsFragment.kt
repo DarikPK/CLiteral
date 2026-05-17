@@ -153,7 +153,7 @@ class PdfSettingsFragment : Fragment() {
         }
 
         binding.tvSelectedPartidaHint.setOnClickListener { toggleList() }
-        binding.expandFoldersLayout.setOnClickListener { toggleList() }
+        binding.expandFoldersLayout.setEndIconOnClickListener { toggleList() }
 
         // Auto-save for all EditTexts
         binding.stampYearEditText.doOnTextChanged { text, _, _, _ -> saveString("stamp_year", text.toString()) }
