@@ -7,9 +7,9 @@
 
     <style name="Theme.ImageExtractor.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark">
-        <item name="android:textColor">@android:color/white</item>
-        <item name="android:colorBackground">?attr/colorPrimary</item>
+    <style name="Theme.ImageExtractor.PopupOverlay" parent="ThemeOverlay.Material3.DynamicColors.Light">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:colorBackground">?attr/colorSurface</item>
         <item name="android:popupBackground">@drawable/popup_background</item>
     </style>
 </resources>
