@@ -108,6 +108,18 @@ class PdfSettingsFragment : Fragment() {
                     .putInt("selected_partida_pages", imageCount)
                     .apply()
 
+                // Auto-configurar el spinner de tipo de partida basado en la carpeta seleccionada
+                folder.tipoPartida?.let { tipo ->
+                    val adapter = binding.dynamicTipoPartidaSpinner.adapter
+                    for (i in 0 until adapter.count) {
+                        if (adapter.getItem(i).toString() == tipo) {
+                            binding.dynamicTipoPartidaSpinner.setSelection(i)
+                            saveInt("dynamic_tipo_partida_position", i)
+                            break
+                        }
+                    }
+                }
+
                 // Colapsar lista al seleccionar
                 isListExpanded = false
                 updateFolderListVisibility()
