@@ -477,10 +477,22 @@ class ExtractionFragment : Fragment() {
 
         // Guardar como la última partida capturada para que aparezca por defecto en la generación de PDF
         val areaRegistral = sharedViewModel.config.value?.areaRegistral
+        val tipoMapeado = when {
+            areaRegistral?.contains("Propiedad Inmueble Predial", ignoreCase = true) == true -> "PREDIOS"
+            areaRegistral?.contains("Personas Juridicas", ignoreCase = true) == true -> "PJ"
+            areaRegistral?.contains("Personas Naturales", ignoreCase = true) == true -> "PN"
+            else -> null
+        }
+
         activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
             ?.edit()
             ?.putString("last_captured_partida_id", numeroPartida)
             ?.putString("last_captured_area_registral", areaRegistral)
+            ?.apply {
+                if (tipoMapeado != null) {
+                    putString("tipo_partida_$numeroPartida", tipoMapeado)
+                }
+            }
             ?.apply()
 
         deleteExistingCaptures(numeroPartida)
@@ -651,10 +663,23 @@ class ExtractionFragment : Fragment() {
         // Guardar la partida actual como la última capturada si existe en la configuración
         val config = sharedViewModel.config.value
         config?.numeroPartida?.let { numeroPartida ->
+            val areaRegistral = config.areaRegistral
+            val tipoMapeado = when {
+                areaRegistral.contains("Propiedad Inmueble Predial", ignoreCase = true) -> "PREDIOS"
+                areaRegistral.contains("Personas Juridicas", ignoreCase = true) -> "PJ"
+                areaRegistral.contains("Personas Naturales", ignoreCase = true) -> "PN"
+                else -> null
+            }
+
             activity?.getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
                 ?.edit()
                 ?.putString("last_captured_partida_id", numeroPartida)
-                ?.putString("last_captured_area_registral", config.areaRegistral)
+                ?.putString("last_captured_area_registral", areaRegistral)
+                ?.apply {
+                    if (tipoMapeado != null) {
+                        putString("tipo_partida_$numeroPartida", tipoMapeado)
+                    }
+                }
                 ?.apply()
         }
 

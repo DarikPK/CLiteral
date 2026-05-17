@@ -272,7 +272,8 @@ class EditGalleryFragment : Fragment() {
                 ImageFolder(
                     partidaId = partidaId,
                     imageFiles = sortedFiles,
-                    lastModified = folderLastModified[partidaId] ?: 0L
+                    lastModified = folderLastModified[partidaId] ?: 0L,
+                    tipoPartida = sharedPrefs.getString("tipo_partida_$partidaId", null)
                 )
             }
 

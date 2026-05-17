@@ -390,21 +390,9 @@ class PdfSettingsFragment : Fragment() {
     }
 
     private fun updateFolderList() {
-        // Antes de enviar la lista, intentar asignar el tipo de partida basado en lo guardado
-        val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
-        val lastArea = sharedPrefs.getString("last_captured_area_registral", null)
-
-        val tipoMapeado = when {
-            lastArea?.contains("Propiedad Inmueble Predial", ignoreCase = true) == true -> "PREDIOS"
-            lastArea?.contains("Personas Juridicas", ignoreCase = true) == true -> "PJ"
-            lastArea?.contains("Personas Naturales", ignoreCase = true) == true -> "PN"
-            else -> null
-        }
-
+        // Antes de enviar la lista, asignar el tipo de partida guardado para cada carpeta
         allFolders.forEach { folder ->
-            if (folder.partidaId == lastCapturedId) {
-                folder.tipoPartida = tipoMapeado
-            }
+            folder.tipoPartida = sharedPrefs.getString("tipo_partida_${folder.partidaId}", null)
         }
 
         folderAdapter.submitList(allFolders)
@@ -412,6 +400,7 @@ class PdfSettingsFragment : Fragment() {
         // Seleccionar por defecto la última partida capturada si existe,
         // de lo contrario la primera de la lista.
         if (selectedFolder == null && allFolders.isNotEmpty()) {
+            val lastCapturedId = sharedPrefs.getString("last_captured_partida_id", null)
             val indexToSelect = if (lastCapturedId != null) {
                 val foundIndex = allFolders.indexOfFirst { it.partidaId == lastCapturedId }
                 if (foundIndex != -1) foundIndex else 0
@@ -426,8 +415,8 @@ class PdfSettingsFragment : Fragment() {
             binding.tvSelectedPartidaHint.setText("${folder.partidaId} (${imageCount} ${if (imageCount == 1) "Hoja" else "Hojas"})$tipoText")
             folderAdapter.setSingleSelectedPosition(indexToSelect)
 
-            // Auto-configurar el spinner de tipo de partida si se mapeó
-            tipoMapeado?.let { tipo ->
+            // Auto-configurar el spinner de tipo de partida basado en la carpeta seleccionada
+            folder.tipoPartida?.let { tipo ->
                 val adapter = binding.dynamicTipoPartidaSpinner.adapter
                 for (i in 0 until adapter.count) {
                     if (adapter.getItem(i).toString() == tipo) {
