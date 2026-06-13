@@ -1517,17 +1517,28 @@ private fun injectCaptchaHybridWatcher() {
       if (isPropiedadInmueble && startsWithP) {
           console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
 
+          // Esperar a que se limpien overlays de carga previos
+          await sleep(2000);
+
           let pdfButton = null;
-          try {
-              pdfButton = await waitForElement('button[title="Ver Hoja Resumen"]', 10000);
-          } catch (e) {
-              console.warn("⚠️ No se pudo encontrar el botón con waitForElement, intentando búsqueda manual...");
+          const startSearch = Date.now();
+          while (Date.now() - startSearch < 15000) {
               pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
+              if (pdfButton && pdfButton.offsetParent !== null && !pdfButton.disabled) {
+                  break;
+              }
+              await sleep(500);
           }
 
           if (pdfButton) {
-              console.log("✅ Botón Hoja Resumen encontrado. Abriendo visor...");
-              await robustClick(pdfButton);
+              console.log("✅ Botón Hoja Resumen encontrado y visible. Abriendo visor...");
+
+              // Clic ultra-robusto
+              pdfButton.scrollIntoView({ block: 'center' });
+              await sleep(300);
+              ['mousedown', 'mouseup', 'click'].forEach(type => {
+                  pdfButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+              });
               await sleep(4000); // Tiempo para que cargue el visor PDF.js
 
               if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
