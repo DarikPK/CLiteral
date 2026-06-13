@@ -1511,14 +1511,19 @@ private fun injectCaptchaHybridWatcher() {
       await robustClick(buscarBtn);
 
       // --- Lógica Hoja Resumen para Inmuebles con Partida P ---
-      const isPropiedadInmueble = mappedArea === "PROPIEDAD INMUEBLE PREDIAL";
-      const startsWithP = "${config.numeroPartida}".startsWith("P");
+      const isPropiedadInmueble = mappedArea.toUpperCase().includes("PROPIEDAD INMUEBLE");
+      const startsWithP = "${config.numeroPartida}".toUpperCase().startsWith("P");
 
       if (isPropiedadInmueble && startsWithP) {
           console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
-          await sleep(2000);
 
-          const pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
+          let pdfButton = null;
+          try {
+              pdfButton = await waitForElement('button[title="Ver Hoja Resumen"]', 10000);
+          } catch (e) {
+              console.warn("⚠️ No se pudo encontrar el botón con waitForElement, intentando búsqueda manual...");
+              pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
+          }
 
           if (pdfButton) {
               console.log("✅ Botón Hoja Resumen encontrado. Abriendo visor...");
