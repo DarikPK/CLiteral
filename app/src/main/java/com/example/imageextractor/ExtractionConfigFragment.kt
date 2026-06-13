@@ -22,6 +22,9 @@ class ExtractionConfigFragment : Fragment() {
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
+    private val oficinas = listOf("ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA_APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CHOTA", "CUSCO", "ESPINAR", "HUACHO", "HUAMACHUCO", "HUANCAVELICA", "HUANCAYO", "HUANTA", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "ILO", "ISLAY_MOYENDO", "JAEN", "JUANJUI", "JULIACA", "LA MERCED ( SELVA CENTRAL)", "LIMA", "MADRE DE DIOS", "MAYNAS", "MOQUEGUA", "MOYOBAMBA", "NAZCA", "OTUZCO", "PASCO", "PISCO", "PIURA", "PUCALPA", "PUNO", "QUILLABAMBA", "SAN PEDRO", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TINGO MARIA", "TRUJILLO", "TUMBES", "YURIMAGUAS")
+    private val areas = listOf("PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES")
+
     private val extractionPrefs by lazy {
         requireActivity().getSharedPreferences("ExtractionSettings", android.content.Context.MODE_PRIVATE)
     }
@@ -47,9 +50,6 @@ class ExtractionConfigFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         loadSavedSettings()
-        // Forzamos a que el dropdown no filtre los resultados al retomar la vista
-        binding.oficinaDropdown.dismissDropDown()
-        binding.areaDropdown.dismissDropDown()
     }
 
     private fun setupManualStartButtonSwitch() {
@@ -111,23 +111,17 @@ class ExtractionConfigFragment : Fragment() {
     }
 
     private fun setupDropdowns() {
-        val oficinas = listOf("ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA_APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CHOTA", "CUSCO", "ESPINAR", "HUACHO", "HUAMACHUCO", "HUANCAVELICA", "HUANCAYO", "HUANTA", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "ILO", "ISLAY_MOYENDO", "JAEN", "JUANJUI", "JULIACA", "LA MERCED ( SELVA CENTRAL)", "LIMA", "MADRE DE DIOS", "MAYNAS", "MOQUEGUA", "MOYOBAMBA", "NAZCA", "OTUZCO", "PASCO", "PISCO", "PIURA", "PUCALPA", "PUNO", "QUILLABAMBA", "SAN PEDRO", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TINGO MARIA", "TRUJILLO", "TUMBES", "YURIMAGUAS")
-        val areas = listOf("PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES")
-
-        val oficinaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, oficinas)
+        val oficinaAdapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, oficinas)
         binding.oficinaDropdown.setAdapter(oficinaAdapter)
 
-        val areaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
+        val areaAdapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
         binding.areaDropdown.setAdapter(areaAdapter)
 
-        // Evitar el filtrado cuando el usuario hace clic en el dropdown
-        binding.oficinaDropdown.setOnTouchListener { _, _ ->
+        binding.oficinaDropdown.setOnClickListener {
             binding.oficinaDropdown.showDropDown()
-            false
         }
-        binding.areaDropdown.setOnTouchListener { _, _ ->
+        binding.areaDropdown.setOnClickListener {
             binding.areaDropdown.showDropDown()
-            false
         }
     }
 
@@ -225,5 +219,33 @@ class ExtractionConfigFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private class NoFilterAdapter(
+        context: android.content.Context,
+        resource: Int,
+        private val items: List<String>
+    ) : ArrayAdapter<String>(context, resource, items) {
+
+        private val noFilter = object : android.widget.Filter() {
+            override fun performFiltering(constraint: CharSequence?): FilterResults {
+                val results = FilterResults()
+                results.values = items
+                results.count = items.size
+                return results
+            }
+
+            override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                notifyDataSetChanged()
+            }
+
+            override fun convertResultToString(resultValue: Any?): CharSequence {
+                return resultValue as String
+            }
+        }
+
+        override fun getFilter(): android.widget.Filter {
+            return noFilter
+        }
     }
 }
