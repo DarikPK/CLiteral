@@ -1520,16 +1520,14 @@ private fun injectCaptchaHybridWatcher() {
           console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
           if (typeof AndroidBridge !== 'undefined') AndroidBridge.showToast("Buscando Hoja Resumen...");
 
-          // Esperar a que se limpien overlays de carga previos
-          await sleep(3000);
+          // Espera inicial mínima
+          await sleep(1000);
 
           let pdfButton = null;
           const startSearch = Date.now();
-          while (Date.now() - startSearch < 20000) {
-              // Intento 1: Selector exacto
+          while (Date.now() - startSearch < 15000) {
               pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
 
-              // Intento 2: Búsqueda flexible por atributo title
               if (!pdfButton) {
                   pdfButton = Array.from(document.querySelectorAll('button')).find(btn => {
                       const t = (btn.getAttribute('title') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -1540,30 +1538,41 @@ private fun injectCaptchaHybridWatcher() {
               if (pdfButton && pdfButton.offsetParent !== null && !pdfButton.disabled) {
                   break;
               }
-              await sleep(1000);
+              await sleep(250); // Comprobación más frecuente
           }
 
           if (pdfButton) {
-              console.log("✅ Botón Hoja Resumen encontrado y visible. Abriendo visor...");
+              console.log("✅ Botón Hoja Resumen encontrado. Abriendo visor...");
 
-              // Clic ultra-robusto
               pdfButton.scrollIntoView({ block: 'center' });
-              await sleep(300);
+              await sleep(100);
               ['mousedown', 'mouseup', 'click'].forEach(type => {
                   pdfButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
               });
-              await sleep(4000); // Tiempo para que cargue el visor PDF.js
 
-              if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
-                  console.log("📄 PDFViewerApplication detectado. Iniciando captura de Hoja Resumen...");
-                  const pdf = PDFViewerApplication.pdfDocument;
-                  const total = pdf.numPages;
+              // --- Espera dinámica para PDF.js ---
+              console.log("⏳ Esperando carga de PDFViewerApplication...");
+              let pdfDoc = null;
+              const startPdfWait = Date.now();
+              while (Date.now() - startPdfWait < 10000) {
+                  if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
+                      pdfDoc = PDFViewerApplication.pdfDocument;
+                      // Verificar que el documento tenga páginas cargadas
+                      if (pdfDoc.numPages > 0) break;
+                  }
+                  await sleep(500);
+              }
+
+              if (pdfDoc) {
+                  console.log("📄 PDF.js listo (" + pdfDoc.numPages + " páginas). Iniciando captura...");
+                  const total = pdfDoc.numPages;
                   const scale = 3;
+                  let captureCount = 0;
 
                   for (let pageNum = 1; pageNum <= total; pageNum++) {
                       try {
                           console.log("📸 Renderizando página Resumen " + pageNum + "/" + total + "...");
-                          const pdfPage = await pdf.getPage(pageNum);
+                          const pdfPage = await pdfDoc.getPage(pageNum);
                           const viewport = pdfPage.getViewport({ scale });
                           const canvas = document.createElement('canvas');
                           const ctx = canvas.getContext('2d');
@@ -1583,19 +1592,23 @@ private fun injectCaptchaHybridWatcher() {
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
-                              await sleep(1000); // Pausa entre descargas
+                              captureCount++;
+                              await sleep(600); // Pausa optimizada
                           }
                       } catch (err) {
                           console.error("❌ Error en página " + pageNum + " de Resumen:", err);
                       }
                   }
-                  console.log("✅ Captura de Hoja Resumen finalizada.");
+                  console.log("✅ Captura de Hoja Resumen finalizada: " + captureCount + " imágenes.");
+                  if (typeof AndroidBridge !== 'undefined') {
+                      AndroidBridge.showToast("✅ Se capturaron " + captureCount + " páginas de la Hoja Resumen.");
+                  }
 
                   // Cerrar el visor
                   const closeBtn = document.querySelector('button.ant-modal-close');
                   if (closeBtn) {
                       await robustClick(closeBtn);
-                      await sleep(1000);
+                      await sleep(800);
                   }
               } else {
                   console.warn("⚠️ PDFViewerApplication no disponible.");
