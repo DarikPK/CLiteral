@@ -100,6 +100,11 @@ class ExtractionFragment : Fragment() {
         }
 
         @JavascriptInterface
+        fun getPdfJsPreviaCount(partidaId: String): Int {
+            return getPdfJsPreviaCountInternal(partidaId)
+        }
+
+        @JavascriptInterface
         fun onCaptchaSolved() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
@@ -564,6 +569,13 @@ class ExtractionFragment : Fragment() {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
+
+                    // --- Obtener contador de PDF.js previo ---
+                    let pdfJsCount = 0;
+                    if (typeof AndroidBridge !== 'undefined') {
+                        pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
+                    }
+
                     let captureCount = 0;
                     // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
                     for (let i = 0; i < N; i++) {
@@ -605,7 +617,16 @@ class ExtractionFragment : Fragment() {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
                                 const hojaNumero = N - i;
-                                const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+
+                                let filename;
+                                if (pdfJsCount > 0) {
+                                    // Nombrado correlativo si hubo capturas PDF.js
+                                    const totalIndex = pdfJsCount + (N - hojaNumero + 1);
+                                    filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion_web.png";
+                                } else {
+                                    // Nombrado original por compatibilidad
+                                    filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                                }
 
                                 if (typeof AndroidBridge !== 'undefined') {
                                     AndroidBridge.setNextDownloadFilename(filename);
@@ -642,7 +663,7 @@ class ExtractionFragment : Fragment() {
 
         if (imageDir.exists() && imageDir.isDirectory) {
             val filesToDelete = imageDir.listFiles { file ->
-                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png")
+                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png") && !file.name.contains("_pdfjs_previa")
             }
             filesToDelete?.forEach { file ->
                 if (file.delete()) {
@@ -700,6 +721,12 @@ class ExtractionFragment : Fragment() {
 
               const numeroPartida = "${numeroPartida ?: ""}";
 
+              // --- Obtener contador de PDF.js previo ---
+              let pdfJsCount = 0;
+              if (numeroPartida && typeof AndroidBridge !== 'undefined') {
+                  pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
+              }
+
               for (let i = 0; i < canvases.length; i++) {
                   const canvas = canvases[i];
                   let filename = "captura_" + Date.now() + "_" + (i+1) + ".png";
@@ -733,7 +760,13 @@ class ExtractionFragment : Fragment() {
 
                       // Si no se detecta el número de hoja por selección, se asume la Hoja 1
                       if (hojaNumero <= 0) hojaNumero = 1;
-                      filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+
+                      if (pdfJsCount > 0) {
+                          const totalIndex = pdfJsCount + (N - hojaNumero + 1);
+                          filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion_web.png";
+                      } else {
+                          filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                      }
                   }
 
                   if (typeof AndroidBridge !== 'undefined') {
@@ -1523,6 +1556,76 @@ private fun injectCaptchaHybridWatcher() {
         throw new Error("No se pudo hacer clic en Previsualizar después de " + (timeout / 1000) + "s.");
       }
       await robustClickPreview(15000);
+
+      // --- Lógica PDF.js Previa para Inmuebles con Partida P ---
+      const isPropiedadInmueble = mappedArea === "PROPIEDAD INMUEBLE PREDIAL";
+      const startsWithP = "${config.numeroPartida}".startsWith("P");
+
+      if (isPropiedadInmueble && startsWithP) {
+          console.log("🔍 Detectada partida P de Inmuebles. Buscando visor PDF...");
+          await sleep(2000); // Dar tiempo a que aparezca el botón de PDF
+
+          const pdfSvgPath = "M531.3 574.4l.3-1.4c5.8-23.9";
+          const pdfButton = Array.from(document.querySelectorAll('button')).find(btn => {
+              const svg = btn.querySelector('svg path');
+              return svg && svg.getAttribute('d')?.startsWith(pdfSvgPath);
+          });
+
+          if (pdfButton) {
+              console.log("✅ Botón PDF encontrado. Abriendo visor...");
+              await robustClick(pdfButton);
+              await sleep(4000); // Tiempo para que cargue el visor PDF.js
+
+              if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
+                  console.log("📄 PDFViewerApplication detectado. Iniciando captura de páginas PDF.js...");
+                  const pdf = PDFViewerApplication.pdfDocument;
+                  const total = pdf.numPages;
+                  const scale = 3;
+
+                  for (let pageNum = 1; pageNum <= total; pageNum++) {
+                      try {
+                          console.log(`📸 Renderizando página PDF.js ${pageNum}/${total}...`);
+                          const pdfPage = await pdf.getPage(pageNum);
+                          const viewport = pdfPage.getViewport({ scale });
+                          const canvas = document.createElement('canvas');
+                          const ctx = canvas.getContext('2d');
+                          canvas.width = Math.floor(viewport.width);
+                          canvas.height = Math.floor(viewport.height);
+
+                          await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+
+                          const dataUrl = canvas.toDataURL('image/png');
+                          const filename = "${config.numeroPartida}-" + String(pageNum).padStart(3, '0') + "_pdfjs_previa.png";
+
+                          if (typeof AndroidBridge !== 'undefined') {
+                              AndroidBridge.setNextDownloadFilename(filename);
+                              const a = document.createElement("a");
+                              a.href = dataUrl;
+                              a.download = filename;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              await sleep(1000); // Pausa entre descargas
+                          }
+                      } catch (err) {
+                          console.error(`❌ Error en página ${pageNum} de PDF.js:`, err);
+                      }
+                  }
+                  console.log("✅ Captura de PDF.js finalizada.");
+
+                  // Cerrar el visor si es necesario (asumimos que al volver a la lista basta)
+                  // Si el visor es un modal o overlay de SUNARP, intentamos cerrarlo
+                  const closeBtn = document.querySelector('button.ant-modal-close');
+                  if (closeBtn) await robustClick(closeBtn);
+                  await sleep(1000);
+              } else {
+                  console.warn("⚠️ PDFViewerApplication no disponible.");
+              }
+          } else {
+              console.warn("⚠️ No se encontró el botón de PDF.");
+          }
+      }
+
       await waitForElement('.columna-lista', 15000);
       try { AndroidBridge && AndroidBridge.notifyUrlChanged(); } catch(e){}
     })();
@@ -1622,5 +1725,16 @@ private fun injectCaptchaHybridWatcher() {
         super.onDestroyView()
         isViewDestroyed = true
         _binding = null
+    }
+
+    private fun getPdfJsPreviaCountInternal(partidaId: String): Int {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val imageDir = File(downloadsDir, "capturas_sunarp")
+        if (!imageDir.exists() || !imageDir.isDirectory) return 0
+
+        val files = imageDir.listFiles { file ->
+            file.isFile && file.name.startsWith("$partidaId-") && file.name.contains("_pdfjs_previa") && file.name.endsWith(".png")
+        }
+        return files?.size ?: 0
     }
 }
