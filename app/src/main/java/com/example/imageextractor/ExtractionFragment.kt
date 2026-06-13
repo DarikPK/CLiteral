@@ -1584,7 +1584,7 @@ private fun injectCaptchaHybridWatcher() {
 
                   for (let pageNum = 1; pageNum <= total; pageNum++) {
                       try {
-                          console.log(`📸 Renderizando página PDF.js ${pageNum}/${total}...`);
+                          console.log("📸 Renderizando página PDF.js " + pageNum + "/" + total + "...");
                           const pdfPage = await pdf.getPage(pageNum);
                           const viewport = pdfPage.getViewport({ scale });
                           const canvas = document.createElement('canvas');
@@ -1608,7 +1608,7 @@ private fun injectCaptchaHybridWatcher() {
                               await sleep(1000); // Pausa entre descargas
                           }
                       } catch (err) {
-                          console.error(`❌ Error en página ${pageNum} de PDF.js:`, err);
+                          console.error("❌ Error en página " + pageNum + " de PDF.js:", err);
                       }
                   }
                   console.log("✅ Captura de PDF.js finalizada.");
