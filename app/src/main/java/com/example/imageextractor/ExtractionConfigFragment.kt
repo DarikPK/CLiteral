@@ -39,10 +39,17 @@ class ExtractionConfigFragment : Fragment() {
         setupAutofillHighlight()
         setupDropdowns()
         setupLoginModeSelector()
-        loadSavedSettings()
         setupContinueButton()
         setupVisibilitySwitch()
         setupManualStartButtonSwitch()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadSavedSettings()
+        // Forzamos a que el dropdown no filtre los resultados al retomar la vista
+        binding.oficinaDropdown.dismissDropDown()
+        binding.areaDropdown.dismissDropDown()
     }
 
     private fun setupManualStartButtonSwitch() {
@@ -112,14 +119,29 @@ class ExtractionConfigFragment : Fragment() {
 
         val areaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
         binding.areaDropdown.setAdapter(areaAdapter)
+
+        // Evitar el filtrado cuando el usuario hace clic en el dropdown
+        binding.oficinaDropdown.setOnTouchListener { _, _ ->
+            binding.oficinaDropdown.showDropDown()
+            false
+        }
+        binding.areaDropdown.setOnTouchListener { _, _ ->
+            binding.areaDropdown.showDropDown()
+            false
+        }
     }
 
     private fun loadSavedSettings() {
         binding.dniEditText.setText(extractionPrefs.getString("dni", ""))
         binding.digitoEditText.setText(extractionPrefs.getString("digito", ""))
         binding.fechaEmisionEditText.setText(extractionPrefs.getString("fecha_emision", ""))
-        binding.oficinaDropdown.setText(extractionPrefs.getString("oficina", "LIMA"), false)
-        binding.areaDropdown.setText(extractionPrefs.getString("area", "PROPIEDAD INMUEBLE PREDIAL"), false)
+
+        val oficina = extractionPrefs.getString("oficina", "LIMA")
+        binding.oficinaDropdown.setText(oficina, false)
+
+        val area = extractionPrefs.getString("area", "PROPIEDAD INMUEBLE PREDIAL")
+        binding.areaDropdown.setText(area, false)
+
         binding.partidaEditText.setText(extractionPrefs.getString("partida", ""))
         binding.prefixPCheckbox.isChecked = extractionPrefs.getBoolean("prefix_p", false)
 
