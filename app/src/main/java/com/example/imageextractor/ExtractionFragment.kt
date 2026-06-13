@@ -620,9 +620,9 @@ class ExtractionFragment : Fragment() {
 
                                 let filename;
                                 if (pdfJsCount > 0) {
-                                    // Nombrado correlativo si hubo capturas PDF.js
+                                    // Nombrado correlativo si hubo capturas de Hoja Resumen
                                     const totalIndex = pdfJsCount + (N - hojaNumero + 1);
-                                    filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion_web.png";
+                                    filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                                 } else {
                                     // Nombrado original por compatibilidad
                                     filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
@@ -663,7 +663,7 @@ class ExtractionFragment : Fragment() {
 
         if (imageDir.exists() && imageDir.isDirectory) {
             val filesToDelete = imageDir.listFiles { file ->
-                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png") && !file.name.contains("_pdfjs_previa")
+                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png") && !file.name.contains("_resumen")
             }
             filesToDelete?.forEach { file ->
                 if (file.delete()) {
@@ -763,7 +763,7 @@ class ExtractionFragment : Fragment() {
 
                       if (pdfJsCount > 0) {
                           const totalIndex = pdfJsCount + (N - hojaNumero + 1);
-                          filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion_web.png";
+                          filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                       } else {
                           filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
                       }
@@ -1510,34 +1510,30 @@ private fun injectCaptchaHybridWatcher() {
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
 
-      // --- Lógica PDF.js Previa para Inmuebles con Partida P ---
+      // --- Lógica Hoja Resumen para Inmuebles con Partida P ---
       const isPropiedadInmueble = mappedArea === "PROPIEDAD INMUEBLE PREDIAL";
       const startsWithP = "${config.numeroPartida}".startsWith("P");
 
       if (isPropiedadInmueble && startsWithP) {
-          console.log("🔍 Detectada partida P de Inmuebles. Buscando visor PDF...");
-          await sleep(2000); // Dar tiempo a que aparezca el botón de PDF
+          console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
+          await sleep(2000);
 
-          const pdfSvgPath = "M531.3 574.4l.3-1.4c5.8-23.9";
-          const pdfButton = Array.from(document.querySelectorAll('button')).find(btn => {
-              const svg = btn.querySelector('svg path');
-              return svg && svg.getAttribute('d')?.startsWith(pdfSvgPath);
-          });
+          const pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
 
           if (pdfButton) {
-              console.log("✅ Botón PDF encontrado. Abriendo visor...");
+              console.log("✅ Botón Hoja Resumen encontrado. Abriendo visor...");
               await robustClick(pdfButton);
               await sleep(4000); // Tiempo para que cargue el visor PDF.js
 
               if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
-                  console.log("📄 PDFViewerApplication detectado. Iniciando captura de páginas PDF.js...");
+                  console.log("📄 PDFViewerApplication detectado. Iniciando captura de Hoja Resumen...");
                   const pdf = PDFViewerApplication.pdfDocument;
                   const total = pdf.numPages;
                   const scale = 3;
 
                   for (let pageNum = 1; pageNum <= total; pageNum++) {
                       try {
-                          console.log("📸 Renderizando página PDF.js " + pageNum + "/" + total + "...");
+                          console.log("📸 Renderizando página Resumen " + pageNum + "/" + total + "...");
                           const pdfPage = await pdf.getPage(pageNum);
                           const viewport = pdfPage.getViewport({ scale });
                           const canvas = document.createElement('canvas');
@@ -1548,7 +1544,7 @@ private fun injectCaptchaHybridWatcher() {
                           await pdfPage.render({ canvasContext: ctx, viewport }).promise;
 
                           const dataUrl = canvas.toDataURL('image/png');
-                          const filename = "${config.numeroPartida}-" + String(pageNum).padStart(3, '0') + "_pdfjs_previa.png";
+                          const filename = "${config.numeroPartida}-" + String(pageNum).padStart(3, '0') + "_resumen.png";
 
                           if (typeof AndroidBridge !== 'undefined') {
                               AndroidBridge.setNextDownloadFilename(filename);
@@ -1561,10 +1557,10 @@ private fun injectCaptchaHybridWatcher() {
                               await sleep(1000); // Pausa entre descargas
                           }
                       } catch (err) {
-                          console.error("❌ Error en página " + pageNum + " de PDF.js:", err);
+                          console.error("❌ Error en página " + pageNum + " de Resumen:", err);
                       }
                   }
-                  console.log("✅ Captura de PDF.js finalizada.");
+                  console.log("✅ Captura de Hoja Resumen finalizada.");
 
                   // Cerrar el visor
                   const closeBtn = document.querySelector('button.ant-modal-close');
@@ -1576,7 +1572,7 @@ private fun injectCaptchaHybridWatcher() {
                   console.warn("⚠️ PDFViewerApplication no disponible.");
               }
           } else {
-              console.warn("⚠️ No se encontró el botón de PDF.");
+              console.warn("⚠️ No se encontró el botón de Hoja Resumen.");
           }
       }
 
@@ -1734,7 +1730,7 @@ private fun injectCaptchaHybridWatcher() {
         if (!imageDir.exists() || !imageDir.isDirectory) return 0
 
         val files = imageDir.listFiles { file ->
-            file.isFile && file.name.startsWith("$partidaId-") && file.name.contains("_pdfjs_previa") && file.name.endsWith(".png")
+            file.isFile && file.name.startsWith("$partidaId-") && file.name.contains("_resumen") && file.name.endsWith(".png")
         }
         return files?.size ?: 0
     }
