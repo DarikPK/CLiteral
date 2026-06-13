@@ -1514,20 +1514,33 @@ private fun injectCaptchaHybridWatcher() {
       const isPropiedadInmueble = mappedArea.toUpperCase().includes("PROPIEDAD INMUEBLE");
       const startsWithP = "${config.numeroPartida}".toUpperCase().startsWith("P");
 
+      console.log("🛠️ Depuración Partida P: Inmueble=" + isPropiedadInmueble + ", EmpiezaP=" + startsWithP);
+
       if (isPropiedadInmueble && startsWithP) {
           console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
+          if (typeof AndroidBridge !== 'undefined') AndroidBridge.showToast("Buscando Hoja Resumen...");
 
           // Esperar a que se limpien overlays de carga previos
-          await sleep(2000);
+          await sleep(3000);
 
           let pdfButton = null;
           const startSearch = Date.now();
-          while (Date.now() - startSearch < 15000) {
+          while (Date.now() - startSearch < 20000) {
+              // Intento 1: Selector exacto
               pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
+
+              // Intento 2: Búsqueda flexible por atributo title
+              if (!pdfButton) {
+                  pdfButton = Array.from(document.querySelectorAll('button')).find(btn => {
+                      const t = (btn.getAttribute('title') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                      return t.includes('ver hoja resumen') || t.includes('hoja resumen');
+                  });
+              }
+
               if (pdfButton && pdfButton.offsetParent !== null && !pdfButton.disabled) {
                   break;
               }
-              await sleep(500);
+              await sleep(1000);
           }
 
           if (pdfButton) {
@@ -1588,7 +1601,9 @@ private fun injectCaptchaHybridWatcher() {
                   console.warn("⚠️ PDFViewerApplication no disponible.");
               }
           } else {
-              console.warn("⚠️ No se encontró el botón de Hoja Resumen.");
+              const allButtons = Array.from(document.querySelectorAll('button')).map(b => b.getAttribute('title') || b.innerText).join(', ');
+              console.warn("⚠️ No se encontró el botón de Hoja Resumen. Botones encontrados: " + allButtons);
+              if (typeof AndroidBridge !== 'undefined') AndroidBridge.showToast("No se encontró el botón Hoja Resumen.");
           }
       }
 
