@@ -22,7 +22,7 @@ class UserManagementFragment : Fragment() {
     private var _binding: FragmentUserManagementBinding? = null
     private val binding get() = _binding!!
     private val firebaseManager = FirebaseManager()
-    private val sharedViewModel: SharedViewModel by activityViewModels()
+    private val sharedViewModel: SharedViewModel by androidx.fragment.app.activityViewModels()
     private var selectedProfileId: String = ""
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
