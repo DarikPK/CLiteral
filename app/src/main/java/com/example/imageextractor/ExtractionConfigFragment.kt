@@ -12,8 +12,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionConfigBinding
+import kotlinx.coroutines.launch
 
 class ExtractionConfigFragment : Fragment() {
 
@@ -115,7 +117,7 @@ class ExtractionConfigFragment : Fragment() {
     }
 
     private fun loadUserProfiles() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val result = firebaseManager.getAllUserProfiles()
             if (result.isSuccess) {
                 userProfiles = result.getOrNull() ?: emptyList()
