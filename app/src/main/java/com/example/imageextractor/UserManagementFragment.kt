@@ -21,6 +21,7 @@ class UserManagementFragment : Fragment() {
     private var _binding: FragmentUserManagementBinding? = null
     private val binding get() = _binding!!
     private val firebaseManager = FirebaseManager()
+    private val sharedViewModel: SharedViewModel by androidx.fragment.app.activityViewModels()
     private var selectedProfileId: String = ""
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -71,22 +72,25 @@ class UserManagementFragment : Fragment() {
             sum += digit * factors[i]
         }
         val remainder = sum % 11
-        val sub = 11 - remainder
-        val result = if (sub == 11) 0 else sub
-        return result + 1
+        val sub = if (remainder == 0) 11 else remainder
+        return 11 - sub + 1
     }
 
     private fun getAlphaDV(dv: Int): String {
-        val series = arrayOf("K", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
-        return if (dv in 1..11) series[dv - 1] else "-"
+        val series = "KABCDEFGHIJ"
+        return if (dv in 1..11) series[dv - 1].toString() else "-"
     }
 
     private fun getNumericDV(dv: Int): String {
-        val series = arrayOf("6", "7", "8", "9", "0", "1", "1", "2", "3", "4", "5")
-        return if (dv in 1..11) series[dv - 1] else "-"
+        val series = "67890112345"
+        return if (dv in 1..11) series[dv - 1].toString() else "-"
     }
 
     private fun setupButtons() {
+        binding.importDefaultButton.setOnClickListener {
+            importDefaults()
+        }
+
         binding.saveUserButton.setOnClickListener {
             val dni = binding.dniEditText.text.toString()
             val dvNum = binding.dvEditText.text.toString()
@@ -128,6 +132,43 @@ class UserManagementFragment : Fragment() {
         binding.dniEditText.setText("")
         binding.fechaExpEditText.setText("")
         binding.saveUserButton.text = "Guardar Usuario en Nube"
+    }
+
+    private fun importDefaults() {
+        val defaults = listOf(
+            LoginData("46736604", "7", "16/04/2025"),
+            LoginData("09842596", "4", "23/06/2022"),
+            LoginData("72049916", "4", "31/01/2022"),
+            LoginData("72577185", "7", "19/03/2025"),
+            LoginData("07784169", "1", "10/01/2023"),
+            LoginData("10376014", "9", "08/11/2019"),
+            LoginData("41363599", "9", "04/12/2023"),
+            LoginData("70312268", "5", "18/12/2023"),
+            LoginData("43128393", "5", "20/03/2018"),
+            LoginData("10126300", "8", "06/06/2018"),
+            LoginData("72291969", "8", "30/12/2022"),
+            LoginData("70519334", "2", "05/09/2024"),
+            LoginData("45490505", "1", "15/11/2021"),
+            LoginData("70341485", "6", "30/06/2020"),
+            LoginData("43373773", "9", "22/10/2021")
+        )
+
+        lifecycleScope.launch {
+            binding.importDefaultButton.isEnabled = false
+            var count = 0
+            defaults.forEach { d ->
+                val profile = UserProfile(
+                    dni = d.dni,
+                    digitoVerificador = d.digito,
+                    fechaExpedicion = d.fechaEmision,
+                    label = "DNI ${d.dni}"
+                )
+                if (firebaseManager.saveUserProfile(profile).isSuccess) count++
+            }
+            Toast.makeText(context, "Se importaron $count usuarios correctamente", Toast.LENGTH_SHORT).show()
+            binding.importDefaultButton.isEnabled = true
+            loadProfiles()
+        }
     }
 
     private fun loadProfiles() {
