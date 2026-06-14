@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +22,7 @@ class UserManagementFragment : Fragment() {
     private var _binding: FragmentUserManagementBinding? = null
     private val binding get() = _binding!!
     private val firebaseManager = FirebaseManager()
-    private val sharedViewModel: SharedViewModel by androidx.fragment.app.activityViewModels()
+    private val sharedViewModel: SharedViewModel by activityViewModels()
     private var selectedProfileId: String = ""
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {

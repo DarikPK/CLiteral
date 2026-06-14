@@ -221,7 +221,12 @@ class ExtractionConfigFragment : Fragment() {
                 }
                 LoginData(dni, digito, fechaEmision)
             } else {
-                sharedViewModel.getRandomLoginData()
+                if (userProfiles.isNotEmpty()) {
+                    val p = userProfiles.random()
+                    LoginData(p.dni, p.digitoVerificador, p.fechaExpedicion)
+                } else {
+                    sharedViewModel.getRandomLoginData()
+                }
             }
 
             var finalNumeroPartida = numeroPartida
