@@ -47,6 +47,13 @@
             android:text="Generar Voucher"
             android:layout_marginTop="8dp"/>
 
+        <Button
+            android:id="@+id/button_to_users"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Datos de Usuarios"
+            android:layout_marginTop="8dp"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

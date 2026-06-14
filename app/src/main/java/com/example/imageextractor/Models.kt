@@ -78,3 +78,14 @@ data class RegistrarProfile(
     val stamp2TranslationToleranceX: String = "0",
     val stamp2TranslationToleranceY: String = "0"
 )
+
+/**
+ * Representa los datos de un usuario (DNI) utilizados para el acceso.
+ */
+data class UserProfile(
+    val id: String = "",
+    val dni: String = "",
+    val digitoVerificador: String = "",
+    val fechaExpedicion: String = "",
+    val label: String = "" // Etiqueta opcional para identificar el DNI
+)

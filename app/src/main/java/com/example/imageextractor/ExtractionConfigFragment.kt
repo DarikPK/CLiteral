@@ -21,6 +21,8 @@ class ExtractionConfigFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
+    private val firebaseManager = FirebaseManager()
+    private var userProfiles: List<UserProfile> = emptyList()
 
     private val oficinas = listOf("ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA_APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CHOTA", "CUSCO", "ESPINAR", "HUACHO", "HUAMACHUCO", "HUANCAVELICA", "HUANCAYO", "HUANTA", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "ILO", "ISLAY_MOYENDO", "JAEN", "JUANJUI", "JULIACA", "LA MERCED ( SELVA CENTRAL)", "LIMA", "MADRE DE DIOS", "MAYNAS", "MOQUEGUA", "MOYOBAMBA", "NAZCA", "OTUZCO", "PASCO", "PISCO", "PIURA", "PUCALPA", "PUNO", "QUILLABAMBA", "SAN PEDRO", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TINGO MARIA", "TRUJILLO", "TUMBES", "YURIMAGUAS")
     private val areas = listOf("PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES")
@@ -45,11 +47,13 @@ class ExtractionConfigFragment : Fragment() {
         setupContinueButton()
         setupVisibilitySwitch()
         setupManualStartButtonSwitch()
+        loadUserProfiles()
     }
 
     override fun onResume() {
         super.onResume()
         loadSavedSettings()
+        loadUserProfiles()
     }
 
     private fun setupManualStartButtonSwitch() {
@@ -106,6 +110,25 @@ class ExtractionConfigFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    private fun loadUserProfiles() {
+        lifecycleScope.launch {
+            val result = firebaseManager.getAllUserProfiles()
+            if (result.isSuccess) {
+                userProfiles = result.getOrNull() ?: emptyList()
+                val labels = userProfiles.map { "${it.dni} (${it.digitoVerificador})" }
+                val adapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels)
+                binding.userProfileDropdown.setAdapter(adapter)
+
+                binding.userProfileDropdown.setOnItemClickListener { _, _, position, _ ->
+                    val profile = userProfiles[position]
+                    binding.dniEditText.setText(profile.dni)
+                    binding.digitoEditText.setText(profile.digitoVerificador)
+                    binding.fechaEmisionEditText.setText(profile.fechaExpedicion)
+                }
             }
         }
     }
