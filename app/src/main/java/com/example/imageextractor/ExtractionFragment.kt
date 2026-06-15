@@ -627,7 +627,7 @@ class ExtractionFragment : Fragment() {
                                 const hojaNumero = N - i;
 
                                 if (totalResumen > 0) {
-                                    const totalIndex = totalResumen + (i + 1);
+                                    const totalIndex = totalResumen + hojaNumero;
                                     const filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                                     if (typeof AndroidBridge !== 'undefined') {
                                         AndroidBridge.saveDataUrl(dataUrl, filename, folderName);
@@ -774,7 +774,7 @@ class ExtractionFragment : Fragment() {
                       if (hojaNumero <= 0) hojaNumero = 1;
 
                       if (totalResumen > 0) {
-                          const totalIndex = totalResumen + (i + 1);
+                          const totalIndex = totalResumen + hojaNumero;
                           filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                       } else {
                           filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
