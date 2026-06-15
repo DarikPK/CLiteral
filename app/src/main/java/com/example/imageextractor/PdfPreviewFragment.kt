@@ -411,8 +411,8 @@ class PdfPreviewFragment : Fragment() {
                     try {
                         val fullSummary = BitmapFactory.decodeFile(summaryPath)
                         if (fullSummary != null) {
-                            // Tomamos el encabezado (aprox. 13% superior) para capturar solo el recuadro de resumen
-                            val headerHeight = (fullSummary.height * 0.13f).toInt()
+                            // Tomamos el encabezado (aprox. 16% superior) para capturar el cuadro de resumen completo
+                            val headerHeight = (fullSummary.height * 0.16f).toInt()
                             if (headerHeight > 0) {
                                 summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
                             }
@@ -1395,39 +1395,39 @@ class PdfPreviewFragment : Fragment() {
         val width = extractionBitmap.width
         val originalHeight = extractionBitmap.height
 
-        // 1. Calcular altura escalada del encabezado de resumen (el nuevo cuadro)
+        // 1. Altura escalada del nuevo cuadro de resumen
         val scale = width.toFloat() / header.width.toFloat()
         val scaledHeaderHeight = (header.height * scale).toInt()
 
-        // 2. Punto de corte en la extracción original (donde empieza el área de interés "Asiento")
-        // Usamos un 24% para descartar el encabezado original.
-        val cutTop = (originalHeight * 0.24f).toInt()
+        // 2. Punto de corte en la hoja de extracción: bajamos solo un poco para quitar su encabezado
+        // 14% es suficiente para eliminar el logo/título original y dejar paso al área de asientos.
+        val cutTop = (originalHeight * 0.14f).toInt()
 
-        // 3. Punto de destino para el contenido: lo bajamos para que empiece después del cuadro de resumen.
-        // Usamos un 26% para asegurar que hay espacio suficiente y el cuadro no cubra el texto.
-        val destinationTop = (originalHeight * 0.26f).toInt()
+        // 3. Punto de destino: Justo después del nuevo cuadro, sin huecos en blanco.
+        val destinationTop = scaledHeaderHeight
 
-        // El contenido que vamos a conservar
-        val contentHeightToKeep = originalHeight - cutTop
+        // El alto del contenido que queremos trasladar
+        val contentHeightToMove = originalHeight - cutTop
 
-        // 4. Crear bitmap del mismo tamaño original
+        // 4. Crear bitmap con las dimensiones originales
         val resultBitmap = Bitmap.createBitmap(width, originalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(resultBitmap)
         canvas.drawColor(Color.WHITE)
 
         val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        // 5. Dibujar el nuevo encabezado de resumen en la parte superior
+        // 5. Dibujar el nuevo encabezado (cuadro resumen)
         val headerSrc = Rect(0, 0, header.width, header.height)
         val headerDst = Rect(0, 0, width, scaledHeaderHeight)
         canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
 
-        // 6. Dibujar el contenido original TRASLADADO hacia abajo (desde destinationTop).
-        // El exceso al final de la página se recorta automáticamente.
-        val contentSrc = Rect(0, cutTop, width, originalHeight)
-        val contentDst = Rect(0, destinationTop, width, Math.min(originalHeight, destinationTop + contentHeightToKeep))
+        // 6. Dibujar el contenido de la extracción DESPLAZADO hacia abajo.
+        // Se coloca exactamente debajo del nuevo encabezado.
+        // Lo que sobre al final del alto original se recorta (clip) automáticamente.
+        val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
+        val contentDst = Rect(0, destinationTop, width, originalHeight)
 
-        if (contentDst.bottom > contentDst.top) {
+        if (contentDst.height() > 0) {
             canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
         }
 
