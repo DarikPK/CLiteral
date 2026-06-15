@@ -86,8 +86,15 @@ class UserManagementFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        binding.importDefaultButton.setOnClickListener {
-            importDefaults()
+        binding.addUserButton.setOnClickListener {
+            if (binding.userInputLayout.visibility == View.VISIBLE) {
+                binding.userInputLayout.visibility = View.GONE
+                binding.addUserButton.text = "Agregar Usuario"
+            } else {
+                clearForm()
+                binding.userInputLayout.visibility = View.VISIBLE
+                binding.addUserButton.text = "Cancelar / Ocultar"
+            }
         }
 
         binding.saveUserButton.setOnClickListener {
@@ -131,6 +138,8 @@ class UserManagementFragment : Fragment() {
         binding.dniEditText.setText("")
         binding.fechaExpEditText.setText("")
         binding.saveUserButton.text = "Guardar Usuario en Nube"
+        binding.userInputLayout.visibility = View.GONE
+        binding.addUserButton.text = "Agregar Usuario"
     }
 
     private fun importDefaults() {
@@ -190,13 +199,22 @@ class UserManagementFragment : Fragment() {
 
             override fun onBindViewHolder(holder: UserViewHolder, position: Int) {
                 val p = profiles[position]
-                holder.text1.text = "${p.dni} - DV: ${p.digitoVerificador}"
+                // DNI en negrita y subrayado
+                val spannable = android.text.SpannableString("${p.dni} - DV: ${p.digitoVerificador}")
+                spannable.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, p.dni.length, 0)
+                spannable.setSpan(android.text.style.UnderlineSpan(), 0, p.dni.length, 0)
+
+                holder.text1.text = spannable
                 holder.text2.text = "Exp: ${p.fechaExpedicion}"
+
                 holder.itemView.setOnClickListener {
                     selectedProfileId = p.id
                     binding.dniEditText.setText(p.dni)
                     binding.fechaExpEditText.setText(p.fechaExpedicion)
                     binding.saveUserButton.text = "Actualizar Usuario"
+
+                    binding.userInputLayout.visibility = View.VISIBLE
+                    binding.addUserButton.text = "Cancelar / Ocultar"
                 }
                 holder.itemView.setOnLongClickListener {
                     showDeleteDialog(p)
