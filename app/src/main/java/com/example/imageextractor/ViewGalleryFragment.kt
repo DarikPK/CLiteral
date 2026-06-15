@@ -78,6 +78,7 @@ class ViewGalleryFragment : Fragment() {
                 putStringArray("imageUrls", imageUrls.toTypedArray())
                 putInt("initialIndex", imageUrls.indexOf(imagePath))
                 putBoolean("filtersEnabled", binding.switchFilters.isChecked)
+                putString("partidaId", partidaId)
             }
             findNavController().navigate(R.id.action_viewGalleryFragment_to_imagePreviewFragment, bundle)
         }

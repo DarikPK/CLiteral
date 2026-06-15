@@ -406,41 +406,51 @@ class PdfPreviewFragment : Fragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             // 1. Cargar el encabezado de la hoja de resumen si el filtro está activo
             if (isFilterSummaryBoxEnabled && partidaId?.startsWith("P", ignoreCase = true) == true) {
-                val summaryPath = imagePaths?.find { it.contains("_resumen") }
+                val summaryPath = imagePaths?.find { it.lowercase().contains("_resumen") }
                 if (summaryPath != null) {
-                    val fullSummary = BitmapFactory.decodeFile(summaryPath)
-                    if (fullSummary != null) {
-                        // Tomamos el encabezado (aprox. 23% superior) que contiene el recuadro de resumen
-                        val headerHeight = (fullSummary.height * 0.23f).toInt()
-                        summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
-                        fullSummary.recycle()
+                    try {
+                        val fullSummary = BitmapFactory.decodeFile(summaryPath)
+                        if (fullSummary != null) {
+                            // Tomamos el encabezado (aprox. 24% superior) que contiene el recuadro de resumen
+                            val headerHeight = (fullSummary.height * 0.24f).toInt()
+                            if (headerHeight > 0) {
+                                summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
+                            }
+                            fullSummary.recycle()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
             }
 
             imagePaths!!.forEach { path ->
-                var currentBitmap = BitmapFactory.decodeFile(path)
-                if (currentBitmap == null) return@forEach
+                try {
+                    var currentBitmap = BitmapFactory.decodeFile(path)
+                    if (currentBitmap == null) return@forEach
 
-                // 2. Aplicar el filtro de cuadro de resumen a las páginas de extracción
-                if (isFilterSummaryBoxEnabled &&
-                    partidaId?.startsWith("P", ignoreCase = true) == true &&
-                    !path.contains("_resumen") &&
-                    summaryBoxHeaderBitmap != null) {
+                    // 2. Aplicar el filtro de cuadro de resumen a las páginas de extracción
+                    if (isFilterSummaryBoxEnabled &&
+                        partidaId?.startsWith("P", ignoreCase = true) == true &&
+                        !path.lowercase().contains("_resumen") &&
+                        summaryBoxHeaderBitmap != null) {
 
-                    val filteredBitmap = applySummaryBoxFilter(currentBitmap)
-                    if (filteredBitmap != currentBitmap) {
-                        currentBitmap.recycle()
-                        currentBitmap = filteredBitmap
+                        val filteredBitmap = applySummaryBoxFilter(currentBitmap)
+                        if (filteredBitmap != currentBitmap) {
+                            currentBitmap.recycle()
+                            currentBitmap = filteredBitmap
+                        }
                     }
-                }
 
-                val adjustedBitmap = applyBitmapAdjustments(currentBitmap)
-                pageBitmaps.add(adjustedBitmap)
+                    val adjustedBitmap = applyBitmapAdjustments(currentBitmap)
+                    pageBitmaps.add(adjustedBitmap)
 
-                // Liberar el bitmap intermedio si se creó uno nuevo en los ajustes
-                if (adjustedBitmap != currentBitmap) {
-                    currentBitmap.recycle()
+                    // Liberar el bitmap intermedio si se creó uno nuevo en los ajustes
+                    if (adjustedBitmap != currentBitmap) {
+                        currentBitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
 
@@ -1382,9 +1392,9 @@ class PdfPreviewFragment : Fragment() {
     private fun applySummaryBoxFilter(extractionBitmap: Bitmap): Bitmap {
         val header = summaryBoxHeaderBitmap ?: return extractionBitmap
 
-        // Proporción aproximada donde comienza el "Asiento" en copias literales de SUNARP
-        // Queremos conservar desde el Asiento hacia abajo y descartar el encabezado original de la extracción.
-        val cutTopPercent = 0.24f
+        // Proporción aproximada donde comienza el "Asiento" en copias literales de SUNARP.
+        // Se baja el contenido desde donde dice Asiento (aprox. 23-24%).
+        val cutTopPercent = 0.23f
         val cutTop = (extractionBitmap.height * cutTopPercent).toInt()
         val contentHeight = extractionBitmap.height - cutTop
 
@@ -1396,6 +1406,7 @@ class PdfPreviewFragment : Fragment() {
         val scale = width.toFloat() / header.width.toFloat()
         val scaledHeaderHeight = (header.height * scale).toInt()
 
+        // El nuevo bitmap tendrá la altura del encabezado de resumen + el contenido original desplazado
         val resultHeight = scaledHeaderHeight + contentHeight
         val resultBitmap = Bitmap.createBitmap(width, resultHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(resultBitmap)
@@ -1403,12 +1414,12 @@ class PdfPreviewFragment : Fragment() {
 
         val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        // Dibujar encabezado de resumen escalado en la parte superior
+        // 1. Dibujar encabezado de resumen escalado en la parte superior
         val headerSrc = Rect(0, 0, header.width, header.height)
         val headerDst = Rect(0, 0, width, scaledHeaderHeight)
         canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
 
-        // Dibujar contenido de la extracción (desde el Asiento) justo debajo
+        // 2. Dibujar contenido de la extracción (desde el Asiento) justo debajo para no cubrirlo
         val contentSrc = Rect(0, cutTop, width, extractionBitmap.height)
         val contentDst = Rect(0, scaledHeaderHeight, width, resultHeight)
         canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
