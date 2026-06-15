@@ -104,14 +104,28 @@ class ImagePreviewFragment : Fragment() {
     private fun shareCurrentImage() {
         val currentPosition = binding.viewPager.currentItem
         val imagePath = imageUrls.getOrNull(currentPosition) ?: return
+        val isPartidaP = partidaId?.startsWith("P", ignoreCase = true) == true
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val originalFile = File(imagePath)
+                val shareDir = File(requireContext().cacheDir, "images")
+                if (!shareDir.exists()) shareDir.mkdirs()
+
                 val shareFile: File
+                var mimeType = "image/jpeg"
 
                 if (filtersEnabled) {
-                    val bitmap = BitmapFactory.decodeFile(imagePath)
+                    var bitmap = BitmapFactory.decodeFile(imagePath)
+
+                    // Solo para partidas P: aplicar filtro de cuadro resumen
+                    if (isPartidaP && !imagePath.lowercase().contains("_resumen") && summaryBoxHeaderBitmap != null) {
+                        val filteredWithSummary = applySummaryBoxFilter(bitmap, summaryBoxHeaderBitmap!!)
+                        bitmap.recycle()
+                        bitmap = filteredWithSummary
+                    }
+
+                    // Filtros de imagen (brillo/contraste)
                     val brightness = (35f - 50f) * 5f
                     val contrast = 95f / 50f
                     val cm = ColorMatrix(floatArrayOf(
@@ -121,38 +135,44 @@ class ImagePreviewFragment : Fragment() {
                         0f, 0f, 0f, 1f, 0f
                     ))
 
-                    val filteredBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
-                    val canvas = Canvas(filteredBitmap)
-                    val paint = Paint()
+                    val finalBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(finalBitmap)
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
                     paint.colorFilter = ColorMatrixColorFilter(cm)
                     canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
-                    val shareDir = File(requireContext().cacheDir, "images")
-                    if (!shareDir.exists()) shareDir.mkdirs()
                     val tempFile = File(shareDir, "shared_image.jpg")
                     FileOutputStream(tempFile).use { out ->
-                        filteredBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
                     }
                     shareFile = tempFile
                     bitmap.recycle()
-                    filteredBitmap.recycle()
+                    finalBitmap.recycle()
                 } else {
-                    // Si no hay filtros, simplemente copiamos a cache con extensión jpg si es necesario o usamos el original
-                    val shareDir = File(requireContext().cacheDir, "images")
-                    if (!shareDir.exists()) shareDir.mkdirs()
-                    val tempFile = File(shareDir, "shared_image.jpg")
-                    val bitmap = BitmapFactory.decodeFile(imagePath)
-                    FileOutputStream(tempFile).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                    if (isPartidaP) {
+                        // Para partidas P sin filtros, compartir la imagen original
+                        val extension = originalFile.extension.lowercase()
+                        val fileName = "shared_original" + if (extension.isNotEmpty()) ".$extension" else ""
+                        val fileToShare = File(shareDir, fileName)
+                        originalFile.copyTo(fileToShare, overwrite = true)
+                        shareFile = fileToShare
+                        mimeType = if (extension == "png") "image/png" else "image/jpeg"
+                    } else {
+                        // Mantener comportamiento original para otras partidas
+                        val tempFile = File(shareDir, "shared_image.jpg")
+                        val bitmap = BitmapFactory.decodeFile(imagePath)
+                        FileOutputStream(tempFile).use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                        }
+                        shareFile = tempFile
+                        bitmap.recycle()
                     }
-                    shareFile = tempFile
-                    bitmap.recycle()
                 }
 
                 withContext(Dispatchers.Main) {
                     val uri = FileProvider.getUriForFile(requireContext(), "${requireContext().packageName}.provider", shareFile)
                     val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "image/jpeg"
+                        type = mimeType
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
@@ -164,6 +184,36 @@ class ImagePreviewFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun applySummaryBoxFilter(extractionBitmap: Bitmap, header: Bitmap): Bitmap {
+        val width = extractionBitmap.width
+        val originalHeight = extractionBitmap.height
+
+        val scale = width.toFloat() / header.width.toFloat()
+        val scaledHeaderHeight = (header.height * scale).toInt()
+
+        val cutTop = (originalHeight * 0.14f).toInt()
+        val destinationTop = scaledHeaderHeight
+
+        val resultBitmap = Bitmap.createBitmap(width, originalHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        canvas.drawColor(Color.WHITE)
+
+        val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        val headerSrc = Rect(0, 0, header.width, header.height)
+        val headerDst = Rect(0, 0, width, scaledHeaderHeight)
+        canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
+
+        val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
+        val contentDst = Rect(0, destinationTop, width, originalHeight)
+
+        if (contentDst.height() > 0) {
+            canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
+        }
+
+        return resultBitmap
     }
 
     private fun setupToolbar() {
