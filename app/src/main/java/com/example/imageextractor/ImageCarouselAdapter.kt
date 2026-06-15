@@ -103,6 +103,18 @@ class ImageCarouselAdapter(
                 canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
             }
 
+            // 7. Dibujar parche blanco para eliminar texto vertical a la derecha
+            val patchPaint = Paint()
+            patchPaint.color = android.graphics.Color.WHITE
+            patchPaint.style = Paint.Style.FILL
+
+            val patchLeft = width * 0.908f
+            val patchRight = width * 0.955f
+            val patchTop = originalHeight * 0.18f
+            val patchBottom = originalHeight * 0.42f
+
+            canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, patchPaint)
+
             return resultBitmap
         }
     }
