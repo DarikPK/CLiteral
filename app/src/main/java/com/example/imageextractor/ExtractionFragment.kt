@@ -1604,7 +1604,8 @@ private fun injectCaptchaHybridWatcher() {
                       AndroidBridge.showToast("✅ Hoja Resumen: " + captureCount + " páginas capturadas.");
                   }
 
-                  const closeBtn = document.querySelector('button.ant-modal-close');
+                  const closeBtn = document.querySelector('button.denied-button') ||
+                                   Array.from(document.querySelectorAll('button')).find(btn => btn.innerText.includes('Cerrar'));
                   if (closeBtn) {
                       await robustClick(closeBtn);
                       await sleep(300);
