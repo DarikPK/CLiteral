@@ -443,7 +443,20 @@ class PdfPreviewFragment : Fragment() {
                     }
 
                     val adjustedBitmap = applyBitmapAdjustments(currentBitmap)
-                    pageBitmaps.add(adjustedBitmap)
+
+                    // Aplicar parche blanco a la zona inferior de la hoja de resumen (Partidas P con filtro activo)
+                    if (isFilterSummaryBoxEnabled &&
+                        partidaId?.startsWith("P", ignoreCase = true) == true &&
+                        path.lowercase().contains("_resumen")) {
+
+                        val patchedBitmap = applySummaryPatch(adjustedBitmap)
+                        if (patchedBitmap != adjustedBitmap) {
+                            adjustedBitmap.recycle()
+                        }
+                        pageBitmaps.add(patchedBitmap)
+                    } else {
+                        pageBitmaps.add(adjustedBitmap)
+                    }
 
                     // Liberar el bitmap intermedio si se creó uno nuevo en los ajustes
                     if (adjustedBitmap != currentBitmap) {
@@ -1444,6 +1457,25 @@ class PdfPreviewFragment : Fragment() {
         canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, patchPaint)
 
         return resultBitmap
+    }
+
+    private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+        val paint = Paint()
+        paint.color = Color.WHITE
+        paint.style = Paint.Style.FILL
+
+        // Parche para la zona inferior de la hoja de resumen
+        val patchLeft = 0f
+        val patchRight = bitmap.width.toFloat()
+        val patchTop = bitmap.height * 0.935f
+        val patchBottom = bitmap.height.toFloat()
+
+        canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
+        return result
     }
 
     private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {

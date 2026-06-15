@@ -118,11 +118,17 @@ class ImagePreviewFragment : Fragment() {
                 if (filtersEnabled) {
                     var bitmap = BitmapFactory.decodeFile(imagePath)
 
-                    // Solo para partidas P: aplicar filtro de cuadro resumen
-                    if (isPartidaP && !imagePath.lowercase().contains("_resumen") && summaryBoxHeaderBitmap != null) {
-                        val filteredWithSummary = applySummaryBoxFilter(bitmap, summaryBoxHeaderBitmap!!)
-                        bitmap.recycle()
-                        bitmap = filteredWithSummary
+                    // Solo para partidas P: aplicar filtro de cuadro resumen o parche de resumen
+                    if (isPartidaP) {
+                        if (!imagePath.lowercase().contains("_resumen") && summaryBoxHeaderBitmap != null) {
+                            val filteredWithSummary = applySummaryBoxFilter(bitmap, summaryBoxHeaderBitmap!!)
+                            bitmap.recycle()
+                            bitmap = filteredWithSummary
+                        } else if (imagePath.lowercase().contains("_resumen")) {
+                            val patchedSummary = applySummaryPatch(bitmap)
+                            bitmap.recycle()
+                            bitmap = patchedSummary
+                        }
                     }
 
                     // Filtros de imagen (brillo/contraste)
@@ -184,6 +190,24 @@ class ImagePreviewFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+        val paint = Paint()
+        paint.color = Color.WHITE
+        paint.style = Paint.Style.FILL
+
+        val patchLeft = 0f
+        val patchRight = bitmap.width.toFloat()
+        val patchTop = bitmap.height * 0.935f
+        val patchBottom = bitmap.height.toFloat()
+
+        canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
+        return result
     }
 
     private fun applySummaryBoxFilter(extractionBitmap: Bitmap, header: Bitmap): Bitmap {

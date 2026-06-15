@@ -43,6 +43,17 @@ class ImageCarouselAdapter(
                 } else {
                     binding.zoomableImageView.setImageURI(Uri.fromFile(File(imagePath)))
                 }
+            } else if (filtersEnabled && partidaId?.startsWith("P", ignoreCase = true) == true &&
+                imagePath.lowercase().contains("_resumen")) {
+
+                val original = BitmapFactory.decodeFile(imagePath)
+                if (original != null) {
+                    val patched = applySummaryPatch(original)
+                    binding.zoomableImageView.setImageBitmap(patched)
+                    original.recycle()
+                } else {
+                    binding.zoomableImageView.setImageURI(Uri.fromFile(File(imagePath)))
+                }
             } else {
                 binding.zoomableImageView.setImageURI(Uri.fromFile(File(imagePath)))
             }
@@ -116,6 +127,23 @@ class ImageCarouselAdapter(
             canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, patchPaint)
 
             return resultBitmap
+        }
+        private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+            val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+            canvas.drawBitmap(bitmap, 0f, 0f, null)
+
+            val paint = Paint()
+            paint.color = android.graphics.Color.WHITE
+            paint.style = Paint.Style.FILL
+
+            val patchLeft = 0f
+            val patchRight = bitmap.width.toFloat()
+            val patchTop = bitmap.height * 0.935f
+            val patchBottom = bitmap.height.toFloat()
+
+            canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
+            return result
         }
     }
 
