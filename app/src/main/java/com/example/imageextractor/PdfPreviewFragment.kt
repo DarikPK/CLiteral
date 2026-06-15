@@ -138,6 +138,9 @@ class PdfPreviewFragment : Fragment() {
     private var marginLeft: Float = 0f
     private var marginRight: Float = 0f
 
+    private var isFilterSummaryBoxEnabled: Boolean = false
+    private var summaryBoxHeaderBitmap: Bitmap? = null
+
     data class Watermark(
         val text: String,
         val opacity: Float,
@@ -178,6 +181,8 @@ class PdfPreviewFragment : Fragment() {
             marginBottom = it.getFloat("marginBottom", 10f)
             marginLeft = it.getFloat("marginLeft", 10f)
             marginRight = it.getFloat("marginRight", 10f)
+
+            isFilterSummaryBoxEnabled = it.getBoolean("isFilterSummaryBoxEnabled", false)
 
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
@@ -399,10 +404,44 @@ class PdfPreviewFragment : Fragment() {
     private fun loadPages() {
         if (imagePaths == null) return
         lifecycleScope.launch(Dispatchers.IO) {
+            // 1. Cargar el encabezado de la hoja de resumen si el filtro está activo
+            if (isFilterSummaryBoxEnabled && partidaId?.startsWith("P", ignoreCase = true) == true) {
+                val summaryPath = imagePaths?.find { it.contains("_resumen") }
+                if (summaryPath != null) {
+                    val fullSummary = BitmapFactory.decodeFile(summaryPath)
+                    if (fullSummary != null) {
+                        // Tomamos el encabezado (aprox. 23% superior) que contiene el recuadro de resumen
+                        val headerHeight = (fullSummary.height * 0.23f).toInt()
+                        summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
+                        fullSummary.recycle()
+                    }
+                }
+            }
+
             imagePaths!!.forEach { path ->
-                val originalBitmap = BitmapFactory.decodeFile(path)
-                val adjustedBitmap = applyBitmapAdjustments(originalBitmap)
+                var currentBitmap = BitmapFactory.decodeFile(path)
+                if (currentBitmap == null) return@forEach
+
+                // 2. Aplicar el filtro de cuadro de resumen a las páginas de extracción
+                if (isFilterSummaryBoxEnabled &&
+                    partidaId?.startsWith("P", ignoreCase = true) == true &&
+                    !path.contains("_resumen") &&
+                    summaryBoxHeaderBitmap != null) {
+
+                    val filteredBitmap = applySummaryBoxFilter(currentBitmap)
+                    if (filteredBitmap != currentBitmap) {
+                        currentBitmap.recycle()
+                        currentBitmap = filteredBitmap
+                    }
+                }
+
+                val adjustedBitmap = applyBitmapAdjustments(currentBitmap)
                 pageBitmaps.add(adjustedBitmap)
+
+                // Liberar el bitmap intermedio si se creó uno nuevo en los ajustes
+                if (adjustedBitmap != currentBitmap) {
+                    currentBitmap.recycle()
+                }
             }
 
             if (isStampEnabled && stampDateText.isNotBlank()) {
@@ -1340,6 +1379,43 @@ class PdfPreviewFragment : Fragment() {
         return resultBitmap
     }
 
+    private fun applySummaryBoxFilter(extractionBitmap: Bitmap): Bitmap {
+        val header = summaryBoxHeaderBitmap ?: return extractionBitmap
+
+        // Proporción aproximada donde comienza el "Asiento" en copias literales de SUNARP
+        // Queremos conservar desde el Asiento hacia abajo y descartar el encabezado original de la extracción.
+        val cutTopPercent = 0.24f
+        val cutTop = (extractionBitmap.height * cutTopPercent).toInt()
+        val contentHeight = extractionBitmap.height - cutTop
+
+        if (contentHeight <= 0) return extractionBitmap
+
+        val width = extractionBitmap.width
+
+        // Escalar el encabezado de resumen para que coincida con el ancho de la extracción
+        val scale = width.toFloat() / header.width.toFloat()
+        val scaledHeaderHeight = (header.height * scale).toInt()
+
+        val resultHeight = scaledHeaderHeight + contentHeight
+        val resultBitmap = Bitmap.createBitmap(width, resultHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        canvas.drawColor(Color.WHITE)
+
+        val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        // Dibujar encabezado de resumen escalado en la parte superior
+        val headerSrc = Rect(0, 0, header.width, header.height)
+        val headerDst = Rect(0, 0, width, scaledHeaderHeight)
+        canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
+
+        // Dibujar contenido de la extracción (desde el Asiento) justo debajo
+        val contentSrc = Rect(0, cutTop, width, extractionBitmap.height)
+        val contentDst = Rect(0, scaledHeaderHeight, width, resultHeight)
+        canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
+
+        return resultBitmap
+    }
+
     private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {
         if (brightness == 50f && contrast == 50f) {
             return originalBitmap
@@ -1469,6 +1545,8 @@ class PdfPreviewFragment : Fragment() {
         signatureBitmap = null
         signatureSecondaryBitmap?.recycle()
         signatureSecondaryBitmap = null
+        summaryBoxHeaderBitmap?.recycle()
+        summaryBoxHeaderBitmap = null
         _binding = null
     }
 

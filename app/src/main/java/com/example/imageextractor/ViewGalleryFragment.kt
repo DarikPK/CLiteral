@@ -16,6 +16,10 @@ class ViewGalleryFragment : Fragment() {
     private var _binding: FragmentViewGalleryBinding? = null
     private val binding get() = _binding!!
 
+    private val sharedPrefs by lazy {
+        requireActivity().getSharedPreferences("PdfSettings", android.content.Context.MODE_PRIVATE)
+    }
+
     private lateinit var detailAdapter: ImageDetailAdapter
     private lateinit var iconAdapter: ImageIconAdapter
     private var imageUrls: MutableList<String> = mutableListOf()
@@ -48,7 +52,12 @@ class ViewGalleryFragment : Fragment() {
         setupAdapters()
         setupRecyclerView()
 
+        binding.switchFilters.isChecked = sharedPrefs.getBoolean("gallery_filters_enabled", true)
+        detailAdapter.setFiltersEnabled(binding.switchFilters.isChecked)
+        iconAdapter.setFiltersEnabled(binding.switchFilters.isChecked)
+
         binding.switchFilters.setOnCheckedChangeListener { _, isChecked ->
+            sharedPrefs.edit().putBoolean("gallery_filters_enabled", isChecked).apply()
             detailAdapter.setFiltersEnabled(isChecked)
             iconAdapter.setFiltersEnabled(isChecked)
         }
