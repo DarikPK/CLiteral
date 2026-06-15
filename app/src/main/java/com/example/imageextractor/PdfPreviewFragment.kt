@@ -1439,19 +1439,19 @@ class PdfPreviewFragment : Fragment() {
             color = Color.WHITE
             style = Paint.Style.FILL
         }
-        val rectW = width * 0.40f
-        val rectH = scaledHeaderHeight * 0.25f
+        val rectW = width * 0.32f
+        val rectH = scaledHeaderHeight * 0.18f
         val rectL = (width - rectW) / 2f
-        val rectT = scaledHeaderHeight * 0.31f
+        val rectT = scaledHeaderHeight * 0.33f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = scaledHeaderHeight * 0.17f
+            textSize = scaledHeaderHeight * 0.11f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.72f, textPaint)
+        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.70f, textPaint)
 
         // 6. Dibujar el contenido de la extracción DESPLAZADO hacia abajo.
         // Se coloca exactamente debajo del nuevo encabezado.
@@ -1496,19 +1496,19 @@ class PdfPreviewFragment : Fragment() {
 
         // Parche superior para el título "CERTIFICADO LITERAL"
         val headerHeight = bitmap.height * 0.16f
-        val rectW = bitmap.width * 0.40f
-        val rectH = headerHeight * 0.25f
+        val rectW = bitmap.width * 0.32f
+        val rectH = headerHeight * 0.18f
         val rectL = (bitmap.width - rectW) / 2f
-        val rectT = headerHeight * 0.31f
+        val rectT = headerHeight * 0.33f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = headerHeight * 0.17f
+            textSize = headerHeight * 0.11f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.72f, textPaint)
+        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
 
         return result
     }
