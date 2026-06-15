@@ -50,7 +50,7 @@ class ImagePreviewFragment : Fragment() {
                 try {
                     val fullSummary = BitmapFactory.decodeFile(summaryPath)
                     if (fullSummary != null) {
-                        val headerHeight = (fullSummary.height * 0.24f).toInt()
+                        val headerHeight = (fullSummary.height * 0.17f).toInt()
                         if (headerHeight > 0) {
                             summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
                         }

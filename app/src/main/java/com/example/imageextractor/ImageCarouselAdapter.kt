@@ -68,23 +68,40 @@ class ImageCarouselAdapter(
         }
 
         private fun applySummaryBoxFilter(extractionBitmap: Bitmap, header: Bitmap): Bitmap {
-            val cutTopPercent = 0.23f
-            val cutTop = (extractionBitmap.height * cutTopPercent).toInt()
-            val contentHeight = extractionBitmap.height - cutTop
-            if (contentHeight <= 0) return extractionBitmap
-
             val width = extractionBitmap.width
+            val originalHeight = extractionBitmap.height
+
+            // 1. Calcular altura escalada del encabezado de resumen
             val scale = width.toFloat() / header.width.toFloat()
             val scaledHeaderHeight = (header.height * scale).toInt()
 
-            val resultHeight = scaledHeaderHeight + contentHeight
-            val resultBitmap = Bitmap.createBitmap(width, resultHeight, Bitmap.Config.ARGB_8888)
+            // 2. Punto de corte en la extracción original (donde empieza el Asiento)
+            // Usamos un valor fijo aproximado (24%) para asegurar que descartamos el cuadro original.
+            val cutTop = (originalHeight * 0.24f).toInt()
+
+            // El contenido que vamos a conservar
+            val contentHeightToKeep = originalHeight - cutTop
+
+            // 3. Crear bitmap del mismo tamaño original
+            val resultBitmap = Bitmap.createBitmap(width, originalHeight, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(resultBitmap)
             canvas.drawColor(android.graphics.Color.WHITE)
 
             val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-            canvas.drawBitmap(header, Rect(0, 0, header.width, header.height), Rect(0, 0, width, scaledHeaderHeight), highQualityPaint)
-            canvas.drawBitmap(extractionBitmap, Rect(0, cutTop, width, extractionBitmap.height), Rect(0, scaledHeaderHeight, width, resultHeight), highQualityPaint)
+
+            // 4. Dibujar el nuevo encabezado de resumen
+            val headerSrc = Rect(0, 0, header.width, header.height)
+            val headerDst = Rect(0, 0, width, scaledHeaderHeight)
+            canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
+
+            // 5. Dibujar el contenido original desplazado hacia abajo, justo después del nuevo encabezado.
+            // Lo que quede fuera del alto original (originalHeight) se recortará automáticamente.
+            val contentSrc = Rect(0, cutTop, width, originalHeight)
+            val contentDst = Rect(0, scaledHeaderHeight, width, Math.min(originalHeight, scaledHeaderHeight + contentHeightToKeep))
+
+            if (contentDst.bottom > contentDst.top) {
+                canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
+            }
 
             return resultBitmap
         }
