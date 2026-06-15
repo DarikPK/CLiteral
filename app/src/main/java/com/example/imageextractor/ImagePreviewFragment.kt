@@ -211,18 +211,18 @@ class ImagePreviewFragment : Fragment() {
         // Parche superior para el título "CERTIFICADO LITERAL"
         val headerHeight = bitmap.height * 0.16f
         val rectW = bitmap.width * 0.40f
-        val rectH = headerHeight * 0.30f
+        val rectH = headerHeight * 0.25f
         val rectL = (bitmap.width - rectW) / 2f
-        val rectT = headerHeight * 0.28f
+        val rectT = headerHeight * 0.31f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = headerHeight * 0.24f
+            textSize = headerHeight * 0.17f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.78f, textPaint)
+        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.72f, textPaint)
 
         return result
     }
@@ -253,18 +253,18 @@ class ImagePreviewFragment : Fragment() {
             style = Paint.Style.FILL
         }
         val rectW = width * 0.40f
-        val rectH = scaledHeaderHeight * 0.30f
+        val rectH = scaledHeaderHeight * 0.25f
         val rectL = (width - rectW) / 2f
-        val rectT = scaledHeaderHeight * 0.28f
+        val rectT = scaledHeaderHeight * 0.31f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = scaledHeaderHeight * 0.24f
+            textSize = scaledHeaderHeight * 0.17f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.78f, textPaint)
+        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.72f, textPaint)
 
         val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
         val contentDst = Rect(0, destinationTop, width, originalHeight)
