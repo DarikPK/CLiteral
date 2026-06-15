@@ -28,7 +28,7 @@ class ImageCarouselAdapter(
         private val onZoomStateChanged: (Boolean) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(imagePath: String, filtersEnabled: Boolean, partidaId: String?, summaryBoxHeaderBitmap: Bitmap?) {
+        fun bind(imagePath: String, imageUrls: List<String>, filtersEnabled: Boolean, partidaId: String?, summaryBoxHeaderBitmap: Bitmap?) {
             if (filtersEnabled && partidaId?.startsWith("P", ignoreCase = true) == true &&
                 !imagePath.lowercase().contains("_resumen") && summaryBoxHeaderBitmap != null) {
 
@@ -48,7 +48,8 @@ class ImageCarouselAdapter(
 
                 val original = BitmapFactory.decodeFile(imagePath)
                 if (original != null) {
-                    val patched = applySummaryPatch(original)
+                    val firstSummaryPath = imageUrls.find { it.lowercase().contains("_resumen") }
+                    val patched = applySummaryPatch(original, imagePath == firstSummaryPath)
                     binding.zoomableImageView.setImageBitmap(patched)
                     original.recycle()
                 } else {
@@ -147,7 +148,7 @@ class ImageCarouselAdapter(
 
             return resultBitmap
         }
-        private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+        private fun applySummaryPatch(bitmap: Bitmap, showTitle: Boolean): Bitmap {
             val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
             canvas.drawBitmap(bitmap, 0f, 0f, null)
@@ -171,13 +172,15 @@ class ImageCarouselAdapter(
             val rectT = headerHeight * 0.33f
             canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
-            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.BLACK
-                textSize = headerHeight * 0.11f
-                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
+            if (showTitle) {
+                val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = headerHeight * 0.11f
+                    typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                    textAlign = Paint.Align.CENTER
+                }
+                canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
             }
-            canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
 
             return result
         }
@@ -189,7 +192,7 @@ class ImageCarouselAdapter(
     }
 
     override fun onBindViewHolder(holder: CarouselViewHolder, position: Int) {
-        holder.bind(imageUrls[position], filtersEnabled, partidaId, summaryBoxHeaderBitmap)
+        holder.bind(imageUrls[position], imageUrls, filtersEnabled, partidaId, summaryBoxHeaderBitmap)
     }
 
     override fun getItemCount(): Int = imageUrls.size

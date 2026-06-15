@@ -125,7 +125,8 @@ class ImagePreviewFragment : Fragment() {
                             bitmap.recycle()
                             bitmap = filteredWithSummary
                         } else if (imagePath.lowercase().contains("_resumen")) {
-                            val patchedSummary = applySummaryPatch(bitmap)
+                            val firstSummaryPath = imageUrls.find { it.lowercase().contains("_resumen") }
+                            val patchedSummary = applySummaryPatch(bitmap, imagePath == firstSummaryPath)
                             bitmap.recycle()
                             bitmap = patchedSummary
                         }
@@ -192,7 +193,7 @@ class ImagePreviewFragment : Fragment() {
         }
     }
 
-    private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+    private fun applySummaryPatch(bitmap: Bitmap, showTitle: Boolean): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         canvas.drawBitmap(bitmap, 0f, 0f, null)
@@ -216,13 +217,15 @@ class ImagePreviewFragment : Fragment() {
         val rectT = headerHeight * 0.33f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = headerHeight * 0.11f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
+        if (showTitle) {
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = headerHeight * 0.11f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
         }
-        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
 
         return result
     }

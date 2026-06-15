@@ -424,6 +424,7 @@ class PdfPreviewFragment : Fragment() {
                 }
             }
 
+            val firstSummaryPath = imagePaths?.find { it.lowercase().contains("_resumen") }
             imagePaths!!.forEach { path ->
                 try {
                     var currentBitmap = BitmapFactory.decodeFile(path)
@@ -449,7 +450,7 @@ class PdfPreviewFragment : Fragment() {
                         partidaId?.startsWith("P", ignoreCase = true) == true &&
                         path.lowercase().contains("_resumen")) {
 
-                        val patchedBitmap = applySummaryPatch(adjustedBitmap)
+                        val patchedBitmap = applySummaryPatch(adjustedBitmap, path == firstSummaryPath)
                         if (patchedBitmap != adjustedBitmap) {
                             adjustedBitmap.recycle()
                         }
@@ -1478,7 +1479,7 @@ class PdfPreviewFragment : Fragment() {
         return resultBitmap
     }
 
-    private fun applySummaryPatch(bitmap: Bitmap): Bitmap {
+    private fun applySummaryPatch(bitmap: Bitmap, showTitle: Boolean): Bitmap {
         val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result)
         canvas.drawBitmap(bitmap, 0f, 0f, null)
@@ -1502,13 +1503,15 @@ class PdfPreviewFragment : Fragment() {
         val rectT = headerHeight * 0.33f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = headerHeight * 0.11f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
+        if (showTitle) {
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = headerHeight * 0.11f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+            }
+            canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
         }
-        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
 
         return result
     }
