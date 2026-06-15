@@ -626,8 +626,8 @@ class PdfSettingsFragment : Fragment() {
             MediaStore.Images.Media.DATA,
             MediaStore.Images.Media.DATE_MODIFIED
         )
-        val selection = "${MediaStore.Images.Media.DATA} like ? and ${MediaStore.Images.Media.DATA} like ?"
-        val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %")
+        val selection = "${MediaStore.Images.Media.DATA} like ? and (${MediaStore.Images.Media.DISPLAY_NAME} like ? or ${MediaStore.Images.Media.DISPLAY_NAME} like ?)"
+        val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %", "%_extraccion.png")
 
         val cursor = requireContext().contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -650,7 +650,14 @@ class PdfSettingsFragment : Fragment() {
                 val date = it.getLong(dateColumn)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
-                val partidaId = name.substringBefore("-Hoja").trim()
+                val partidaId = if (name.contains("-Hoja")) {
+                    name.substringBefore("-Hoja").trim()
+                } else if (name.contains("-") && name.endsWith("_extraccion.png")) {
+                    name.substringBefore("-").trim()
+                } else {
+                    ""
+                }
+
                 if (partidaId.isNotEmpty()) {
                     val imageFile = ImageFile(uri, path, name)
                     folders.getOrPut(partidaId) { mutableListOf() }.add(imageFile)
@@ -664,7 +671,13 @@ class PdfSettingsFragment : Fragment() {
         }
 
         val result = folders.map { (partidaId, files) ->
-            val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
+            val sortedFiles = files.sortedWith(compareBy({ it.name.contains("_extraccion") }, {
+                if (it.name.contains("-Hoja")) {
+                    it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0
+                } else {
+                    it.name.substringAfter("-").substringBefore("_extraccion").toIntOrNull() ?: 0
+                }
+            }))
             ImageFolder(
                 partidaId = partidaId,
                 imageFiles = sortedFiles,
