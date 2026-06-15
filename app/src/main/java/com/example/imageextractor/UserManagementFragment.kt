@@ -142,42 +142,6 @@ class UserManagementFragment : Fragment() {
         binding.addUserButton.text = "Agregar Usuario"
     }
 
-    private fun importDefaults() {
-        val defaults = listOf(
-            LoginData("46736604", "7", "16/04/2025"),
-            LoginData("09842596", "4", "23/06/2022"),
-            LoginData("72049916", "4", "31/01/2022"),
-            LoginData("72577185", "7", "19/03/2025"),
-            LoginData("07784169", "1", "10/01/2023"),
-            LoginData("10376014", "9", "08/11/2019"),
-            LoginData("41363599", "9", "04/12/2023"),
-            LoginData("70312268", "5", "18/12/2023"),
-            LoginData("43128393", "5", "20/03/2018"),
-            LoginData("10126300", "8", "06/06/2018"),
-            LoginData("72291969", "8", "30/12/2022"),
-            LoginData("70519334", "2", "05/09/2024"),
-            LoginData("45490505", "1", "15/11/2021"),
-            LoginData("70341485", "6", "30/06/2020"),
-            LoginData("43373773", "9", "22/10/2021")
-        )
-
-        lifecycleScope.launch {
-            binding.importDefaultButton.isEnabled = false
-            var count = 0
-            defaults.forEach { d ->
-                val profile = UserProfile(
-                    dni = d.dni,
-                    digitoVerificador = d.digito,
-                    fechaExpedicion = d.fechaEmision,
-                    label = "DNI ${d.dni}"
-                )
-                if (firebaseManager.saveUserProfile(profile).isSuccess) count++
-            }
-            Toast.makeText(context, "Se importaron $count usuarios correctamente", Toast.LENGTH_SHORT).show()
-            binding.importDefaultButton.isEnabled = true
-            loadProfiles()
-        }
-    }
 
     private fun loadProfiles() {
         lifecycleScope.launch {
