@@ -75,29 +75,30 @@ class ImageCarouselAdapter(
             val scale = width.toFloat() / header.width.toFloat()
             val scaledHeaderHeight = (header.height * scale).toInt()
 
-            // 2. Punto de corte en la extracción original (donde empieza el Asiento)
-            // Usamos un valor fijo aproximado (24%) para asegurar que descartamos el cuadro original.
+            // 2. Punto de corte en la extracción original (donde empieza el área de interés "Asiento")
             val cutTop = (originalHeight * 0.24f).toInt()
+
+            // 3. Punto de destino para el contenido: bajamos la página significativamente
+            val destinationTop = (originalHeight * 0.26f).toInt()
 
             // El contenido que vamos a conservar
             val contentHeightToKeep = originalHeight - cutTop
 
-            // 3. Crear bitmap del mismo tamaño original
+            // 4. Crear bitmap del mismo tamaño original
             val resultBitmap = Bitmap.createBitmap(width, originalHeight, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(resultBitmap)
             canvas.drawColor(android.graphics.Color.WHITE)
 
             val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-            // 4. Dibujar el nuevo encabezado de resumen
+            // 5. Dibujar el nuevo encabezado de resumen en la parte superior
             val headerSrc = Rect(0, 0, header.width, header.height)
             val headerDst = Rect(0, 0, width, scaledHeaderHeight)
             canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
 
-            // 5. Dibujar el contenido original desplazado hacia abajo, justo después del nuevo encabezado.
-            // Lo que quede fuera del alto original (originalHeight) se recortará automáticamente.
+            // 6. Dibujar el contenido original TRASLADADO hacia abajo (desde destinationTop).
             val contentSrc = Rect(0, cutTop, width, originalHeight)
-            val contentDst = Rect(0, scaledHeaderHeight, width, Math.min(originalHeight, scaledHeaderHeight + contentHeightToKeep))
+            val contentDst = Rect(0, destinationTop, width, Math.min(originalHeight, destinationTop + contentHeightToKeep))
 
             if (contentDst.bottom > contentDst.top) {
                 canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
