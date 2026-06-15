@@ -201,12 +201,29 @@ class ImagePreviewFragment : Fragment() {
         paint.color = Color.WHITE
         paint.style = Paint.Style.FILL
 
+        // Parche inferior (pie de página)
         val patchLeft = 0f
         val patchRight = bitmap.width.toFloat()
         val patchTop = bitmap.height * 0.935f
         val patchBottom = bitmap.height.toFloat()
-
         canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
+
+        // Parche superior para el título "CERTIFICADO LITERAL"
+        val headerHeight = bitmap.height * 0.16f
+        val rectW = bitmap.width * 0.40f
+        val rectH = headerHeight * 0.30f
+        val rectL = (bitmap.width - rectW) / 2f
+        val rectT = headerHeight * 0.28f
+        canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = headerHeight * 0.24f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.78f, textPaint)
+
         return result
     }
 
@@ -229,6 +246,25 @@ class ImagePreviewFragment : Fragment() {
         val headerSrc = Rect(0, 0, header.width, header.height)
         val headerDst = Rect(0, 0, width, scaledHeaderHeight)
         canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
+
+        // Parche para ocultar "HOJA DE RESUMEN" y poner "CERTIFICADO LITERAL"
+        val patchPaint = Paint().apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        val rectW = width * 0.40f
+        val rectH = scaledHeaderHeight * 0.30f
+        val rectL = (width - rectW) / 2f
+        val rectT = scaledHeaderHeight * 0.28f
+        canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = scaledHeaderHeight * 0.24f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.78f, textPaint)
 
         val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
         val contentDst = Rect(0, destinationTop, width, originalHeight)
