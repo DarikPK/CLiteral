@@ -626,8 +626,8 @@ class PdfSettingsFragment : Fragment() {
             MediaStore.Images.Media.DATA,
             MediaStore.Images.Media.DATE_MODIFIED
         )
-        val selection = "${MediaStore.Images.Media.DATA} like ? and (${MediaStore.Images.Media.DISPLAY_NAME} like ? or ${MediaStore.Images.Media.DISPLAY_NAME} like ?)"
-        val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %", "%_extraccion.png")
+        val selection = "${MediaStore.Images.Media.DATA} like ? and (${MediaStore.Images.Media.DISPLAY_NAME} like ? or ${MediaStore.Images.Media.DISPLAY_NAME} like ? or ${MediaStore.Images.Media.DISPLAY_NAME} like ?)"
+        val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %", "%_extraccion.png", "%_resumen.png")
 
         val cursor = requireContext().contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -650,12 +650,11 @@ class PdfSettingsFragment : Fragment() {
                 val date = it.getLong(dateColumn)
                 val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
-                val partidaId = if (name.contains("-Hoja")) {
-                    name.substringBefore("-Hoja").trim()
-                } else if (name.contains("-") && name.endsWith("_extraccion.png")) {
-                    name.substringBefore("-").trim()
-                } else {
-                    ""
+                val partidaId = when {
+                    name.contains("-Hoja") -> name.substringBefore("-Hoja").trim()
+                    name.contains("-") && name.endsWith("_extraccion.png") -> name.substringBefore("-").trim()
+                    name.contains("-") && name.endsWith("_resumen.png") -> name.substringBefore("-").trim()
+                    else -> ""
                 }
 
                 if (partidaId.isNotEmpty()) {
@@ -672,10 +671,11 @@ class PdfSettingsFragment : Fragment() {
 
         val result = folders.map { (partidaId, files) ->
             val sortedFiles = files.sortedWith(compareBy({ it.name.contains("_extraccion") }, {
-                if (it.name.contains("-Hoja")) {
-                    it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0
-                } else {
-                    it.name.substringAfter("-").substringBefore("_extraccion").toIntOrNull() ?: 0
+                when {
+                    it.name.contains("-Hoja") -> it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0
+                    it.name.endsWith("_resumen.png") -> it.name.substringAfter("-").substringBefore("_resumen").toIntOrNull() ?: 0
+                    it.name.endsWith("_extraccion.png") -> it.name.substringAfter("-").substringBefore("_extraccion").toIntOrNull() ?: 0
+                    else -> 0
                 }
             }))
             ImageFolder(
