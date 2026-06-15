@@ -134,7 +134,7 @@ class ImageCarouselAdapter(
             }
 
             // 7. Dibujar parche blanco para eliminar texto vertical a la derecha
-            val patchPaint = Paint()
+            // Reutilizar patchPaint ya declarado arriba
             patchPaint.color = android.graphics.Color.WHITE
             patchPaint.style = Paint.Style.FILL
 

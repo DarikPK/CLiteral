@@ -274,7 +274,7 @@ class ImagePreviewFragment : Fragment() {
         }
 
         // Dibujar parche blanco para eliminar texto vertical a la derecha
-        val patchPaint = Paint()
+        // Reutilizar patchPaint ya declarado arriba
         patchPaint.color = Color.WHITE
         patchPaint.style = Paint.Style.FILL
 
