@@ -22,6 +22,9 @@
         <action
             android:id="@+id/action_mainMenuFragment_to_voucherConfigFragment"
             app:destination="@id/voucherConfigFragment" />
+        <action
+            android:id="@+id/action_mainMenuFragment_to_userManagementFragment"
+            app:destination="@id/userManagementFragment" />
     </fragment>
 
     <fragment
@@ -157,6 +160,12 @@
             android:id="@+id/action_voucherConfigFragment_to_voucherFragment"
             app:destination="@id/voucherFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/userManagementFragment"
+        android:name="com.example.imageextractor.UserManagementFragment"
+        android:label="Datos de Usuarios"
+        tools:layout="@layout/fragment_user_management" />
 
     <fragment
         android:id="@+id/voucherFragment"

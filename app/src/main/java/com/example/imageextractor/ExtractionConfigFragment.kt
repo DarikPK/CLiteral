@@ -12,8 +12,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.imageextractor.databinding.FragmentExtractionConfigBinding
+import kotlinx.coroutines.launch
 
 class ExtractionConfigFragment : Fragment() {
 
@@ -21,6 +23,11 @@ class ExtractionConfigFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
+    private val firebaseManager = FirebaseManager()
+    private var userProfiles: List<UserProfile> = emptyList()
+
+    private val oficinas = listOf("ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA_APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CHOTA", "CUSCO", "ESPINAR", "HUACHO", "HUAMACHUCO", "HUANCAVELICA", "HUANCAYO", "HUANTA", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "ILO", "ISLAY_MOYENDO", "JAEN", "JUANJUI", "JULIACA", "LA MERCED ( SELVA CENTRAL)", "LIMA", "MADRE DE DIOS", "MAYNAS", "MOQUEGUA", "MOYOBAMBA", "NAZCA", "OTUZCO", "PASCO", "PISCO", "PIURA", "PUCALPA", "PUNO", "QUILLABAMBA", "SAN PEDRO", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TINGO MARIA", "TRUJILLO", "TUMBES", "YURIMAGUAS")
+    private val areas = listOf("PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES")
 
     private val extractionPrefs by lazy {
         requireActivity().getSharedPreferences("ExtractionSettings", android.content.Context.MODE_PRIVATE)
@@ -39,10 +46,16 @@ class ExtractionConfigFragment : Fragment() {
         setupAutofillHighlight()
         setupDropdowns()
         setupLoginModeSelector()
-        loadSavedSettings()
         setupContinueButton()
         setupVisibilitySwitch()
         setupManualStartButtonSwitch()
+        loadUserProfiles()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadSavedSettings()
+        loadUserProfiles()
     }
 
     private fun setupManualStartButtonSwitch() {
@@ -103,23 +116,51 @@ class ExtractionConfigFragment : Fragment() {
         }
     }
 
-    private fun setupDropdowns() {
-        val oficinas = listOf("ABANCAY", "ANDAHUAYLAS", "AREQUIPA", "AYACUCHO", "BAGUA", "BARRANCA", "CAJAMARCA", "CALLAO", "CAMANA", "CASMA", "CASTILLA_APLAO", "CAÑETE", "CHACHAPOYAS", "CHEPEN", "CHICLAYO", "CHIMBOTE", "CHINCHA", "CHOTA", "CUSCO", "ESPINAR", "HUACHO", "HUAMACHUCO", "HUANCAVELICA", "HUANCAYO", "HUANTA", "HUANUCO", "HUARAL", "HUARAZ", "ICA", "ILO", "ISLAY_MOYENDO", "JAEN", "JUANJUI", "JULIACA", "LA MERCED ( SELVA CENTRAL)", "LIMA", "MADRE DE DIOS", "MAYNAS", "MOQUEGUA", "MOYOBAMBA", "NAZCA", "OTUZCO", "PASCO", "PISCO", "PIURA", "PUCALPA", "PUNO", "QUILLABAMBA", "SAN PEDRO", "SATIPO", "SICUANI", "SULLANA", "TACNA", "TARAPOTO", "TARMA", "TINGO MARIA", "TRUJILLO", "TUMBES", "YURIMAGUAS")
-        val areas = listOf("PROPIEDAD INMUEBLE PREDIAL", "PROPIEDAD INMUEBLE NO PREDIAL", "PERSONAS JURIDICAS", "PERSONAS NATURALES", "PROPIEDAD VEHICULAR", "PROPIEDAD MINERIA", "REGISTRO DE NAVES Y EMBARCACIONES (ANTES REGISTRO DE EMBARCACIONES PESQUERAS)", "PROPIEDAD AERONAVES")
+    private fun loadUserProfiles() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = firebaseManager.getAllUserProfiles()
+            if (result.isSuccess) {
+                userProfiles = result.getOrNull() ?: emptyList()
+                val labels = userProfiles.map { "${it.dni} (${it.digitoVerificador})" }
+                val adapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, labels)
+                binding.userProfileDropdown.setAdapter(adapter)
 
-        val oficinaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, oficinas)
+                binding.userProfileDropdown.setOnItemClickListener { _, _, position, _ ->
+                    val profile = userProfiles[position]
+                    binding.dniEditText.setText(profile.dni)
+                    binding.digitoEditText.setText(profile.digitoVerificador)
+                    binding.fechaEmisionEditText.setText(profile.fechaExpedicion)
+                }
+            }
+        }
+    }
+
+    private fun setupDropdowns() {
+        val oficinaAdapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, oficinas)
         binding.oficinaDropdown.setAdapter(oficinaAdapter)
 
-        val areaAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
+        val areaAdapter = NoFilterAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, areas)
         binding.areaDropdown.setAdapter(areaAdapter)
+
+        binding.oficinaDropdown.setOnClickListener {
+            binding.oficinaDropdown.showDropDown()
+        }
+        binding.areaDropdown.setOnClickListener {
+            binding.areaDropdown.showDropDown()
+        }
     }
 
     private fun loadSavedSettings() {
         binding.dniEditText.setText(extractionPrefs.getString("dni", ""))
         binding.digitoEditText.setText(extractionPrefs.getString("digito", ""))
         binding.fechaEmisionEditText.setText(extractionPrefs.getString("fecha_emision", ""))
-        binding.oficinaDropdown.setText(extractionPrefs.getString("oficina", "LIMA"), false)
-        binding.areaDropdown.setText(extractionPrefs.getString("area", "PROPIEDAD INMUEBLE PREDIAL"), false)
+
+        val oficina = extractionPrefs.getString("oficina", "LIMA")
+        binding.oficinaDropdown.setText(oficina, false)
+
+        val area = extractionPrefs.getString("area", "PROPIEDAD INMUEBLE PREDIAL")
+        binding.areaDropdown.setText(area, false)
+
         binding.partidaEditText.setText(extractionPrefs.getString("partida", ""))
         binding.prefixPCheckbox.isChecked = extractionPrefs.getBoolean("prefix_p", false)
 
@@ -180,7 +221,12 @@ class ExtractionConfigFragment : Fragment() {
                 }
                 LoginData(dni, digito, fechaEmision)
             } else {
-                sharedViewModel.getRandomLoginData()
+                if (userProfiles.isNotEmpty()) {
+                    val p = userProfiles.random()
+                    LoginData(p.dni, p.digitoVerificador, p.fechaExpedicion)
+                } else {
+                    sharedViewModel.getRandomLoginData()
+                }
             }
 
             var finalNumeroPartida = numeroPartida
@@ -203,5 +249,33 @@ class ExtractionConfigFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private class NoFilterAdapter(
+        context: android.content.Context,
+        resource: Int,
+        private val items: List<String>
+    ) : ArrayAdapter<String>(context, resource, items) {
+
+        private val noFilter = object : android.widget.Filter() {
+            override fun performFiltering(constraint: CharSequence?): FilterResults {
+                val results = FilterResults()
+                results.values = items
+                results.count = items.size
+                return results
+            }
+
+            override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                notifyDataSetChanged()
+            }
+
+            override fun convertResultToString(resultValue: Any?): CharSequence {
+                return resultValue as String
+            }
+        }
+
+        override fun getFilter(): android.widget.Filter {
+            return noFilter
+        }
     }
 }

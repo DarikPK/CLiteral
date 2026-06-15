@@ -100,6 +100,18 @@ class ExtractionFragment : Fragment() {
         }
 
         @JavascriptInterface
+        fun getPdfJsPreviaCount(partidaId: String): Int {
+            return getPdfJsPreviaCountInternal(partidaId)
+        }
+
+        @JavascriptInterface
+        fun saveDataUrl(dataUrl: String, filename: String, subfolder: String) {
+            activity?.runOnUiThread {
+                saveDataUrlInternal(dataUrl, filename, subfolder)
+            }
+        }
+
+        @JavascriptInterface
         fun onCaptchaSolved() {
             activity?.runOnUiThread {
                 if (isViewDestroyed) return@runOnUiThread
@@ -504,6 +516,14 @@ class ExtractionFragment : Fragment() {
                 const numeroPartida = "$numeroPartida";
                 try {
                     function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+                    // --- Obtener contador de PDF.js previo ---
+                    let pdfJsCount = 0;
+                    if (typeof AndroidBridge !== 'undefined') {
+                        pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
+                    }
+                    const totalResumen = pdfJsCount;
+                    const folderName = pdfJsCount > 0 ? (numeroPartida + " (" + pdfJsCount + " hojas) - PREDIOS") : "";
                     async function robustClick(element) {
                         for (let i = 0; i < 3; i++) {
                             try {
@@ -564,6 +584,13 @@ class ExtractionFragment : Fragment() {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
+
+                    // --- Obtener contador de PDF.js previo ---
+                    let pdfJsCount = 0;
+                    if (typeof AndroidBridge !== 'undefined') {
+                        pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
+                    }
+
                     let captureCount = 0;
                     // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
                     for (let i = 0; i < N; i++) {
@@ -605,18 +632,23 @@ class ExtractionFragment : Fragment() {
                             try {
                                 const dataUrl = canvas.toDataURL("image/png");
                                 const hojaNumero = N - i;
-                                const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
 
-                                if (typeof AndroidBridge !== 'undefined') {
-                                    AndroidBridge.setNextDownloadFilename(filename);
+                                if (totalResumen > 0) {
+                                    const totalIndex = totalResumen + (N - hojaNumero + 1);
+                                    const filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
+                                    if (typeof AndroidBridge !== 'undefined') {
+                                        AndroidBridge.saveDataUrl(dataUrl, filename, folderName);
+                                    }
+                                } else {
+                                    const filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                                    if (typeof AndroidBridge !== 'undefined') {
+                                        AndroidBridge.setNextDownloadFilename(filename);
+                                    }
+                                    downloadDataUrl(dataUrl, filename);
                                 }
 
-                                await sleep(50); // Mínima pausa para asegurar que el Bridge procese el nombre
-                                downloadDataUrl(dataUrl, filename);
                                 captureCount++;
-
-                                // Pausa técnica mínima entre hojas para no saturar el canal de descarga
-                                await sleep(400);
+                                await sleep(300);
                             } catch (e) {
                                 console.error(`Error al capturar el canvas de la hoja ${'$'}{N - i}:`, e);
                             }
@@ -641,15 +673,21 @@ class ExtractionFragment : Fragment() {
         val imageDir = File(downloadsDir, "capturas_sunarp")
 
         if (imageDir.exists() && imageDir.isDirectory) {
+            // Eliminar archivos sueltos
             val filesToDelete = imageDir.listFiles { file ->
-                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png")
+                file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png") && !file.name.contains("_resumen")
             }
-            filesToDelete?.forEach { file ->
-                if (file.delete()) {
-                    Log.d("DeleteCaptures", "Archivo eliminado: ${file.name}")
-                } else {
-                    Log.e("DeleteCaptures", "No se pudo eliminar el archivo: ${file.name}")
+            filesToDelete?.forEach { file -> file.delete() }
+
+            // Eliminar contenido de subcarpetas (excepto _resumen)
+            val subfolders = imageDir.listFiles { file ->
+                file.isDirectory && file.name.startsWith(partidaId)
+            }
+            subfolders?.forEach { sub ->
+                val filesInSub = sub.listFiles { file ->
+                    file.isFile && !file.name.contains("_resumen")
                 }
+                filesInSub?.forEach { it.delete() }
             }
         }
     }
@@ -700,6 +738,14 @@ class ExtractionFragment : Fragment() {
 
               const numeroPartida = "${numeroPartida ?: ""}";
 
+              // --- Obtener contador de PDF.js previo ---
+              let pdfJsCount = 0;
+              if (numeroPartida && typeof AndroidBridge !== 'undefined') {
+                  pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
+              }
+              const totalResumen = pdfJsCount;
+              const folderName = pdfJsCount > 0 ? (numeroPartida + " (" + pdfJsCount + " hojas) - PREDIOS") : "";
+
               for (let i = 0; i < canvases.length; i++) {
                   const canvas = canvases[i];
                   let filename = "captura_" + Date.now() + "_" + (i+1) + ".png";
@@ -733,23 +779,31 @@ class ExtractionFragment : Fragment() {
 
                       // Si no se detecta el número de hoja por selección, se asume la Hoja 1
                       if (hojaNumero <= 0) hojaNumero = 1;
-                      filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
-                  }
 
-                  if (typeof AndroidBridge !== 'undefined') {
-                      AndroidBridge.setNextDownloadFilename(filename);
-                      await new Promise(r => setTimeout(r, 50));
+                      if (totalResumen > 0) {
+                          const totalIndex = totalResumen + (N - hojaNumero + 1);
+                          filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
+                      } else {
+                          filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
+                      }
                   }
 
                   try {
                     const dataUrl = canvas.toDataURL("image/png");
-                    const a = document.createElement("a");
-                    a.href = dataUrl;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    await new Promise(r => setTimeout(r, 200));
+                    if (totalResumen > 0 && typeof AndroidBridge !== 'undefined') {
+                        AndroidBridge.saveDataUrl(dataUrl, filename, folderName);
+                    } else {
+                        if (typeof AndroidBridge !== 'undefined') {
+                            AndroidBridge.setNextDownloadFilename(filename);
+                        }
+                        const a = document.createElement("a");
+                        a.href = dataUrl;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
+                    await new Promise(r => setTimeout(r, 100));
                   } catch (e) {
                     console.error("Error al capturar canvas: ", e);
                   }
@@ -1476,6 +1530,92 @@ private fun injectCaptchaHybridWatcher() {
       numero.dispatchEvent(new Event('blur',{bubbles:true}));
       const buscarBtn = await waitForElement('button.btn-buscar-partida');
       await robustClick(buscarBtn);
+
+      // --- Lógica Hoja Resumen para Inmuebles con Partida P ---
+      const isPropiedadInmueble = mappedArea.toUpperCase().includes("PROPIEDAD INMUEBLE");
+      const startsWithP = "${config.numeroPartida}".toUpperCase().startsWith("P");
+
+      if (isPropiedadInmueble && startsWithP) {
+          console.log("🔍 Detectada partida P de Inmuebles. Buscando botón Hoja Resumen...");
+          if (typeof AndroidBridge !== 'undefined') AndroidBridge.showToast("Buscando Hoja Resumen...");
+
+          await sleep(300);
+
+          let pdfButton = null;
+          const startSearch = Date.now();
+          while (Date.now() - startSearch < 15000) {
+              pdfButton = document.querySelector('button[title="Ver Hoja Resumen"]');
+              if (!pdfButton) {
+                  pdfButton = Array.from(document.querySelectorAll('button')).find(btn => {
+                      const t = (btn.getAttribute('title') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                      return t.includes('ver hoja resumen') || t.includes('hoja resumen');
+                  });
+              }
+              if (pdfButton && pdfButton.offsetParent !== null && !pdfButton.disabled) break;
+              await sleep(100);
+          }
+
+          if (pdfButton) {
+              console.log("✅ Botón Hoja Resumen encontrado. Abriendo visor...");
+              pdfButton.scrollIntoView({ block: 'center' });
+              await sleep(50);
+              ['mousedown', 'mouseup', 'click'].forEach(type => {
+                  pdfButton.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+              });
+
+              console.log("⏳ Esperando carga de PDFViewerApplication...");
+              let pdfDoc = null;
+              const startPdfWait = Date.now();
+              while (Date.now() - startPdfWait < 10000) {
+                  if (typeof PDFViewerApplication !== 'undefined' && PDFViewerApplication.pdfDocument) {
+                      pdfDoc = PDFViewerApplication.pdfDocument;
+                      if (pdfDoc.numPages > 0) break;
+                  }
+                  await sleep(200);
+              }
+
+              if (pdfDoc) {
+                  const total = pdfDoc.numPages;
+                  const scale = 3;
+                  const folderName = "${config.numeroPartida} (" + total + " hojas) - PREDIOS";
+                  let captureCount = 0;
+
+                  for (let pageNum = 1; pageNum <= total; pageNum++) {
+                      try {
+                          const pdfPage = await pdfDoc.getPage(pageNum);
+                          const viewport = pdfPage.getViewport({ scale });
+                          const canvas = document.createElement('canvas');
+                          const ctx = canvas.getContext('2d');
+                          canvas.width = Math.floor(viewport.width);
+                          canvas.height = Math.floor(viewport.height);
+                          await pdfPage.render({ canvasContext: ctx, viewport }).promise;
+
+                          const dataUrl = canvas.toDataURL('image/png');
+                          const filename = "${config.numeroPartida}-" + String(pageNum).padStart(3, '0') + "_resumen.png";
+
+                          if (typeof AndroidBridge !== 'undefined') {
+                              AndroidBridge.saveDataUrl(dataUrl, filename, folderName);
+                              captureCount++;
+                              await sleep(100);
+                          }
+                      } catch (err) { console.error(err); }
+                  }
+                  if (typeof AndroidBridge !== 'undefined') {
+                      AndroidBridge.showToast("✅ Hoja Resumen: " + captureCount + " páginas capturadas.");
+                  }
+
+                  const closeBtn = document.querySelector('button.ant-modal-close');
+                  if (closeBtn) {
+                      await robustClick(closeBtn);
+                      await sleep(300);
+                  }
+              }
+          } else {
+              console.warn("⚠️ No se encontró el botón de Hoja Resumen.");
+              if (typeof AndroidBridge !== 'undefined') AndroidBridge.showToast("No se encontró el botón Hoja Resumen.");
+          }
+      }
+
       async function robustClickPreview(timeout = 15000) {
         const start = Date.now();
         const selector = 'button[title="Previsualizar"].btn-search, button.btn-search[title="Previsualizar"]';
@@ -1622,5 +1762,52 @@ private fun injectCaptchaHybridWatcher() {
         super.onDestroyView()
         isViewDestroyed = true
         _binding = null
+    }
+
+    private fun getPdfJsPreviaCountInternal(partidaId: String): Int {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val imageDir = File(downloadsDir, "capturas_sunarp")
+        if (!imageDir.exists() || !imageDir.isDirectory) return 0
+
+        // Buscar en la carpeta raíz y en subcarpetas que empiecen por la partida
+        val rootFiles = imageDir.listFiles { file ->
+            file.isFile && file.name.startsWith("$partidaId-") && file.name.contains("_resumen") && file.name.endsWith(".png")
+        } ?: emptyArray()
+
+        val subfolders = imageDir.listFiles { file ->
+            file.isDirectory && file.name.startsWith(partidaId)
+        } ?: emptyArray()
+
+        var count = rootFiles.size
+        subfolders.forEach { sub ->
+            val subFiles = sub.listFiles { file ->
+                file.isFile && file.name.contains("_resumen") && file.name.endsWith(".png")
+            }
+            count += subFiles?.size ?: 0
+        }
+
+        return count
+    }
+
+    private fun saveDataUrlInternal(dataUrl: String, filename: String, subfolderName: String) {
+        try {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val parentDir = File(downloadsDir, "capturas_sunarp")
+            val targetDir = if (subfolderName.isNotEmpty()) File(parentDir, subfolderName) else parentDir
+
+            if (!targetDir.exists()) targetDir.mkdirs()
+
+            val file = File(targetDir, filename)
+            val base64EncodedString = dataUrl.substring(dataUrl.indexOf(",") + 1)
+            val decodedBytes = Base64.decode(base64EncodedString, Base64.DEFAULT)
+
+            FileOutputStream(file).use { it.write(decodedBytes) }
+
+            // Forzar escaneo de MediaStore para que aparezca en la galería inmediatamente
+            android.media.MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
+
+        } catch (e: Exception) {
+            Log.e("saveDataUrl", "Error saving image: $filename", e)
+        }
     }
 }

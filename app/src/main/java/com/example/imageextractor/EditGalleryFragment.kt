@@ -229,9 +229,9 @@ class EditGalleryFragment : Fragment() {
                 MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media.DATE_MODIFIED
             )
-            // Buscamos en la carpeta específica dentro de Downloads
-            val selection = "${MediaStore.Images.Media.DATA} like ? and ${MediaStore.Images.Media.DATA} like ?"
-            val selectionArgs = arrayOf("%/Download/capturas_sunarp/%", "%-Hoja %")
+            // Buscamos en la carpeta raíz capturas_sunarp y sus subcarpetas inmediatas
+            val selection = "${MediaStore.Images.Media.DATA} like ?"
+            val selectionArgs = arrayOf("%/Download/capturas_sunarp/%")
 
             val cursor = requireContext().contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -254,27 +254,55 @@ class EditGalleryFragment : Fragment() {
                     val date = it.getLong(dateColumn)
                     val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
-                    val partidaId = name.substringBefore("-Hoja").trim()
-                    if (partidaId.isNotEmpty()) {
-                        val imageFile = ImageFile(uri, path, name)
-                        folders.getOrPut(partidaId) { mutableListOf() }.add(imageFile)
+                    // Lógica para determinar el ID del grupo (carpeta)
+                    val file = File(path)
+                    val parentFile = file.parentFile
+                    val folderName = parentFile?.name ?: ""
 
-                        val currentMaxDate = folderLastModified[partidaId] ?: 0L
+                    val groupKey = if (folderName == "capturas_sunarp") {
+                        // Formato antiguo: extraer partida del nombre del archivo
+                        if (name.contains("-Hoja")) name.substringBefore("-Hoja").trim()
+                        else if (name.contains("-")) name.substringBefore("-").trim()
+                        else "Otros"
+                    } else {
+                        // Nuevo formato: usar el nombre de la subcarpeta
+                        folderName
+                    }
+
+                    if (groupKey.isNotEmpty()) {
+                        val imageFile = ImageFile(uri, path, name)
+                        folders.getOrPut(groupKey) { mutableListOf() }.add(imageFile)
+
+                        val currentMaxDate = folderLastModified[groupKey] ?: 0L
                         if (date > currentMaxDate) {
-                            folderLastModified[partidaId] = date
+                            folderLastModified[groupKey] = date
                         }
                     }
                 }
             }
 
-            val folderList = folders.map { (partidaId, files) ->
-                val sortedFiles = files.sortedBy { it.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull() ?: 0 }
+            val folderList = folders.map { (groupKey, files) ->
+                // Ordenación inteligente: detecta 001_ o -Hoja X
+                val sortedFiles = files.sortedBy { f ->
+                    val num = if (f.name.contains("_")) {
+                        f.name.substringAfter("-").substringBefore("_").toIntOrNull()
+                    } else {
+                        f.name.substringAfter("-Hoja ").substringBefore(".png").toIntOrNull()
+                    }
+                    num ?: 999
+                }
+
+                val displayId = if (groupKey.contains(" hojas)")) groupKey.substringBefore(" (").trim() else groupKey
+
                 ImageFolder(
-                    partidaId = partidaId,
+                    partidaId = displayId,
                     imageFiles = sortedFiles,
-                    lastModified = folderLastModified[partidaId] ?: 0L,
-                    tipoPartida = sharedPrefs.getString("tipo_partida_$partidaId", null)
-                )
+                    lastModified = folderLastModified[groupKey] ?: 0L,
+                    tipoPartida = if (groupKey.contains("- PREDIOS")) "PREDIOS" else sharedPrefs.getString("tipo_partida_$displayId", null)
+                ).apply {
+                    // Si es el nuevo formato, podemos guardar el nombre completo de la carpeta para futuras referencias
+                    // (Opcional, pero ayuda a la coherencia visual)
+                }
             }
 
             val sortedList = if (currentSortMode == "temporal") {
