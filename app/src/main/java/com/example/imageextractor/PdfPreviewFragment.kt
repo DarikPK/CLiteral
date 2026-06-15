@@ -138,6 +138,9 @@ class PdfPreviewFragment : Fragment() {
     private var marginLeft: Float = 0f
     private var marginRight: Float = 0f
 
+    private var isFilterSummaryBoxEnabled: Boolean = false
+    private var summaryBoxHeaderBitmap: Bitmap? = null
+
     data class Watermark(
         val text: String,
         val opacity: Float,
@@ -178,6 +181,8 @@ class PdfPreviewFragment : Fragment() {
             marginBottom = it.getFloat("marginBottom", 10f)
             marginLeft = it.getFloat("marginLeft", 10f)
             marginRight = it.getFloat("marginRight", 10f)
+
+            isFilterSummaryBoxEnabled = it.getBoolean("isFilterSummaryBoxEnabled", false)
 
             isStampEnabled = it.getBoolean("isStampEnabled")
             if (isStampEnabled) {
@@ -399,10 +404,54 @@ class PdfPreviewFragment : Fragment() {
     private fun loadPages() {
         if (imagePaths == null) return
         lifecycleScope.launch(Dispatchers.IO) {
+            // 1. Cargar el encabezado de la hoja de resumen si el filtro está activo
+            if (isFilterSummaryBoxEnabled && partidaId?.startsWith("P", ignoreCase = true) == true) {
+                val summaryPath = imagePaths?.find { it.lowercase().contains("_resumen") }
+                if (summaryPath != null) {
+                    try {
+                        val fullSummary = BitmapFactory.decodeFile(summaryPath)
+                        if (fullSummary != null) {
+                            // Tomamos el encabezado (aprox. 16% superior) para capturar el cuadro de resumen completo
+                            val headerHeight = (fullSummary.height * 0.16f).toInt()
+                            if (headerHeight > 0) {
+                                summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
+                            }
+                            fullSummary.recycle()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
             imagePaths!!.forEach { path ->
-                val originalBitmap = BitmapFactory.decodeFile(path)
-                val adjustedBitmap = applyBitmapAdjustments(originalBitmap)
-                pageBitmaps.add(adjustedBitmap)
+                try {
+                    var currentBitmap = BitmapFactory.decodeFile(path)
+                    if (currentBitmap == null) return@forEach
+
+                    // 2. Aplicar el filtro de cuadro de resumen a las páginas de extracción
+                    if (isFilterSummaryBoxEnabled &&
+                        partidaId?.startsWith("P", ignoreCase = true) == true &&
+                        !path.lowercase().contains("_resumen") &&
+                        summaryBoxHeaderBitmap != null) {
+
+                        val filteredBitmap = applySummaryBoxFilter(currentBitmap)
+                        if (filteredBitmap != currentBitmap) {
+                            currentBitmap.recycle()
+                            currentBitmap = filteredBitmap
+                        }
+                    }
+
+                    val adjustedBitmap = applyBitmapAdjustments(currentBitmap)
+                    pageBitmaps.add(adjustedBitmap)
+
+                    // Liberar el bitmap intermedio si se creó uno nuevo en los ajustes
+                    if (adjustedBitmap != currentBitmap) {
+                        currentBitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
 
             if (isStampEnabled && stampDateText.isNotBlank()) {
@@ -1340,6 +1389,51 @@ class PdfPreviewFragment : Fragment() {
         return resultBitmap
     }
 
+    private fun applySummaryBoxFilter(extractionBitmap: Bitmap): Bitmap {
+        val header = summaryBoxHeaderBitmap ?: return extractionBitmap
+
+        val width = extractionBitmap.width
+        val originalHeight = extractionBitmap.height
+
+        // 1. Altura escalada del nuevo cuadro de resumen
+        val scale = width.toFloat() / header.width.toFloat()
+        val scaledHeaderHeight = (header.height * scale).toInt()
+
+        // 2. Punto de corte en la hoja de extracción: bajamos solo un poco para quitar su encabezado
+        // 14% es suficiente para eliminar el logo/título original y dejar paso al área de asientos.
+        val cutTop = (originalHeight * 0.14f).toInt()
+
+        // 3. Punto de destino: Justo después del nuevo cuadro, sin huecos en blanco.
+        val destinationTop = scaledHeaderHeight
+
+        // El alto del contenido que queremos trasladar
+        val contentHeightToMove = originalHeight - cutTop
+
+        // 4. Crear bitmap con las dimensiones originales
+        val resultBitmap = Bitmap.createBitmap(width, originalHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(resultBitmap)
+        canvas.drawColor(Color.WHITE)
+
+        val highQualityPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        // 5. Dibujar el nuevo encabezado (cuadro resumen)
+        val headerSrc = Rect(0, 0, header.width, header.height)
+        val headerDst = Rect(0, 0, width, scaledHeaderHeight)
+        canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
+
+        // 6. Dibujar el contenido de la extracción DESPLAZADO hacia abajo.
+        // Se coloca exactamente debajo del nuevo encabezado.
+        // Lo que sobre al final del alto original se recorta (clip) automáticamente.
+        val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
+        val contentDst = Rect(0, destinationTop, width, originalHeight)
+
+        if (contentDst.height() > 0) {
+            canvas.drawBitmap(extractionBitmap, contentSrc, contentDst, highQualityPaint)
+        }
+
+        return resultBitmap
+    }
+
     private fun applyBitmapAdjustments(originalBitmap: Bitmap): Bitmap {
         if (brightness == 50f && contrast == 50f) {
             return originalBitmap
@@ -1469,6 +1563,8 @@ class PdfPreviewFragment : Fragment() {
         signatureBitmap = null
         signatureSecondaryBitmap?.recycle()
         signatureSecondaryBitmap = null
+        summaryBoxHeaderBitmap?.recycle()
+        summaryBoxHeaderBitmap = null
         _binding = null
     }
 

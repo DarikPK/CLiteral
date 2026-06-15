@@ -28,6 +28,8 @@ class ImagePreviewFragment : Fragment() {
     private var imageUrls: List<String> = emptyList()
     private var initialIndex: Int = 0
     private var filtersEnabled: Boolean = false
+    private var partidaId: String? = null
+    private var summaryBoxHeaderBitmap: Bitmap? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +38,26 @@ class ImagePreviewFragment : Fragment() {
             imageUrls = it.getStringArray("imageUrls")?.toList() ?: emptyList()
             initialIndex = it.getInt("initialIndex", 0)
             filtersEnabled = it.getBoolean("filtersEnabled", false)
+            partidaId = it.getString("partidaId")
+        }
+        loadSummaryHeader()
+    }
+
+    private fun loadSummaryHeader() {
+        if (filtersEnabled && partidaId?.startsWith("P", ignoreCase = true) == true) {
+            val summaryPath = imageUrls.find { it.lowercase().contains("_resumen") }
+            if (summaryPath != null) {
+                try {
+                    val fullSummary = BitmapFactory.decodeFile(summaryPath)
+                    if (fullSummary != null) {
+                        val headerHeight = (fullSummary.height * 0.16f).toInt()
+                        if (headerHeight > 0) {
+                            summaryBoxHeaderBitmap = Bitmap.createBitmap(fullSummary, 0, 0, fullSummary.width, headerHeight)
+                        }
+                        fullSummary.recycle()
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
         }
     }
 
@@ -159,7 +181,7 @@ class ImagePreviewFragment : Fragment() {
     }
 
     private fun setupCarousel() {
-        val adapter = ImageCarouselAdapter(imageUrls, filtersEnabled) { isZoomed ->
+        val adapter = ImageCarouselAdapter(imageUrls, filtersEnabled, partidaId, summaryBoxHeaderBitmap) { isZoomed ->
             binding.viewPager.isUserInputEnabled = !isZoomed
         }
         binding.viewPager.adapter = adapter
@@ -175,6 +197,8 @@ class ImagePreviewFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        summaryBoxHeaderBitmap?.recycle()
+        summaryBoxHeaderBitmap = null
         _binding = null
     }
 }

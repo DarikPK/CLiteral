@@ -607,6 +607,7 @@ class PdfSettingsFragment : Fragment() {
 
             // Visibility
             putBoolean("showInPdf", sharedPrefs.getBoolean("show_in_pdf", true))
+            putBoolean("isFilterSummaryBoxEnabled", sharedPrefs.getBoolean("gallery_filters_enabled", true))
 
             // Signature Data (se leen directamente de SharedPreferences en PdfPreviewFragment,
             // pero pasamos estos por compatibilidad si se usaran)
