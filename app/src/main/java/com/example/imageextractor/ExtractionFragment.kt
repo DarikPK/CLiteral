@@ -1600,15 +1600,8 @@ private fun injectCaptchaHybridWatcher() {
                   const closeBtn = document.querySelector('button.denied-button') ||
                                    Array.from(document.querySelectorAll('button')).find(btn => (btn.innerText || '').includes('Cerrar'));
                   if (closeBtn) {
-                      console.log("✅ Intentando cerrar modal con el botón encontrado.");
-                      // Forzar un clic más agresivo por si el robustClick estándar falla en este componente Angular
-                      try {
-                          closeBtn.click();
-                      } catch(e) {}
                       await robustClick(closeBtn);
                       await sleep(500);
-                  } else {
-                      console.error("❌ No se encontró el botón de cierre para la Hoja Resumen.");
                   }
               }
           } else {
