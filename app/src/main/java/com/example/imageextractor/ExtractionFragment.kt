@@ -523,7 +523,7 @@ class ExtractionFragment : Fragment() {
                         pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
                     }
                     const totalResumen = pdfJsCount;
-                    const folderName = pdfJsCount > 0 ? (numeroPartida + " (" + pdfJsCount + " hojas) - PREDIOS") : "";
+                    const folderName = pdfJsCount > 0 ? (numeroPartida + " - PREDIOS") : "";
                     async function robustClick(element) {
                         for (let i = 0; i < 3; i++) {
                             try {
@@ -737,7 +737,7 @@ class ExtractionFragment : Fragment() {
                   pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
               }
               const totalResumen = pdfJsCount;
-              const folderName = pdfJsCount > 0 ? (numeroPartida + " (" + pdfJsCount + " hojas) - PREDIOS") : "";
+              const folderName = pdfJsCount > 0 ? (numeroPartida + " - PREDIOS") : "";
 
               for (let i = 0; i < canvases.length; i++) {
                   const canvas = canvases[i];
@@ -1570,7 +1570,7 @@ private fun injectCaptchaHybridWatcher() {
               if (pdfDoc) {
                   const total = pdfDoc.numPages;
                   const scale = 3;
-                  const folderName = "${config.numeroPartida} (" + total + " hojas) - PREDIOS";
+                  const folderName = "${config.numeroPartida} - PREDIOS";
                   let captureCount = 0;
 
                   for (let pageNum = 1; pageNum <= total; pageNum++) {
