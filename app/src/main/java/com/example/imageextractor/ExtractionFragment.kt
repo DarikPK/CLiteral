@@ -584,13 +584,6 @@ class ExtractionFragment : Fragment() {
                         if (typeof AndroidBridge !== 'undefined') AndroidBridge.onAutoCaptureFinished(0);
                         return;
                     }
-
-                    // --- Obtener contador de PDF.js previo ---
-                    let pdfJsCount = 0;
-                    if (typeof AndroidBridge !== 'undefined') {
-                        pdfJsCount = AndroidBridge.getPdfJsPreviaCount(numeroPartida);
-                    }
-
                     let captureCount = 0;
                     // Iterar desde el más reciente (inicio de la lista) al más antiguo (final de la lista)
                     for (let i = 0; i < N; i++) {
@@ -634,7 +627,7 @@ class ExtractionFragment : Fragment() {
                                 const hojaNumero = N - i;
 
                                 if (totalResumen > 0) {
-                                    const totalIndex = totalResumen + (N - hojaNumero + 1);
+                                    const totalIndex = totalResumen + hojaNumero;
                                     const filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                                     if (typeof AndroidBridge !== 'undefined') {
                                         AndroidBridge.saveDataUrl(dataUrl, filename, folderName);
@@ -673,13 +666,13 @@ class ExtractionFragment : Fragment() {
         val imageDir = File(downloadsDir, "capturas_sunarp")
 
         if (imageDir.exists() && imageDir.isDirectory) {
-            // Eliminar archivos sueltos
+            // Eliminar archivos sueltos (evitando los de resumen)
             val filesToDelete = imageDir.listFiles { file ->
                 file.isFile && file.name.startsWith("$partidaId-") && file.name.endsWith(".png") && !file.name.contains("_resumen")
             }
             filesToDelete?.forEach { file -> file.delete() }
 
-            // Eliminar contenido de subcarpetas (excepto _resumen)
+            // Eliminar contenido de subcarpetas de esta partida (evitando los de resumen)
             val subfolders = imageDir.listFiles { file ->
                 file.isDirectory && file.name.startsWith(partidaId)
             }
@@ -781,7 +774,7 @@ class ExtractionFragment : Fragment() {
                       if (hojaNumero <= 0) hojaNumero = 1;
 
                       if (totalResumen > 0) {
-                          const totalIndex = totalResumen + (N - hojaNumero + 1);
+                          const totalIndex = totalResumen + hojaNumero;
                           filename = numeroPartida + "-" + String(totalIndex).padStart(3, '0') + "_extraccion.png";
                       } else {
                           filename = numeroPartida + "-Hoja " + hojaNumero + ".png";
@@ -1604,10 +1597,11 @@ private fun injectCaptchaHybridWatcher() {
                       AndroidBridge.showToast("✅ Hoja Resumen: " + captureCount + " páginas capturadas.");
                   }
 
-                  const closeBtn = document.querySelector('button.ant-modal-close');
+                  const closeBtn = document.querySelector('button.denied-button') ||
+                                   Array.from(document.querySelectorAll('button')).find(btn => (btn.innerText || '').includes('Cerrar'));
                   if (closeBtn) {
                       await robustClick(closeBtn);
-                      await sleep(300);
+                      await sleep(500);
                   }
               }
           } else {
