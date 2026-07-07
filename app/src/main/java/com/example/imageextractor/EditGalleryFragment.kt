@@ -104,6 +104,7 @@ class EditGalleryFragment : Fragment() {
                         val imagePaths = folder.imageFiles.map { it.path }.toTypedArray()
                         putStringArray("imageUrls", imagePaths)
                         putString("partidaId", folder.partidaId)
+                        putString("tipoPartida", folder.tipoPartida)
                     }
                     findNavController().navigate(R.id.action_editingFragment_to_viewGalleryFragment, bundle)
                 }

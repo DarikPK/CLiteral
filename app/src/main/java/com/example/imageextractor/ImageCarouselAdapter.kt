@@ -12,8 +12,14 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.Layout
+import android.graphics.Color
+import android.content.Context
 
 class ImageCarouselAdapter(
     private val imageUrls: List<String>,
@@ -82,13 +88,42 @@ class ImageCarouselAdapter(
         private fun applySummaryBoxFilter(extractionBitmap: Bitmap, header: Bitmap): Bitmap {
             val width = extractionBitmap.width
             val originalHeight = extractionBitmap.height
+            val sharedPrefs = itemView.context.getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val ptToPx = width.toFloat() / 595f
+
+            // --- CONFIGURACIÓN DE PARCHES ---
+            // Parche Superior (En el encabezado)
+            val pTopX = sharedPrefs.getFloat("gallery_filter_patch_top_offset_x", 0f) * ptToPx
+            val pTopY = sharedPrefs.getFloat("gallery_filter_patch_top_offset_y", 0f) * ptToPx
+            val pTopW = sharedPrefs.getFloat("gallery_filter_patch_top_width_percent", 32f) / 100f
+            val pTopH = sharedPrefs.getFloat("gallery_filter_patch_top_height_percent", 18f) / 100f
+
+            // Parche Inferior (Pie de página)
+            val pBotX = sharedPrefs.getFloat("gallery_filter_patch_bottom_offset_x", 0f) * ptToPx
+            val pBotY = sharedPrefs.getFloat("gallery_filter_patch_bottom_offset_y", 0f) * ptToPx
+            val pBotW = sharedPrefs.getFloat("gallery_filter_patch_bottom_width_percent", 100f) / 100f
+            val pBotH = sharedPrefs.getFloat("gallery_filter_patch_bottom_height_percent", 6.5f) / 100f
+
+            // Parche Lateral (Derecha)
+            val pSideX = sharedPrefs.getFloat("gallery_filter_patch_side_offset_x", 0f) * ptToPx
+            val pSideY = sharedPrefs.getFloat("gallery_filter_patch_side_offset_y", 0f) * ptToPx
+            val pSideW = sharedPrefs.getFloat("gallery_filter_patch_side_width_percent", 4.7f) / 100f
+            val pSideH = sharedPrefs.getFloat("gallery_filter_patch_side_height_percent", 24f) / 100f
+
+            // --- CONFIGURACIÓN DE TEXTO ---
+            val filterText = sharedPrefs.getString("gallery_filter_text_content", "CERTIFICADO LITERAL") ?: "CERTIFICADO LITERAL"
+            val filterTextSizePercent = sharedPrefs.getFloat("gallery_filter_text_width_percent", 11f) / 100f
+            val filterColorStr = sharedPrefs.getString("gallery_filter_text_color", "#000000") ?: "#000000"
+            val filterLineSpacing = sharedPrefs.getFloat("gallery_filter_text_line_spacing", 1.0f)
+            val filterOffsetX = sharedPrefs.getFloat("gallery_filter_text_offset_x", 0f) * ptToPx
+            val filterOffsetY = sharedPrefs.getFloat("gallery_filter_text_offset_y", 0f) * ptToPx
 
             // 1. Altura escalada del nuevo cuadro de resumen
             val scale = width.toFloat() / header.width.toFloat()
-            val scaledHeaderHeight = (header.height * scale).toInt()
+            val scaledHeaderHeight = (header.height.toFloat() * scale).toInt()
 
             // 2. Punto de corte en la hoja de extracción original (14% para conservar asientos)
-            val cutTop = (originalHeight * 0.14f).toInt()
+            val cutTop = (originalHeight.toFloat() * 0.14f).toInt()
 
             // 3. Punto de destino: Justo después del nuevo cuadro, sin huecos en blanco.
             val destinationTop = scaledHeaderHeight
@@ -105,24 +140,39 @@ class ImageCarouselAdapter(
             val headerDst = Rect(0, 0, width, scaledHeaderHeight)
             canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
 
-            // Parche para ocultar "HOJA DE RESUMEN" y poner "CERTIFICADO LITERAL"
+            // DIBUJAR PARCHE SUPERIOR
             val patchPaint = Paint().apply {
                 color = android.graphics.Color.WHITE
                 style = Paint.Style.FILL
             }
-            val rectW = width * 0.32f
-            val rectH = scaledHeaderHeight * 0.18f
-            val rectL = (width - rectW) / 2f
-            val rectT = scaledHeaderHeight * 0.33f
+            val rectW = width.toFloat() * pTopW
+            val rectH = scaledHeaderHeight.toFloat() * pTopH
+            val rectL = (width.toFloat() - rectW) / 2f + pTopX
+            val rectT = (scaledHeaderHeight.toFloat() * 0.33f) + pTopY
             canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
 
-            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.BLACK
-                textSize = scaledHeaderHeight * 0.11f
+            // DIBUJAR TEXTO
+            val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                try {
+                    color = Color.parseColor(filterColorStr)
+                } catch (e: Exception) {
+                    color = Color.BLACK
+                }
+                textSize = scaledHeaderHeight.toFloat() * filterTextSizePercent
                 typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.70f, textPaint)
+
+            val staticLayout = StaticLayout.Builder.obtain(filterText, 0, filterText.length, textPaint, rectW.toInt())
+                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                .setLineSpacing(0f, filterLineSpacing)
+                .build()
+
+            canvas.save()
+            val drawX = rectL + filterOffsetX
+            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height.toFloat() / 2f
+            canvas.translate(drawX, drawY)
+            staticLayout.draw(canvas)
+            canvas.restore()
 
             // 6. Dibujar el contenido de la extracción DESPLAZADO hacia abajo.
             // Se coloca exactamente debajo del nuevo encabezado.
@@ -135,51 +185,89 @@ class ImageCarouselAdapter(
             }
 
             // 7. Dibujar parche blanco para eliminar texto vertical a la derecha
-            // Reutilizar patchPaint ya declarado arriba
             patchPaint.color = android.graphics.Color.WHITE
             patchPaint.style = Paint.Style.FILL
 
-            val patchLeft = width * 0.908f
-            val patchRight = width * 0.955f
-            val patchTop = originalHeight * 0.18f
-            val patchBottom = originalHeight * 0.42f
+            val pSideLeft = (width.toFloat() * 0.908f) + pSideX
+            val pSideTop = (originalHeight.toFloat() * 0.18f) + pSideY
+            val pSideRight = pSideLeft + (width.toFloat() * pSideW)
+            val pSideBottom = pSideTop + (originalHeight.toFloat() * pSideH)
 
-            canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, patchPaint)
+            canvas.drawRect(pSideLeft, pSideTop, pSideRight, pSideBottom, patchPaint)
 
             return resultBitmap
         }
+
         private fun applySummaryPatch(bitmap: Bitmap, showTitle: Boolean): Bitmap {
             val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
             canvas.drawBitmap(bitmap, 0f, 0f, null)
 
+            val sharedPrefs = itemView.context.getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+            val ptToPx = bitmap.width.toFloat() / 595f
+
+            // --- CONFIGURACIÓN DE PARCHES ---
+            val pTopX = sharedPrefs.getFloat("gallery_filter_patch_top_offset_x", 0f) * ptToPx
+            val pTopY = sharedPrefs.getFloat("gallery_filter_patch_top_offset_y", 0f) * ptToPx
+            val pTopW = sharedPrefs.getFloat("gallery_filter_patch_top_width_percent", 32f) / 100f
+            val pTopH = sharedPrefs.getFloat("gallery_filter_patch_top_height_percent", 18f) / 100f
+
+            val pBotX = sharedPrefs.getFloat("gallery_filter_patch_bottom_offset_x", 0f) * ptToPx
+            val pBotY = sharedPrefs.getFloat("gallery_filter_patch_bottom_offset_y", 0f) * ptToPx
+            val pBotW = sharedPrefs.getFloat("gallery_filter_patch_bottom_width_percent", 100f) / 100f
+            val pBotH = sharedPrefs.getFloat("gallery_filter_patch_bottom_height_percent", 6.5f) / 100f
+
+            // --- CONFIGURACIÓN DE TEXTO ---
+            val filterText = sharedPrefs.getString("gallery_filter_text_content", "CERTIFICADO LITERAL") ?: "CERTIFICADO LITERAL"
+            val filterTextSizePercent = sharedPrefs.getFloat("gallery_filter_text_width_percent", 11f) / 100f
+            val filterColorStr = sharedPrefs.getString("gallery_filter_text_color", "#000000") ?: "#000000"
+            val filterLineSpacing = sharedPrefs.getFloat("gallery_filter_text_line_spacing", 1.0f)
+            val filterOffsetX = sharedPrefs.getFloat("gallery_filter_text_offset_x", 0f) * ptToPx
+            val filterOffsetY = sharedPrefs.getFloat("gallery_filter_text_offset_y", 0f) * ptToPx
+
             val paint = Paint()
             paint.color = android.graphics.Color.WHITE
             paint.style = Paint.Style.FILL
 
-            // Parche inferior (pie de página)
-            val patchLeft = 0f
-            val patchRight = bitmap.width.toFloat()
-            val patchTop = bitmap.height * 0.935f
-            val patchBottom = bitmap.height.toFloat()
-            canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
-
-            // Parche superior para el título "CERTIFICADO LITERAL"
-            val headerHeight = bitmap.height * 0.16f
-            val rectW = bitmap.width * 0.32f
-            val rectH = headerHeight * 0.18f
-            val rectL = (bitmap.width - rectW) / 2f
-            val rectT = headerHeight * 0.33f
-            canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+            // Parche inferior (pie de página) - Siempre visible
+            val pBotL = pBotX
+            val pBotT = (bitmap.height.toFloat() * 0.935f) + pBotY
+            val pBotR = pBotL + (bitmap.width.toFloat() * pBotW)
+            val pBotB = pBotT + (bitmap.height.toFloat() * pBotH)
+            canvas.drawRect(pBotL, pBotT, pBotR, pBotB, paint)
 
             if (showTitle) {
-                val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = headerHeight * 0.11f
+                // Parche superior para el título - Solo visible si showTitle es true
+                // (Primera hoja de resumen o cualquier hoja de extracción)
+                val headerHeight = bitmap.height.toFloat() * 0.16f
+                val rectW = bitmap.width.toFloat() * pTopW
+                val rectH = headerHeight * pTopH
+                val rectL = (bitmap.width.toFloat() - rectW) / 2f + pTopX
+                val rectT = (headerHeight * 0.33f) + pTopY
+                canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+
+                val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                    try {
+                        color = Color.parseColor(filterColorStr)
+                    } catch (e: Exception) {
+                        color = Color.BLACK
+                    }
+                    textSize = headerHeight * filterTextSizePercent
                     typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                    textAlign = Paint.Align.CENTER
                 }
-                canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
+
+                val staticLayout = StaticLayout.Builder.obtain(filterText, 0, filterText.length, textPaint, rectW.toInt())
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setLineSpacing(0f, filterLineSpacing)
+                    .build()
+
+                canvas.save()
+                val drawX = rectL + filterOffsetX
+                val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height.toFloat() / 2f
+
+                canvas.translate(drawX, drawY)
+                staticLayout.draw(canvas)
+                canvas.restore()
             }
 
             return result
