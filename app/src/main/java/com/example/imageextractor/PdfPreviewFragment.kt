@@ -1524,7 +1524,7 @@ class PdfPreviewFragment : Fragment() {
         canvas.drawBitmap(bitmap, 0f, 0f, null)
 
         val sharedPrefs = requireContext().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-        val ptToPx = bitmap.width / 595f
+        val ptToPx = bitmap.width.toFloat() / 595f
 
         // --- CONFIGURACIÓN DE PARCHES ---
         val pTopX = sharedPrefs.getFloat("gallery_filter_patch_top_offset_x", 0f) * ptToPx
@@ -1551,17 +1551,17 @@ class PdfPreviewFragment : Fragment() {
 
         // Parche inferior (pie de página) - Siempre visible
         val pBotL = pBotX
-        val pBotT = (bitmap.height * 0.935f) + pBotY
-        val pBotR = pBotL + (bitmap.width * pBotW)
-        val pBotB = pBotT + (bitmap.height * pBotH)
+        val pBotT = (bitmap.height.toFloat() * 0.935f) + pBotY
+        val pBotR = pBotL + (bitmap.width.toFloat() * pBotW)
+        val pBotB = pBotT + (bitmap.height.toFloat() * pBotH)
         canvas.drawRect(pBotL, pBotT, pBotR, pBotB, paint)
 
         if (showTitle) {
             // Parche superior para el título - Solo visible si showTitle es true
-            val headerHeight = bitmap.height * 0.16f
-            val rectW = bitmap.width * pTopW
+            val headerHeight = bitmap.height.toFloat() * 0.16f
+            val rectW = bitmap.width.toFloat() * pTopW
             val rectH = headerHeight * pTopH
-            val rectL = (bitmap.width - rectW) / 2f + pTopX
+            val rectL = (bitmap.width.toFloat() - rectW) / 2f + pTopX
             val rectT = (headerHeight * 0.33f) + pTopY
             canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
@@ -1582,7 +1582,7 @@ class PdfPreviewFragment : Fragment() {
 
             canvas.save()
             val drawX = rectL + filterOffsetX
-            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height.toFloat() / 2f
 
             canvas.translate(drawX, drawY)
             staticLayout.draw(canvas)

@@ -12,6 +12,7 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.text.StaticLayout
@@ -88,7 +89,7 @@ class ImageCarouselAdapter(
             val width = extractionBitmap.width
             val originalHeight = extractionBitmap.height
             val sharedPrefs = itemView.context.getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            val ptToPx = width / 595f
+            val ptToPx = width.toFloat() / 595f
 
             // --- CONFIGURACIÓN DE PARCHES ---
             // Parche Superior (En el encabezado)
@@ -119,10 +120,10 @@ class ImageCarouselAdapter(
 
             // 1. Altura escalada del nuevo cuadro de resumen
             val scale = width.toFloat() / header.width.toFloat()
-            val scaledHeaderHeight = (header.height * scale).toInt()
+            val scaledHeaderHeight = (header.height.toFloat() * scale).toInt()
 
             // 2. Punto de corte en la hoja de extracción original (14% para conservar asientos)
-            val cutTop = (originalHeight * 0.14f).toInt()
+            val cutTop = (originalHeight.toFloat() * 0.14f).toInt()
 
             // 3. Punto de destino: Justo después del nuevo cuadro, sin huecos en blanco.
             val destinationTop = scaledHeaderHeight
@@ -144,10 +145,10 @@ class ImageCarouselAdapter(
                 color = android.graphics.Color.WHITE
                 style = Paint.Style.FILL
             }
-            val rectW = width * pTopW
-            val rectH = scaledHeaderHeight * pTopH
-            val rectL = (width - rectW) / 2f + pTopX
-            val rectT = (scaledHeaderHeight * 0.33f) + pTopY
+            val rectW = width.toFloat() * pTopW
+            val rectH = scaledHeaderHeight.toFloat() * pTopH
+            val rectL = (width.toFloat() - rectW) / 2f + pTopX
+            val rectT = (scaledHeaderHeight.toFloat() * 0.33f) + pTopY
             canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
 
             // DIBUJAR TEXTO
@@ -157,7 +158,7 @@ class ImageCarouselAdapter(
                 } catch (e: Exception) {
                     color = Color.BLACK
                 }
-                textSize = scaledHeaderHeight * filterTextSizePercent
+                textSize = scaledHeaderHeight.toFloat() * filterTextSizePercent
                 typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
             }
 
@@ -168,7 +169,7 @@ class ImageCarouselAdapter(
 
             canvas.save()
             val drawX = rectL + filterOffsetX
-            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height.toFloat() / 2f
             canvas.translate(drawX, drawY)
             staticLayout.draw(canvas)
             canvas.restore()
@@ -187,22 +188,23 @@ class ImageCarouselAdapter(
             patchPaint.color = android.graphics.Color.WHITE
             patchPaint.style = Paint.Style.FILL
 
-            val pSideLeft = (width * 0.908f) + pSideX
-            val pSideTop = (originalHeight * 0.18f) + pSideY
-            val pSideRight = pSideLeft + (width * pSideW)
-            val pSideBottom = pSideTop + (originalHeight * pSideH)
+            val pSideLeft = (width.toFloat() * 0.908f) + pSideX
+            val pSideTop = (originalHeight.toFloat() * 0.18f) + pSideY
+            val pSideRight = pSideLeft + (width.toFloat() * pSideW)
+            val pSideBottom = pSideTop + (originalHeight.toFloat() * pSideH)
 
             canvas.drawRect(pSideLeft, pSideTop, pSideRight, pSideBottom, patchPaint)
 
             return resultBitmap
         }
+
         private fun applySummaryPatch(bitmap: Bitmap, showTitle: Boolean): Bitmap {
             val result = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
             canvas.drawBitmap(bitmap, 0f, 0f, null)
 
             val sharedPrefs = itemView.context.getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
-            val ptToPx = bitmap.width / 595f
+            val ptToPx = bitmap.width.toFloat() / 595f
 
             // --- CONFIGURACIÓN DE PARCHES ---
             val pTopX = sharedPrefs.getFloat("gallery_filter_patch_top_offset_x", 0f) * ptToPx
@@ -229,18 +231,18 @@ class ImageCarouselAdapter(
 
             // Parche inferior (pie de página) - Siempre visible
             val pBotL = pBotX
-            val pBotT = (bitmap.height * 0.935f) + pBotY
-            val pBotR = pBotL + (bitmap.width * pBotW)
-            val pBotB = pBotT + (bitmap.height * pBotH)
+            val pBotT = (bitmap.height.toFloat() * 0.935f) + pBotY
+            val pBotR = pBotL + (bitmap.width.toFloat() * pBotW)
+            val pBotB = pBotT + (bitmap.height.toFloat() * pBotH)
             canvas.drawRect(pBotL, pBotT, pBotR, pBotB, paint)
 
             if (showTitle) {
                 // Parche superior para el título - Solo visible si showTitle es true
                 // (Primera hoja de resumen o cualquier hoja de extracción)
-                val headerHeight = bitmap.height * 0.16f
-                val rectW = bitmap.width * pTopW
+                val headerHeight = bitmap.height.toFloat() * 0.16f
+                val rectW = bitmap.width.toFloat() * pTopW
                 val rectH = headerHeight * pTopH
-                val rectL = (bitmap.width - rectW) / 2f + pTopX
+                val rectL = (bitmap.width.toFloat() - rectW) / 2f + pTopX
                 val rectT = (headerHeight * 0.33f) + pTopY
                 canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
@@ -261,7 +263,7 @@ class ImageCarouselAdapter(
 
                 canvas.save()
                 val drawX = rectL + filterOffsetX
-                val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+                val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height.toFloat() / 2f
 
                 canvas.translate(drawX, drawY)
                 staticLayout.draw(canvas)
