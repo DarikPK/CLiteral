@@ -2,9 +2,10 @@ package com.example.imageextractor
 
 import android.app.Dialog
 import android.content.Context
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.AdapterView
 import android.widget.SeekBar
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
@@ -19,52 +20,94 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
         requireActivity().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
     }
 
+    private var currentElementIndex = 0
+    private val elementPrefixes = arrayOf("text", "patch_top", "patch_bottom", "patch_side")
+
+    // State for current selected element
     private var offsetX = 0f
     private var offsetY = 0f
+    private var widthPercent = 0f
+    private var heightPercent = 0f
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         _binding = DialogGalleryFilterConfigBinding.inflate(LayoutInflater.from(context))
 
-        loadSettings()
-
+        setupSpinner()
         setupListeners()
+
+        // Load initial element (Text)
+        loadSettingsForElement(0)
 
         return AlertDialog.Builder(requireContext())
             .setTitle("Configurar Filtro")
             .setView(binding.root)
             .setPositiveButton("Guardar") { _, _ ->
-                saveSettings()
+                saveSettingsForElement(currentElementIndex)
             }
             .setNegativeButton("Cancelar", null)
             .create()
     }
 
-    private fun loadSettings() {
-        val text = sharedPrefs.getString("gallery_filter_text", "CERTIFICADO LITERAL")
-        val textSize = sharedPrefs.getFloat("gallery_filter_text_size", 11f)
-        val color = sharedPrefs.getString("gallery_filter_color", "#000000")
-        val lineSpacing = sharedPrefs.getFloat("gallery_filter_line_spacing", 1.0f)
-        offsetX = sharedPrefs.getFloat("gallery_filter_offset_x", 0f)
-        offsetY = sharedPrefs.getFloat("gallery_filter_offset_y", 0f)
+    private fun setupSpinner() {
+        binding.spinnerElementType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                saveSettingsForElement(currentElementIndex) // Guardar previo
+                currentElementIndex = position
+                loadSettingsForElement(position)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
 
-        binding.editFilterText.setText(text)
-        binding.seekTextSize.progress = textSize.toInt()
-        binding.textSizeValue.text = "${textSize.toInt()}%"
-        binding.editFilterColor.setText(color)
-        binding.seekLineSpacing.progress = (lineSpacing * 100).toInt()
-        binding.lineSpacingValue.text = String.format("%.1fx", lineSpacing)
+
+    private fun loadSettingsForElement(index: Int) {
+        val prefix = "gallery_filter_${elementPrefixes[index]}"
+
+        // Visibility
+        binding.containerTextSettings.visibility = if (index == 0) View.VISIBLE else View.GONE
+        binding.containerHeightPercent.visibility = if (index != 3) View.VISIBLE else View.VISIBLE // All have height except maybe lateral? No, all have it.
+
+        binding.labelSizeMain.text = if (index == 0) "Tamaño del Texto (%)" else "Ancho (%)"
+
+        if (index == 0) {
+            binding.editFilterText.setText(sharedPrefs.getString("${prefix}_content", "CERTIFICADO LITERAL"))
+            binding.editFilterColor.setText(sharedPrefs.getString("${prefix}_color", "#000000"))
+            val spacing = sharedPrefs.getFloat("${prefix}_line_spacing", 1.0f)
+            binding.seekLineSpacing.progress = (spacing * 100).toInt()
+            binding.lineSpacingValue.text = String.format("%.1fx", spacing)
+        }
+
+        offsetX = sharedPrefs.getFloat("${prefix}_offset_x", 0f)
+        offsetY = sharedPrefs.getFloat("${prefix}_offset_y", 0f)
+
+        val defaultW = when(index) {
+            0 -> 32f
+            1 -> 32f
+            2 -> 100f
+            3 -> 4.7f // 95.5 - 90.8
+            else -> 0f
+        }
+        val defaultH = when(index) {
+            0 -> 18f
+            1 -> 18f
+            2 -> 6.5f
+            3 -> 24f // 42 - 18
+            else -> 0f
+        }
+
+        widthPercent = sharedPrefs.getFloat("${prefix}_width_percent", defaultW)
+        heightPercent = sharedPrefs.getFloat("${prefix}_height_percent", defaultH)
+
+        binding.seekWidthPercent.progress = (widthPercent * 10).toInt()
+        binding.widthPercentValue.text = String.format("%.1f%%", widthPercent)
+
+        binding.seekHeightPercent.progress = (heightPercent * 10).toInt()
+        binding.heightPercentValue.text = String.format("%.1f%%", heightPercent)
+
         updateOffsetLabels()
     }
 
     private fun setupListeners() {
-        binding.seekTextSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                binding.textSizeValue.text = "$progress%"
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
         binding.seekLineSpacing.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val value = progress / 100f
@@ -74,10 +117,28 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        binding.btnPosUp.setOnClickListener { offsetY -= 2f; updateOffsetLabels() }
-        binding.btnPosDown.setOnClickListener { offsetY += 2f; updateOffsetLabels() }
-        binding.btnPosLeft.setOnClickListener { offsetX -= 2f; updateOffsetLabels() }
-        binding.btnPosRight.setOnClickListener { offsetX += 2f; updateOffsetLabels() }
+        binding.seekWidthPercent.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                widthPercent = progress / 10.0f
+                binding.widthPercentValue.text = String.format("%.1f%%", widthPercent)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        binding.seekHeightPercent.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                heightPercent = progress / 10.0f
+                binding.heightPercentValue.text = String.format("%.1f%%", heightPercent)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        binding.btnPosUp.setOnClickListener { offsetY -= 1f; updateOffsetLabels() }
+        binding.btnPosDown.setOnClickListener { offsetY += 1f; updateOffsetLabels() }
+        binding.btnPosLeft.setOnClickListener { offsetX -= 1f; updateOffsetLabels() }
+        binding.btnPosRight.setOnClickListener { offsetX += 1f; updateOffsetLabels() }
     }
 
     private fun updateOffsetLabels() {
@@ -85,14 +146,18 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
         binding.textOffsetY.text = "Y: ${offsetY.toInt()}"
     }
 
-    private fun saveSettings() {
+    private fun saveSettingsForElement(index: Int) {
+        val prefix = "gallery_filter_${elementPrefixes[index]}"
         sharedPrefs.edit().apply {
-            putString("gallery_filter_text", binding.editFilterText.text.toString())
-            putFloat("gallery_filter_text_size", binding.seekTextSize.progress.toFloat())
-            putString("gallery_filter_color", binding.editFilterColor.text.toString())
-            putFloat("gallery_filter_line_spacing", binding.seekLineSpacing.progress / 100f)
-            putFloat("gallery_filter_offset_x", offsetX)
-            putFloat("gallery_filter_offset_y", offsetY)
+            if (index == 0) {
+                putString("${prefix}_content", binding.editFilterText.text.toString())
+                putString("${prefix}_color", binding.editFilterColor.text.toString())
+                putFloat("${prefix}_line_spacing", binding.seekLineSpacing.progress / 100f)
+            }
+            putFloat("${prefix}_offset_x", offsetX)
+            putFloat("${prefix}_offset_y", offsetY)
+            putFloat("${prefix}_width_percent", widthPercent)
+            putFloat("${prefix}_height_percent", heightPercent)
             apply()
         }
     }
