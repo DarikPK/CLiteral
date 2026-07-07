@@ -61,6 +61,10 @@ class ViewGalleryFragment : Fragment() {
             detailAdapter.setFiltersEnabled(isChecked)
             iconAdapter.setFiltersEnabled(isChecked)
         }
+
+        binding.btnFilterConfig.setOnClickListener {
+            GalleryFilterConfigDialogFragment().show(parentFragmentManager, "GalleryFilterConfig")
+        }
     }
 
     private fun setupToolbar() {

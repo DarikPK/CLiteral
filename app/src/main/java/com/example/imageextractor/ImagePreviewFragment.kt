@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.Layout
+import android.content.Context
 
 class ImagePreviewFragment : Fragment() {
 
@@ -198,6 +202,14 @@ class ImagePreviewFragment : Fragment() {
         val canvas = Canvas(result)
         canvas.drawBitmap(bitmap, 0f, 0f, null)
 
+        val sharedPrefs = requireContext().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        val filterText = sharedPrefs.getString("gallery_filter_text", "CERTIFICADO LITERAL") ?: "CERTIFICADO LITERAL"
+        val filterTextSizePercent = sharedPrefs.getFloat("gallery_filter_text_size", 11f) / 100f
+        val filterColorStr = sharedPrefs.getString("gallery_filter_color", "#000000") ?: "#000000"
+        val filterLineSpacing = sharedPrefs.getFloat("gallery_filter_line_spacing", 1.0f)
+        val filterOffsetX = sharedPrefs.getFloat("gallery_filter_offset_x", 0f)
+        val filterOffsetY = sharedPrefs.getFloat("gallery_filter_offset_y", 0f)
+
         val paint = Paint()
         paint.color = Color.WHITE
         paint.style = Paint.Style.FILL
@@ -209,7 +221,7 @@ class ImagePreviewFragment : Fragment() {
         val patchBottom = bitmap.height.toFloat()
         canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
 
-        // Parche superior para el título "CERTIFICADO LITERAL"
+        // Parche superior para el título
         val headerHeight = bitmap.height * 0.16f
         val rectW = bitmap.width * 0.32f
         val rectH = headerHeight * 0.18f
@@ -218,13 +230,28 @@ class ImagePreviewFragment : Fragment() {
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
 
         if (showTitle) {
-            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.BLACK
-                textSize = headerHeight * 0.11f
+            val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                try {
+                    color = Color.parseColor(filterColorStr)
+                } catch (e: Exception) {
+                    color = Color.BLACK
+                }
+                textSize = headerHeight * filterTextSizePercent
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("CERTIFICADO LITERAL", bitmap.width / 2f, rectT + rectH * 0.70f, textPaint)
+
+            val staticLayout = StaticLayout.Builder.obtain(filterText, 0, filterText.length, textPaint, rectW.toInt())
+                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                .setLineSpacing(0f, filterLineSpacing)
+                .build()
+
+            canvas.save()
+            val drawX = rectL + filterOffsetX
+            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+
+            canvas.translate(drawX, drawY)
+            staticLayout.draw(canvas)
+            canvas.restore()
         }
 
         return result
@@ -233,6 +260,14 @@ class ImagePreviewFragment : Fragment() {
     private fun applySummaryBoxFilter(extractionBitmap: Bitmap, header: Bitmap): Bitmap {
         val width = extractionBitmap.width
         val originalHeight = extractionBitmap.height
+
+        val sharedPrefs = requireContext().getSharedPreferences("PdfSettings", Context.MODE_PRIVATE)
+        val filterText = sharedPrefs.getString("gallery_filter_text", "CERTIFICADO LITERAL") ?: "CERTIFICADO LITERAL"
+        val filterTextSizePercent = sharedPrefs.getFloat("gallery_filter_text_size", 11f) / 100f
+        val filterColorStr = sharedPrefs.getString("gallery_filter_color", "#000000") ?: "#000000"
+        val filterLineSpacing = sharedPrefs.getFloat("gallery_filter_line_spacing", 1.0f)
+        val filterOffsetX = sharedPrefs.getFloat("gallery_filter_offset_x", 0f)
+        val filterOffsetY = sharedPrefs.getFloat("gallery_filter_offset_y", 0f)
 
         val scale = width.toFloat() / header.width.toFloat()
         val scaledHeaderHeight = (header.height * scale).toInt()
@@ -250,7 +285,7 @@ class ImagePreviewFragment : Fragment() {
         val headerDst = Rect(0, 0, width, scaledHeaderHeight)
         canvas.drawBitmap(header, headerSrc, headerDst, highQualityPaint)
 
-        // Parche para ocultar "HOJA DE RESUMEN" y poner "CERTIFICADO LITERAL"
+        // Parche para ocultar "HOJA DE RESUMEN" y poner el texto personalizado
         val patchPaint = Paint().apply {
             color = Color.WHITE
             style = Paint.Style.FILL
@@ -261,13 +296,28 @@ class ImagePreviewFragment : Fragment() {
         val rectT = scaledHeaderHeight * 0.33f
         canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, patchPaint)
 
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
-            textSize = scaledHeaderHeight * 0.11f
+        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            try {
+                color = Color.parseColor(filterColorStr)
+            } catch (e: Exception) {
+                color = Color.BLACK
+            }
+            textSize = scaledHeaderHeight * filterTextSizePercent
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("CERTIFICADO LITERAL", width / 2f, rectT + rectH * 0.70f, textPaint)
+
+        val staticLayout = StaticLayout.Builder.obtain(filterText, 0, filterText.length, textPaint, rectW.toInt())
+            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setLineSpacing(0f, filterLineSpacing)
+            .build()
+
+        canvas.save()
+        val drawX = rectL + filterOffsetX
+        val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+
+        canvas.translate(drawX, drawY)
+        staticLayout.draw(canvas)
+        canvas.restore()
 
         val contentSrc = Rect(0, cutTop, width, cutTop + (originalHeight - destinationTop))
         val contentDst = Rect(0, destinationTop, width, originalHeight)

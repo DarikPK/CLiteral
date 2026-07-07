@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Contenido del Texto"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <EditText
+            android:id="@+id/edit_filter_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Ej: CERTIFICADO LITERAL"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tamaño del Texto (%)"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seek_text_size"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="50"
+                android:progress="11"/>
+
+            <TextView
+                android:id="@+id/text_size_value"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:text="11%"
+                android:gravity="end"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Color (Hex)"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <EditText
+            android:id="@+id/edit_filter_color"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="#000000"
+            android:inputType="text"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Interlineado"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <SeekBar
+                android:id="@+id/seek_line_spacing"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="200"
+                android:progress="100"/>
+
+            <TextView
+                android:id="@+id/line_spacing_value"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:gravity="end"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Posición (Ajuste en puntos)"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <GridLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:columnCount="3"
+            android:rowCount="3"
+            android:layout_marginBottom="16dp">
+
+            <View android:layout_width="48dp" android:layout_height="48dp" />
+
+            <ImageButton
+                android:id="@+id/btn_pos_up"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/arrow_up_float"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <View android:layout_width="48dp" android:layout_height="48dp" />
+
+            <ImageButton
+                android:id="@+id/btn_pos_left"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/arrow_down_float"
+                android:rotation="90"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="4dp">
+                <TextView
+                    android:id="@+id/text_offset_x"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="X: 0"
+                    android:textSize="10sp"/>
+                <TextView
+                    android:id="@+id/text_offset_y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Y: 0"
+                    android:textSize="10sp"/>
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_pos_right"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/arrow_down_float"
+                android:rotation="270"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <View android:layout_width="48dp" android:layout_height="48dp" />
+
+            <ImageButton
+                android:id="@+id/btn_pos_down"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/arrow_down_float"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <View android:layout_width="48dp" android:layout_height="48dp" />
+
+        </GridLayout>
+
+    </LinearLayout>
+</ScrollView>
