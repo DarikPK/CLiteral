@@ -145,8 +145,11 @@ class ImageCarouselAdapter(
                 .build()
 
             canvas.save()
-            val drawX = rectL + filterOffsetX
-            val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+            // Factor de escala de puntos (pt) a píxeles de la imagen.
+            // 595pt es el ancho estándar A4.
+            val ptToPx = width / 595f
+            val drawX = rectL + (filterOffsetX * ptToPx)
+            val drawY = rectT + rectH / 2f + (filterOffsetY * ptToPx) - staticLayout.height / 2f
 
             canvas.translate(drawX, drawY)
             staticLayout.draw(canvas)
@@ -225,8 +228,9 @@ class ImageCarouselAdapter(
                     .build()
 
                 canvas.save()
-                val drawX = rectL + filterOffsetX
-                val drawY = rectT + rectH / 2f + filterOffsetY - staticLayout.height / 2f
+                val ptToPx = bitmap.width / 595f
+                val drawX = rectL + (filterOffsetX * ptToPx)
+                val drawY = rectT + rectH / 2f + (filterOffsetY * ptToPx) - staticLayout.height / 2f
 
                 canvas.translate(drawX, drawY)
                 staticLayout.draw(canvas)

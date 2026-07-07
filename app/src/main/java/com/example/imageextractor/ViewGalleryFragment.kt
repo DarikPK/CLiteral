@@ -24,6 +24,7 @@ class ViewGalleryFragment : Fragment() {
     private lateinit var iconAdapter: ImageIconAdapter
     private var imageUrls: MutableList<String> = mutableListOf()
     private var partidaId: String? = null
+    private var tipoPartida: String? = null
 
     private var currentViewMode = ViewMode.ICON
 
@@ -35,6 +36,7 @@ class ViewGalleryFragment : Fragment() {
         arguments?.let {
             imageUrls = it.getStringArray("imageUrls")?.toMutableList() ?: mutableListOf()
             partidaId = it.getString("partidaId")
+            tipoPartida = it.getString("tipoPartida")
         }
     }
 
@@ -51,6 +53,12 @@ class ViewGalleryFragment : Fragment() {
         setupToolbar()
         setupAdapters()
         setupRecyclerView()
+
+        // Mostrar barra de filtros solo si es Partida P y tipo PREDIOS
+        val isPrediosP = (partidaId?.startsWith("P", ignoreCase = true) == true) &&
+                         (tipoPartida == "PREDIOS")
+
+        binding.filterBarContainer.visibility = if (isPrediosP) View.VISIBLE else View.GONE
 
         binding.switchFilters.isChecked = sharedPrefs.getBoolean("gallery_filters_enabled", true)
         detailAdapter.setFiltersEnabled(binding.switchFilters.isChecked)

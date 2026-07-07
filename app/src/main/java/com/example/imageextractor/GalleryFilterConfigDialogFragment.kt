@@ -52,7 +52,7 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
         binding.textSizeValue.text = "${textSize.toInt()}%"
         binding.editFilterColor.setText(color)
         binding.seekLineSpacing.progress = (lineSpacing * 100).toInt()
-        binding.lineSpacingValue.text = String.format("%.1f", lineSpacing)
+        binding.lineSpacingValue.text = String.format("%.1fx", lineSpacing)
         updateOffsetLabels()
     }
 
@@ -68,16 +68,16 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
         binding.seekLineSpacing.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val value = progress / 100f
-                binding.lineSpacingValue.text = String.format("%.1f", value)
+                binding.lineSpacingValue.text = String.format("%.1fx", value)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        binding.btnPosUp.setOnClickListener { offsetY -= 1f; updateOffsetLabels() }
-        binding.btnPosDown.setOnClickListener { offsetY += 1f; updateOffsetLabels() }
-        binding.btnPosLeft.setOnClickListener { offsetX -= 1f; updateOffsetLabels() }
-        binding.btnPosRight.setOnClickListener { offsetX += 1f; updateOffsetLabels() }
+        binding.btnPosUp.setOnClickListener { offsetY -= 2f; updateOffsetLabels() }
+        binding.btnPosDown.setOnClickListener { offsetY += 2f; updateOffsetLabels() }
+        binding.btnPosLeft.setOnClickListener { offsetX -= 2f; updateOffsetLabels() }
+        binding.btnPosRight.setOnClickListener { offsetX += 2f; updateOffsetLabels() }
     }
 
     private fun updateOffsetLabels() {
