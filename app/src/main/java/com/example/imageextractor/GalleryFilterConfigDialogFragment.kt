@@ -139,6 +139,16 @@ class GalleryFilterConfigDialogFragment : DialogFragment() {
         binding.btnPosDown.setOnClickListener { offsetY += 1f; updateOffsetLabels() }
         binding.btnPosLeft.setOnClickListener { offsetX -= 1f; updateOffsetLabels() }
         binding.btnPosRight.setOnClickListener { offsetX += 1f; updateOffsetLabels() }
+
+        // Botones de ajuste fino para SeekBars
+        binding.btnSpacingMinus.setOnClickListener { binding.seekLineSpacing.progress -= 5 }
+        binding.btnSpacingPlus.setOnClickListener { binding.seekLineSpacing.progress += 5 }
+
+        binding.btnWidthMinus.setOnClickListener { binding.seekWidthPercent.progress -= 1 }
+        binding.btnWidthPlus.setOnClickListener { binding.seekWidthPercent.progress += 1 }
+
+        binding.btnHeightMinus.setOnClickListener { binding.seekHeightPercent.progress -= 1 }
+        binding.btnHeightPlus.setOnClickListener { binding.seekHeightPercent.progress += 1 }
     }
 
     private fun updateOffsetLabels() {

@@ -75,6 +75,14 @@
                 android:gravity="center_vertical"
                 android:layout_marginBottom="16dp">
 
+                <ImageButton
+                    android:id="@+id/btn_spacing_minus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@android:drawable/button_onoff_indicator_off"
+                    android:rotation="90"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
+
                 <SeekBar
                     android:id="@+id/seek_line_spacing"
                     android:layout_width="0dp"
@@ -82,6 +90,14 @@
                     android:layout_weight="1"
                     android:max="200"
                     android:progress="100"/>
+
+                <ImageButton
+                    android:id="@+id/btn_spacing_plus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@android:drawable/button_onoff_indicator_off"
+                    android:rotation="270"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
 
                 <TextView
                     android:id="@+id/line_spacing_value"
@@ -107,6 +123,14 @@
             android:gravity="center_vertical"
             android:layout_marginBottom="16dp">
 
+            <ImageButton
+                android:id="@+id/btn_width_minus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/button_onoff_indicator_off"
+                android:rotation="90"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
             <SeekBar
                 android:id="@+id/seek_width_percent"
                 android:layout_width="0dp"
@@ -114,6 +138,14 @@
                 android:layout_weight="1"
                 android:max="1000"
                 android:progress="110"/>
+
+            <ImageButton
+                android:id="@+id/btn_width_plus"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/button_onoff_indicator_off"
+                android:rotation="270"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
 
             <TextView
                 android:id="@+id/width_percent_value"
@@ -143,6 +175,14 @@
                 android:gravity="center_vertical"
                 android:layout_marginBottom="16dp">
 
+                <ImageButton
+                    android:id="@+id/btn_height_minus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@android:drawable/button_onoff_indicator_off"
+                    android:rotation="90"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
+
                 <SeekBar
                     android:id="@+id/seek_height_percent"
                     android:layout_width="0dp"
@@ -150,6 +190,14 @@
                     android:layout_weight="1"
                     android:max="1000"
                     android:progress="180"/>
+
+                <ImageButton
+                    android:id="@+id/btn_height_plus"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@android:drawable/button_onoff_indicator_off"
+                    android:rotation="270"
+                    android:background="?attr/selectableItemBackgroundBorderless"/>
 
                 <TextView
                     android:id="@+id/height_percent_value"

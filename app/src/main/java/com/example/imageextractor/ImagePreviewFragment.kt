@@ -214,22 +214,22 @@ class ImagePreviewFragment : Fragment() {
         paint.color = Color.WHITE
         paint.style = Paint.Style.FILL
 
-        // Parche inferior (pie de página)
-        val patchLeft = 0f
-        val patchRight = bitmap.width.toFloat()
-        val patchTop = bitmap.height * 0.935f
-        val patchBottom = bitmap.height.toFloat()
-        canvas.drawRect(patchLeft, patchTop, patchRight, patchBottom, paint)
-
-        // Parche superior para el título
-        val headerHeight = bitmap.height * 0.16f
-        val rectW = bitmap.width * 0.32f
-        val rectH = headerHeight * 0.18f
-        val rectL = (bitmap.width - rectW) / 2f
-        val rectT = headerHeight * 0.33f
-        canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+        // Parche inferior (pie de página) - Siempre visible
+        val pBotL = pBotX
+        val pBotT = (bitmap.height * 0.935f) + pBotY
+        val pBotR = pBotL + (bitmap.width * pBotW)
+        val pBotB = pBotT + (bitmap.height * pBotH)
+        canvas.drawRect(pBotL, pBotT, pBotR, pBotB, paint)
 
         if (showTitle) {
+            // Parche superior para el título - Solo visible si showTitle es true
+            val headerHeight = bitmap.height * 0.16f
+            val rectW = bitmap.width * pTopW
+            val rectH = headerHeight * pTopH
+            val rectL = (bitmap.width - rectW) / 2f + pTopX
+            val rectT = (headerHeight * 0.33f) + pTopY
+            canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+
             val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 try {
                     color = Color.parseColor(filterColorStr)

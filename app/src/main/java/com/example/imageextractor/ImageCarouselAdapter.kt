@@ -227,22 +227,23 @@ class ImageCarouselAdapter(
             paint.color = android.graphics.Color.WHITE
             paint.style = Paint.Style.FILL
 
-            // Parche inferior (pie de página)
+            // Parche inferior (pie de página) - Siempre visible
             val pBotL = pBotX
             val pBotT = (bitmap.height * 0.935f) + pBotY
             val pBotR = pBotL + (bitmap.width * pBotW)
             val pBotB = pBotT + (bitmap.height * pBotH)
             canvas.drawRect(pBotL, pBotT, pBotR, pBotB, paint)
 
-            // Parche superior para el título
-            val headerHeight = bitmap.height * 0.16f
-            val rectW = bitmap.width * pTopW
-            val rectH = headerHeight * pTopH
-            val rectL = (bitmap.width - rectW) / 2f + pTopX
-            val rectT = (headerHeight * 0.33f) + pTopY
-            canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
-
             if (showTitle) {
+                // Parche superior para el título - Solo visible si showTitle es true
+                // (Primera hoja de resumen o cualquier hoja de extracción)
+                val headerHeight = bitmap.height * 0.16f
+                val rectW = bitmap.width * pTopW
+                val rectH = headerHeight * pTopH
+                val rectL = (bitmap.width - rectW) / 2f + pTopX
+                val rectT = (headerHeight * 0.33f) + pTopY
+                canvas.drawRect(rectL, rectT, rectL + rectW, rectT + rectH, paint)
+
                 val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                     try {
                         color = Color.parseColor(filterColorStr)
